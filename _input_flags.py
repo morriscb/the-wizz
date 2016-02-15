@@ -69,6 +69,7 @@ def parse_input_args():
                         type = str, help = 'Name of output HDF5 file to write '
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data to.')
+    ### Below these are mostly used by the pdf_maker code.
     parser.add_argument('--input_pair_hdf5_file', default = '',
                         type = str, help = 'Name of input HDF5 file to read '
                         'the pair counts between the spectroscopic and unknown '

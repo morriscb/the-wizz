@@ -6,10 +6,35 @@ import numpy as np
 import sys
 
 def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
+    
+    """
+    Simple utility for computing redshift bins that are linearly spaced in 
+    redshift. Not recommened for use if your concern is maximum signal to noise.
+    args:
+        z_min: float, minimum redshift to bin from
+        z_max: float, maximum redshift to bin to
+        n_bins: int, number of bins
+    returns:
+        numpy.array of type float and shape (n_bins,) containing the lower bin
+        edges. The n_bin + 1 edge is equal to z_max.
+    """
         
     return np.arange(z_min, z_max, (z_max - z_min) / (1. * n_bins))
 
 def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
+    
+    """
+    Simple utility for computing redshift bins that delivers a consistent number
+    of spectroscopic objects per bin. 
+    args:
+        z_min: float, minimum redshift to bin from
+        z_max: float, maximum redshift to bin to
+        n_bins: int, number of bins
+        redshift_array: numpy.array float of the spectroscopic redshifts.
+    returns:
+        numpy.array of type float and shape (n_bins,) containing the lower bin
+        edges. The n_bin + 1 edge is equal to z_max.
+    """
     
     useable_z_array = redshift_array[np.logical_and(redshift_array >= z_min,
                                                     redshift_array < z_max)]
@@ -20,6 +45,19 @@ def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
     
 def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     
+    """
+    Simple utility for computing redshift bins that are equally spaced in
+    comoving, line of sight distance. This creates bins that have a smoother
+    bias versus redshift.
+    args:
+        z_min: float, minimum redshift to bin from
+        z_max: float, maximum redshift to bin to
+        n_bins: int, number of bins
+    returns:
+        numpy.array of type float and shape (n_bins,) containing the lower bin
+        edges. The n_bin + 1 edge is equal to z_max.
+    """
+    
     comov_min = __core__.Planck13.comoving_distance(z_min)
     comov_max = __core__.Planck13.comoving_distance(z_max)
     return __core__.redshift(np.arange(comov_min, comov_max,
@@ -28,17 +66,43 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
 
 class PDFMaker(object):
     
+    """
+    Main class for the heavy lifting of matching an array of object indices to
+    the pair hdf5 data file, masking the used/un-used objects, summing the data
+    into the spec-z bins, and outputting the posterier redshift distribution. 
+    """
     
     def __init__(self, hdf5_file):
+        
+        """
+        Init function for the PDF maker. The init method takes in an hdf5 file
+        object containing the pairs of spectra to photometric objects.
+        Args:
+            hdf5_file: h5py object returned by h5py.File()
+        Returns:
+            None
+        """
+        
         self._hdf5_pairs = hdf5_file
         
-    def set_redshift_array(self, redshift_array):
-        
-        self._redshift_array = redshift_array
-        
-        return None
-        
     def colapse_ids_to_single_estimate(self, scale_name, id_array):
+        
+        """
+        This the main functionallity of the class. It enables the matching of
+        a set of catalog ids to the ids stored as pairs to the spectroscopic
+        objects. The result of this calculation is a intermediary data product
+        containing the density of unknown objects around each target object.
+        Args:
+            scale_name: string specifying the name of the scale to load from the
+        pair hdf5 file
+            id_array: numpy.array of ints specifying the catalog ids of the
+        unknown objects. WARNING: make sure that these ids are cut to the
+        geometry as the target, known objects. At best you'll waste a lot of
+        time searching for objects that don't overlap, at worst you'll get no
+        results.
+        Returns:
+            None (Returns are stored within the class)
+        """
         
         scale_grp = self._hdf5_pairs[scale_name]
         self._rand_ratio = (id_array.shape[0] /
@@ -51,6 +115,11 @@ class PDFMaker(object):
         self._target_n_rand_array = np.empty(len(scale_grp), dtype = np.uint32)
         self._target_region_array = np.empty(len(scale_grp), dtype = np.uint32)
         
+        ### TODO:
+        ###     This loop will likely be inefficient both in terms of time spent
+        ###     and reads from disk. Options are to use numba where posible and
+        ###     parallization across multiple cores. For the load times posibly
+        ###     set a worker to preload portions from disk. (min 100 MB chunks)
         for target_idx, key_name in enumerate(scale_grp.keys()):
             data_set = scale_grp[key_name]
             self._target_redshift_array[target_idx] = data_set.attrs['redshift']
@@ -73,9 +142,35 @@ class PDFMaker(object):
     
     def write_target_n_points(self, hdf5_file):
         
+        """
+        Method for writing the intermediate products of the over-density of the
+        requested sample per known, target object. This must be run after a call
+        to self.colapse_ids_to_single_estimate.
+        Args:
+            hdf5_file: an open hdf5 object from the return of h5py.File
+        Returns:
+            None
+        """
+        
+        ### TODO:
+        ###     Code this
+        
         pass
         
     def compute_pdf(self, z_bin_edge_array, z_max):
+        
+        """
+        Method for estimating the redshit posterior distribution of the unknown
+        sample calculated int self.colapse_ids_to_single_estimate. The returned
+        over-density vs redshift is calculated using the natural estimator of
+        over-density. (DD / DR - 1).
+        Args:
+            z_bin_edge_array: numpy.array of floats defining the lower edge of 
+        the redshift bins
+            z_max: float maximum redshift to estimate the to.
+        Returns:
+            None
+        """
         
         self._redshift_array = np.zeros_like(z_bin_edge_array)
         self._n_target_array = np.zeros_like(z_bin_edge_array,dtype = np.int_)
