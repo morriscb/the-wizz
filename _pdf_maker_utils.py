@@ -2,8 +2,14 @@
 import __core__
 import _input_flags
 import h5py
+from multiprocessing import Pool
 import numpy as np
 import sys
+
+### TODO:
+###     Restructure code for multiprocessing/numba. This will require changing
+### the class structure to more of a container that gets acted on by functions
+### in this file. This should be a feature of the code by the alpha state.
 
 def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
     
@@ -66,6 +72,10 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
 
 class PDFMaker(object):
     
+    ### TODO:
+    ###     Add protections to this class in the form of booleans storing if 
+    ###     certain aspects of the code have been run.
+    
     """
     Main class for the heavy lifting of matching an array of object indices to
     the pair hdf5 data file, masking the used/un-used objects, summing the data
@@ -116,10 +126,9 @@ class PDFMaker(object):
         self._target_region_array = np.empty(len(scale_grp), dtype = np.uint32)
         
         ### TODO:
-        ###     This loop will likely be inefficient both in terms of time spent
-        ###     and reads from disk. Options are to use numba where posible and
-        ###     parallization across multiple cores. For the load times posibly
-        ###     set a worker to preload portions from disk. (min 100 MB chunks)
+        ###     This TODO used to say that the code should be multiplexed or 
+        ### numba'ed around this loop. Howver, the plan is not to re-code this
+        ### class as more of a container for the multiprocessing steps.
         for target_idx, key_name in enumerate(scale_grp.keys()):
             data_set = scale_grp[key_name]
             self._target_redshift_array[target_idx] = data_set.attrs['redshift']
@@ -202,6 +211,24 @@ class PDFMaker(object):
     def compute_pdf_bootstrap(self, z_bin_edge_array, z_max, n_bootraps,
                               output_raw_bootstraps_name):
         
+        ### TODO:
+        ###     Restructure the two compute pdf classes into
+        
+        """
+        Similar to compute_pdf but now the region information is used to
+        spatially bootstrap the results in order to estimate errors.
+        Args:
+            z_bin_edge_array: numpy.array of floats defining the lower edge of 
+                the redshift bins
+            z_max: float maximum redshift to estimate the to.
+            n_bootstraps: int number of spatial bootstraps to sample from the
+                regions.
+            output_raw_bootstraps_name: string name to write the individual 
+                bootstrap samples to.
+        Returns:
+            None
+        """
+        
         self._redshift_array = np.zeros(z_bin_edge_array.shape[0])
         self._n_target_array = np.zeros(
             (self._region_array.shape[0], z_bin_edge_array.shape[0]),
@@ -236,6 +263,23 @@ class PDFMaker(object):
     
     def straight_sum(self, scale_name, z_bin_edge_array, z_max):
         
+        ### TODO:
+        ###     This is mainly a testing function for the code and likely won't
+        ### be around in later versions.
+        
+        """
+        This method simply sums up the pairs stored in the hdf5 data file and 
+        outputs the resultant pdf/over-densities.
+        Args:
+            scale_name: string name of the scale to collapse and compute the
+                pdf/over-density
+            z_bin_edge_array: numpy.array of floats specifying the lower edge of
+                the redshift bins
+            z_max: float specifying the maximum redshift
+        Returns:
+            None
+        """
+        
         scale_grp = self._hdf5_pairs[scale_name]
         self._rand_ratio = (scale_grp.attrs['n_unknown'] /
                             (1. * scale_grp.attrs['n_random_points']))
@@ -265,7 +309,17 @@ class PDFMaker(object):
         
         return None
     
-    def write_to_ascii(self, output_name):
+    def write_pdf_to_ascii(self, output_name):
+        
+        """
+        Method for writing the results of the two compute pdf methods to ascii.
+        Args:
+            output_name: string specifying the name of the ascii file to write
+                the pdf/density results to. By default any existing file will
+                be overwritten.
+        Returns:
+            None
+        """
         
         output_file = open(output_name, 'w')
         
