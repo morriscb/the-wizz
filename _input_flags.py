@@ -9,6 +9,9 @@ _input_flags.py
 Definitions for command line parsing for The Redshift wiZZard.
 """
 
+### TODO:
+###    Separate the arguments for the pair and pdf makers.
+
 def parse_input_args():
     
     parser = argparse.ArgumentParser()

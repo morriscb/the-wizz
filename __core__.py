@@ -1,10 +1,12 @@
+### TODO:
+###     split core into two with one having the stomp calls and one not.
 
 from astropy.cosmology import Planck13
 from astropy.io import fits
 import h5py
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
-import stomp
+# import stomp
 import sys
 
 verbose = False
