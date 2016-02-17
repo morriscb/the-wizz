@@ -187,7 +187,7 @@ class PDFMaker(object):
         self._n_rand_array = np.zeros_like(z_bin_edge_array, dtype = np.int_)
         self._area_array = np.zeros_like(z_bin_edge_array)
     
-        for target_idx, redshift in self._target_redshift_array:
+        for target_idx, redshift in enumerate(self._target_redshift_array):
             
             if redshift < z_bin_edge_array[0] or redshift >= z_max:
                 continue
