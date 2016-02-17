@@ -1,5 +1,5 @@
 
-import __core__
+import _core_utils
 import _input_flags
 import h5py
 from multiprocessing import Pool
@@ -64,9 +64,9 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
         edges. The n_bin + 1 edge is equal to z_max.
     """
     
-    comov_min = __core__.Planck13.comoving_distance(z_min)
-    comov_max = __core__.Planck13.comoving_distance(z_max)
-    return __core__.redshift(np.arange(comov_min, comov_max,
+    comov_min = _core_utils.Planck13.comoving_distance(z_min)
+    comov_max = _core_utils.Planck13.comoving_distance(z_max)
+    return _core_utils.redshift(np.arange(comov_min, comov_max,
                                        (comov_max - comov_min) / (1. * n_bins)))
 
 

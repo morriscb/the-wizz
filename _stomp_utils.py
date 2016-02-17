@@ -1,7 +1,7 @@
 ### TODO:
 ###     Move all of the stomp reliant functions to this core file.
 
-import __core__
+import _core_utils
 from astropy.cosmology import Planck13
 from astropy.io import fits
 import h5py
@@ -36,7 +36,7 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
     
     print("Loading unknown sample...")
     
-    sample_data = __core__.file_checker_loader(sample_file_name)
+    sample_data = _core_utils.file_checker_loader(sample_file_name)
     
     unknown_itree_map = stomp.IndexedTreeMap(stomp_map.RegionResolution(), 200)
 
@@ -71,7 +71,7 @@ def load_target_sample(sample_file_name, stomp_map, args):
     
     print("Loading target sample...")
     
-    sample_data = __core__.file_checker_loader(sample_file_name)
+    sample_data = _core_utils.file_checker_loader(sample_file_name)
         
     target_vect = stomp.CosmoVector()
     target_idx_array = np.ones(sample_data.shape[0]) * -99

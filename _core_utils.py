@@ -9,14 +9,12 @@ from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
 import sys
 from __builtin__ import None
 
-### TODO:
-###     Maybe rename this to __utils.py that possibly describes what this code
-###     is doing a bit better.
 
 """
 Utilities for The-wiZZ library. Contains file loading/closing, cosmology, and 
 setting the verbosity of the outputs.
 """
+
 
 verbose = False
 _initialized_cosmology = False

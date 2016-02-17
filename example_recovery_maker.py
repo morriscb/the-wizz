@@ -1,6 +1,6 @@
 #! /usr/bin/python
 
-import __core__
+import _core_utils
 import _input_flags
 import _pdf_maker_utils
 import h5py
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     ### Load the file containing all matched pairs of spectroscopic and
     ### photometric objects.
     print("Loading file...")
-    hdf5_pair_file = __core__.load_pair_hdf5(args.input_pair_hdf5_file)
+    hdf5_pair_file = _core_utils.load_pair_hdf5(args.input_pair_hdf5_file)
     
     ### Now we figure out what kind of redshift binning we would like to have.
     ### This will be one of the largest impacts on the signal to noise of the
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     ### This is a temporary solution for the KiDS busy week Feb 15th-19th.
     ### TODO:
     ###     Make something more stable and proper.
-    data = __core__.file_checker_loader(args.unknown_sample_file)
+    data = _core_utils.file_checker_loader(args.unknown_sample_file)
     unknown_index_array = data[args.unknown_index_name]
     
     ### This is where the heavy lifting happens. We create our PDF maker object

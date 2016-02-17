@@ -1,6 +1,6 @@
 
-import __core__
-import __core_stomp
+import _core_utils
+import _stomp_utils
 import _input_flags
 import _pair_maker_utils
 import h5py
@@ -34,26 +34,26 @@ if __name__ == "__main__":
     stomp_map.InitializeRegions(args.n_regions)
     
     ### load the sample with known redshifts 
-    target_vector, target_ids = __core_stomp.load_target_sample(
+    target_vector, target_ids = _stomp_utils.load_target_sample(
         args.target_sample_file, stomp_map, args)
     
     ### load the unknown sample from disc. Assumed data type is fits though hdf5
     ### will be allowed in later versions
     ### TODO: hdf5 support
-    unknown_itree = __core_stomp.load_unknown_sample(args.unknown_sample_file,
+    unknown_itree = _stomp_utils.load_unknown_sample(args.unknown_sample_file,
                                                     stomp_map, args)
     
     ### We also wish to subtract a random sample from density estimate. This
     ### function creates a set of uniform data points on the geometry of the
     ### stomp map.
     if args.n_randoms > 0:
-        random_tree = __core_stomp.create_random_data(
+        random_tree = _stomp_utils.create_random_data(
             args.n_randoms * unknown_itree.NPoints(), stomp_map)
     
     ### now create the output hdf5 file where we will store the output for the
     ### pair finding including raw pairs, area, unmasked fraction.
     ### TODO: Decide on best hdf5 type to use
-    output_pair_hdf5_file = __core__.create_hdf5_file(
+    output_pair_hdf5_file = _core_utils.create_hdf5_file(
         args.output_pair_hdf5_file, args)
     
     ### now that we have everything set up we can send our data off to the pair
@@ -98,6 +98,6 @@ if __name__ == "__main__":
                                   'kpc%st%s' % (min_scale_list[scale_idx],
                                                 max_scale_list[scale_idx]))
     
-    __core__.close_hdf5_file(output_pair_hdf5_file)
+    _core_utils.close_hdf5_file(output_pair_hdf5_file)
     ### And that's it. We are done.
     
