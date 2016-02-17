@@ -9,10 +9,19 @@ _input_flags.py
 Definitions for command line parsing for The Redshift wiZZard.
 """
 
-### TODO:
-###    Separate the arguments for the pair and pdf makers.
-
-def parse_input_args():
+def parse_input_pair_args():
+    
+    """
+    Command line argument parser for The-wiZZ pair finder portion of the
+    library. If you already know how to use the STOMP library this should be 
+    relatively straight forward, easy to use, and safe for you. If you do not
+    know anything about STOMP you will ikely be using the pdf creater methods
+    and arguments.
+    Args:
+        None
+    Returns:
+        ArgumentParser.parse_args object
+    """
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--stomp_map', default = '',
@@ -41,7 +50,7 @@ def parse_input_args():
                         'the target objects. Indexes must be of type uint32')
     parser.add_argument('--unknown_sample_file', default = '',
                         type = str, help = 'Name of unknown redshift '
-                        'photometric fits catalog.')
+                        'Photometric fits catalog.')
     parser.add_argument('--unknown_ra_name', default = 'ALPHA_J2000',
                         type = str, help = 'Name of ra column in unknown, '
                         'photometric fits file')
@@ -72,11 +81,40 @@ def parse_input_args():
                         type = str, help = 'Name of output HDF5 file to write '
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data to.')
-    ### Below these are mostly used by the pdf_maker code.
+    
+    return parser.parse_args()
+
+def parse_input_pdf_args():
+    
+    """
+    Command line argument parser for The-wiZZ PDF creator. If you have a given
+    survey file pair HDF5 file from The-wiZZ, you can set these arguments for
+    the PDF maker portion of the library and get a robust estimate of the 
+    redshift distribution for your specific subsample of the survey catalog.
+    Args:
+        None
+    Returns:
+        ArgumentParser.parse_args object
+    """
+    
+    parser = argparse.ArgumentParser()
+    
     parser.add_argument('--input_pair_hdf5_file', default = '',
                         type = str, help = 'Name of input HDF5 file to read '
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data from.')
+    parser.add_argument('--pair_scale_name', default = 'kpc30t300',
+                        type = str, help = 'Name of the pair data scale to '
+                        'load. This should be the name of the HDF5 group '
+                        'the pair data is stored in. The format is '
+                        'kpc[min]t[max].')
+    parser.add_argument('--unknown_sample_file', default = '',
+                        type = str, help = 'Name of unknown redshift '
+                        'Photometric fits catalog containing the indices to '
+                        'mask in the pair data file.')
+    parser.add_argument('--output_pdf_file_name', default = '',
+                        type = str, help = 'Name of the output file to write '
+                        'the resultant PDF to.')
     parser.add_argument('--z_min', default = 0.01,
                         type = float, help = 'Minimum redshift for both the '
                         'pair_maker and pdf_maker.')
@@ -93,4 +131,5 @@ def parse_input_args():
                         '    adapt: chose bins so that each has equal number '
                         'tarets.'
                         '    comoving: linear binning in comoving distance')
+    
     return parser.parse_args()

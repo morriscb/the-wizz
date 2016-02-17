@@ -1,6 +1,5 @@
 
 
-import __core__
 import h5py
 import numpy as np
 import stomp
@@ -174,7 +173,15 @@ class RawPairFinder(object):
     
     def write_to_hdf5(self, hdf5_file, scale_name):
         """
-        
+        Method to write the raw pairs to an HDF5 file. These "pair files" are
+        the heart of The-wiZZ and allow for quick computation and recomputation
+        of clustering redshift recovery PDFs.
+        Args:
+            hdf5_file: Open HDF5 file object from h5py
+            scale_name: Name of the specific scale that was run. This will end
+                up being the name of the HDF5 group for the stored data.
+        Returns:
+            None
         """
         
         tmp_grp = hdf5_file.create_group('%s' % (scale_name))
@@ -206,5 +213,6 @@ class RawPairFinder(object):
                     'rand', self._n_random_per_target[target_idx])
             except AttributeError:
                 continue
+            
         return None
             

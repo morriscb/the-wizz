@@ -1,5 +1,6 @@
 
 import __core__
+import __core_stomp
 import _input_flags
 import _pair_maker_utils
 import h5py
@@ -14,7 +15,6 @@ import sys
 """
 This is the main program for running the pair finder and creating the data file
 that contains the raw pair information between the target and unknown sample.
-
 """
 
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     print("The wiZZ has begun conjuring!")
     
     ### load the command line arguments 
-    args = _input_flags.parse_input_args()
+    args = _input_flags.parse_input_pair_args()
     
     ### load the stomp geometry coving the area of spectroscopic overlap
     ### TODO: adapt map only operation
@@ -34,20 +34,20 @@ if __name__ == "__main__":
     stomp_map.InitializeRegions(args.n_regions)
     
     ### load the sample with known redshifts 
-    target_vector, target_ids = __core__.load_target_sample(
+    target_vector, target_ids = __core_stomp.load_target_sample(
         args.target_sample_file, stomp_map, args)
     
     ### load the unknown sample from disc. Assumed data type is fits though hdf5
     ### will be allowed in later versions
     ### TODO: hdf5 support
-    unknown_itree = __core__.load_unknown_sample(args.unknown_sample_file,
-                                                 stomp_map, args)
+    unknown_itree = __core_stomp.load_unknown_sample(args.unknown_sample_file,
+                                                    stomp_map, args)
     
     ### We also wish to subtract a random sample from density estimate. This
     ### function creates a set of uniform data points on the geometry of the
     ### stomp map.
     if args.n_randoms > 0:
-        random_tree = __core__.create_random_data(
+        random_tree = __core_stomp.create_random_data(
             args.n_randoms * unknown_itree.NPoints(), stomp_map)
     
     ### now create the output hdf5 file where we will store the output for the
