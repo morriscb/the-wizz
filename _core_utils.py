@@ -69,11 +69,7 @@ def redshift(comov_dist):
         _initialize_cosmology()
     return _comov_dist_to_redshift_spline(comov_dist)
 
-def file_checker_loader(sample_file_name):
-    
-    ### TODO:
-    ###     Clean up this function and add more supported files types. Combine
-    ###     with the hdf5 loads.
+def file_checker_loader(input_file_name):
     
     """
     Utility function for checking the existence of a file and loading the file
@@ -85,20 +81,26 @@ def file_checker_loader(sample_file_name):
     """
     
     try:
-        file_handle = open(sample_file_name)
+        file_handle = open(input_file_name)
         file_handle.close()
     except IOError:
         print("IOError: File %s not found. The-wiZZ is exiting." %
-              sample_file_name)
+              input_file_name)
         raise IOError("File not found.")
     
-    data_type = sample_file_name.split('.')[-1]
+    data_type = input_file_name.split('.')[-1]
     if data_type == 'fit' or data_type == 'fits' or data_type == 'cat':
         
-        hdu_list = fits.open(sample_file_name)
+        hdu_list = fits.open(input_file_name)
         data = hdu_list[1].data
         hdu_list.close()
         return data
+    if data_type == 'hdf5' or data_type == 'dat':
+        
+        hdf5_file = h5py.File(input_file_name, 'r')
+        
+        return hdf5_file
+        
     else:
         print("File type not currently supported. Try again later. "
               "The-wiZZ is exiting.")
@@ -107,6 +109,11 @@ def file_checker_loader(sample_file_name):
     return None
 
 def create_hdf5_file(hdf5_file_name, args):
+    
+    ### TODO:
+    ###     Decide if I want to use libver latest or not. Could be more stable 
+    ###     if we use the "earliest" version. Will have to speed test saving 
+    ###     and loading of the pairs.
     
     """
     Convenience function for creating an HDF5 file with attributes set in
@@ -121,35 +128,4 @@ def create_hdf5_file(hdf5_file_name, args):
     hdf5_file = h5py.File(hdf5_file_name, 'w-', libver = 'latest')
     
     return hdf5_file
-
-def load_pair_hdf5(hdf5_file_name):
-    
-    ### TODO:
-    ###     Possibly move this into the file_checker_loader function
-    
-    """
-    Convenience function for loading an HDF5 wiZZ pair file.
-    Args:
-        hdf5_file_name: string name of the wiZZ HDF5 pair file to load
-    Returns:
-        open HDF5 file object
-    """
-    
-    hdf5_file = h5py.File(hdf5_file_name, 'r')
-    
-    return hdf5_file
-
-def close_hdf5_file(hdf5_file):
-    
-    """
-    Convenience function for closing an open HDF5 file object
-    args:
-        hdf5_file: hdf5 file object
-    Returns:
-        None
-    """
-    
-    hdf5_file.close()
-    
-    return None
     
