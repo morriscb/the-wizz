@@ -103,9 +103,11 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
     target_unknown_array = np.empty(len(hdf5_pairs_group), dtype = np.float32)
     
     for target_idx, key_name in enumerate(hdf5_pairs_group.keys()):
-        data_set = hdf5_pairs_group[key_name]
+        target_group = hdf5_pairs_group[key_name]
+        data_set = target_group['ids'][...]
+        invdata_set = target_group['inv_dist'][...]
         tmp_n_points = 0
-        for obj_id, inv_weight in enumerate(data_set):
+        for obj_id, inv_weight in zip(data_set, invdata_set):
             sort_idx = np.searchsorted(id_array, obj_id)
             if id_array[sort_idx] == obj_id:
                 if args.unknown_weight_name is None:
@@ -188,15 +190,15 @@ class PDFMaker(object):
         
         for target_idx, key_name in enumerate(hdf5_pair_group.keys()):
             
-            data_set = hdf5_pair_group[key_name]
-            self.target_redshift_array[target_idx] = data_set.attrs('redshift')
-            self.target_area_array[target_idx] = data_set.attrs('area')
-            self.target_region_array[target_idx] = data_set.attrs('region')
+            target_grp = hdf5_pair_group[key_name]
+            self.target_redshift_array[target_idx] = target_grp.attrs['redshift']
+            self.target_area_array[target_idx] = target_grp.attrs['area']
+            self.target_region_array[target_idx] = target_grp.attrs['region']
             if args.use_inverse_weighting:
                 self.target_rand_array[target_idx] = (
-                    data_set.attrs('rand_invdist'))
+                    target_grp.attrs['rand_invdist'])
             else:
-                self.target_rand_array = data_set.attrs('rand')
+                self.target_rand_array = target_grp.attrs['rand']
                 
         max_n_regions = self.target_region_array.max()
         region_list = []

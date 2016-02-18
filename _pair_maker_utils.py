@@ -222,25 +222,27 @@ class RawPairFinder(object):
             pass
         
         for target_idx, target in enumerate(self._target_vect):
-            
-            tmp_data_set = tmp_grp.create_dataset(
-                '%i' % self._target_ids[target_idx],
-                data = np.array([self._pair_list[target_idx],
-                                 self._pair_invdist_list[target_idx]],
-                                dtype = np.uint32).transpose())
-            tmp_data_set.attrs.create('redshift',
+            tmp_target_grp = tmp_grp.create_group(
+                '%i' % self._target_ids[target_idx])
+            tmp_target_grp.create_dataset(
+                'ids', data = np.array(self._pair_list[target_idx],
+                                       dtype = np.uint32))
+            tmp_target_grp.create_dataset(
+                'inv_dist', data = np.array(self._pair_invdist_list[target_idx],
+                                            dtype = np.float32))
+            tmp_target_grp.attrs.create('redshift',
                                       target.Redshift())
-            tmp_data_set.attrs.create('unmasked_frac',
+            tmp_target_grp.attrs.create('unmasked_frac',
                                       self._unmasked_array[target_idx])
-            tmp_data_set.attrs.create('bin_resolution',
+            tmp_target_grp.attrs.create('bin_resolution',
                                       self._bin_resolution[target_idx])
-            tmp_data_set.attrs.create('area', self._area_array[target_idx])
-            tmp_data_set.attrs.create('region', self._region_ids[target_idx])
+            tmp_target_grp.attrs.create('area', self._area_array[target_idx])
+            tmp_target_grp.attrs.create('region', self._region_ids[target_idx])
             try:
-                tmp_data_set.attrs.create(
+                tmp_target_grp.attrs.create(
                     'rand', self._n_random_per_target[target_idx])
-                tmp_data_set.attrs.create(
-                    'rand_invdist',
+                tmp_target_grp.attrs.create(
+                    'rand_inv_dist',
                     self._n_random_invdist_per_target[target_idx])
             except AttributeError:
                 continue
