@@ -193,6 +193,12 @@ class RawPairFinder(object):
         return None
     
     def write_to_hdf5(self, hdf5_file, scale_name):
+        
+        ### TODO:
+        ###     Write more descriptive information about columns and settings
+        ###     used in the run. Possibly write out all of the current arguments
+        ###     in the Argparser object into the data file.
+        
         """
         Method to write the raw pairs to an HDF5 file. These "pair files" are
         the heart of The-wiZZ and allow for quick computation and recomputation
