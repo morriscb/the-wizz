@@ -24,6 +24,7 @@ def parse_input_pair_args():
     """
     
     parser = argparse.ArgumentParser()
+    
     parser.add_argument('--stomp_map', default = '',
                         type = str, help = 'Name of the STOMP map defining the '
                         'geometry on the sky for the target and unknown '
@@ -112,6 +113,12 @@ def parse_input_pdf_args():
                         type = str, help = 'Name of unknown redshift '
                         'Photometric fits catalog containing the indices to '
                         'mask in the pair data file.')
+    parser.add_argument('--unknown_index_name', default = 'SeqNr',
+                        type = str, help = 'Name of unique object index for '
+                        'the unknown objects. Indexes must be of type uint32')
+    parser.add_argument('--unknown_weight_name', default = None,
+                        type = str, help = 'Name of object weight for '
+                        'the unknown objects.')
     parser.add_argument('--output_pdf_file_name', default = '',
                         type = str, help = 'Name of the output file to write '
                         'the resultant PDF to.')
@@ -131,5 +138,9 @@ def parse_input_pdf_args():
                         '    adapt: chose bins so that each has equal number '
                         'tarets.'
                         '    comoving: linear binning in comoving distance')
+    parser.add_argument('--use_inverse_weighting', action = 'store_true',
+                        help = 'Use the inverse distance weighted columns from '
+                        'the pair file instead of just a straight sum of pairs.'
+                        )
     
     return parser.parse_args()
