@@ -8,9 +8,6 @@ import numpy as np
 import stomp
 import sys
 
-### The wiZZ: A redshift recovery software for us folks. Version-0.0
-### Partially based on Mubdi Rahman and Brice Menard's wizzard engine.
-### Schmidt et al. 2013, Menard et al. 2013, Rahman et al. 2015
 
 """
 This is the main program for running the pair finder and creating the data file
@@ -27,7 +24,13 @@ if __name__ == "__main__":
     args = _input_flags.parse_input_pair_args()
     
     ### load the stomp geometry coving the area of spectroscopic overlap
-    ### TODO: adapt map only operation
+    ### TODO:
+    ###     create an external program that allows for the creation of an
+    ###     addaptive map. This will require some testing and visualization
+    ###     software for Python. Low priority, maybe at ver1.0. Easy fix would
+    ###     be a test of min, max RA, DEC and testing the area of that and how
+    ###     much area remains after that. User can set a threshold based on how
+    ###     much area coverage they know there should be.
     stomp_map = stomp.Map(args.stomp_map)
     ### We request regionation for use with spatial bootstrapping. The
     ### resolution found for regionation also sets the 
@@ -39,7 +42,6 @@ if __name__ == "__main__":
     
     ### load the unknown sample from disc. Assumed data type is fits though hdf5
     ### will be allowed in later versions
-    ### TODO: hdf5 support
     unknown_itree = _stomp_utils.load_unknown_sample(args.unknown_sample_file,
                                                     stomp_map, args)
     
@@ -52,7 +54,6 @@ if __name__ == "__main__":
     
     ### now create the output hdf5 file where we will store the output for the
     ### pair finding including raw pairs, area, unmasked fraction.
-    ### TODO: Decide on best hdf5 type to use
     output_pair_hdf5_file = _core_utils.create_hdf5_file(
         args.output_pair_hdf5_file, args)
     
@@ -98,6 +99,6 @@ if __name__ == "__main__":
                                   'kpc%st%s' % (min_scale_list[scale_idx],
                                                 max_scale_list[scale_idx]))
     
-    _core_utils.close_hdf5_file(output_pair_hdf5_file)
+    output_pair_hdf5_file.close()
     ### And that's it. We are done.
     
