@@ -225,12 +225,9 @@ class RawPairFinder(object):
             
             tmp_data_set = tmp_grp.create_dataset(
                 '%i' % self._target_ids[target_idx],
-                data = np.array(self._pair_list[target_idx],
-                                dtype = np.uint32))
-            tmp_grp.create_dataset(
-                '%i_invdist' % self._target_ids[target_idx],
-                data = np.array(self._pair_invdist_list[target_idx],
-                                dtype = np.float32))
+                data = np.array([self._pair_list[target_idx],
+                                 self._pair_invdist_list[target_idx]],
+                                dtype = np.uint32).transpose())
             tmp_data_set.attrs.create('redshift',
                                       target.Redshift())
             tmp_data_set.attrs.create('unmasked_frac',
