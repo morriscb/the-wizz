@@ -75,16 +75,16 @@ if __name__ == "__main__":
     ### photo-z selected, or any other object seletion you would like. The code
     ### line below turns the array of indices in the hdf5 pair file, into a
     ### single density estimate around the target object.
-    print("Matching indicies...")
+    print("Matching indices...")
     pdf_maker = _pdf_maker_utils.collapse_ids_to_single_estimate(
         hdf5_pair_file[args.pair_scale_name], unknown_data, args)
     
     print("Calculating region densities...")
-    pdf_maker.compute_pdf(z_bin_edge_array, args.z_max)
+    pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
     ### Now that we've "collapsed" the estimate around the target object we need
     ### to bin up the results in redshift and create our final PDF.
     print("Calculating pdf...")
-    pdf_maker.compute_pdf()
+    pdf_maker.compute_pdf_bootstrap(1000)
     ### Now that we have the results. We just need to write them to file and we
     ### are done.
     print("Writing...")

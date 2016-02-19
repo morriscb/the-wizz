@@ -92,7 +92,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
                   (1. * hdf5_pairs_group.attrs['n_random_points']))
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
-    id_array = id_args_array[id_args_array]
+    id_array = id_array[id_args_array]
     ave_weight = 1.0
     if args.unknown_weight_name is not None:
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
@@ -104,11 +104,13 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
     
     for target_idx, key_name in enumerate(hdf5_pairs_group.keys()):
         target_group = hdf5_pairs_group[key_name]
-        data_set = target_group['ids'][...]
-        invdata_set = target_group['inv_dist'][...]
+        id_data_set = target_group['ids'][...]
+        inv_data_set = target_group['inv_dist'][...]
         tmp_n_points = 0
-        for obj_id, inv_weight in zip(data_set, invdata_set):
+        for obj_id, inv_weight in zip(id_data_set, inv_data_set):
             sort_idx = np.searchsorted(id_array, obj_id)
+            if sort_idx >= id_array.shape[0] or sort_idx < 0:
+                continue
             if id_array[sort_idx] == obj_id:
                 if args.unknown_weight_name is None:
                     weight = 1.0
@@ -119,6 +121,8 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
                 else:
                     tmp_n_points += 1.0 * weight
         target_unknown_array[target_idx] = tmp_n_points
+        
+    print target_unknown_array
         
     pdf_maker.set_target_unknown_array(target_unknown_array)
     pdf_maker.scale_random_points(rand_ratio, ave_weight)
@@ -196,14 +200,14 @@ class PDFMaker(object):
             self.target_region_array[target_idx] = target_grp.attrs['region']
             if args.use_inverse_weighting:
                 self.target_rand_array[target_idx] = (
-                    target_grp.attrs['rand_invdist'])
+                    target_grp.attrs['rand_inv_dist'])
             else:
-                self.target_rand_array = target_grp.attrs['rand']
+                self.target_rand_array[target_idx] = target_grp.attrs['rand']
                 
-        max_n_regions = self.target_region_array.max()
+        max_n_regions = self.target_region_array.max() + 1
         region_list = []
         for region_idx in xrange(max_n_regions):
-            if np.any(region_idx == region_idx):
+            if np.any(region_idx == self.target_region_array):
                 region_list.append(region_idx)
         self.region_array = np.array(region_list, dtype = np.uint32)
         
@@ -308,7 +312,7 @@ class PDFMaker(object):
             (z_bin_edge_array.shape[0], self.region_array.shape[0]),
             dtype = np.float32)
         
-        for target_idx, redshift in enumerate(self._target_redshift_array):
+        for target_idx, redshift in enumerate(self.target_redshift_array):
             
             if redshift < z_bin_edge_array[0] or redshift >= z_max:
                 continue
@@ -322,6 +326,8 @@ class PDFMaker(object):
                 self.target_rand_array[target_idx])
             self._area_reg_array[bin_idx, region_idx] += (
                 self.target_area_array[target_idx])
+            
+        self._computed_region_densities = True
             
         return None
     
@@ -366,11 +372,13 @@ class PDFMaker(object):
                               self._rand_reg_array.sum(axis = 1) - 1.0)
         self.density_err_array = (
             np.sqrt(self._unknown_reg_array.sum(axis = 1)) /
-            self._rand_array.axis(axis = 1))
+            self._rand_reg_array.sum(axis = 1))
         self.n_target_array = self._n_target_reg_array.sum(axis = 1)
         self.unknown_array = self._unknown_reg_array.sum(axis = 1)
         self.rand_array = self._rand_reg_array.sum(axis = 1)
         self.area_array = self._area_reg_array.sum(axis = 1)
+        
+        self._computed_pdf = True
         
         return None  
         
@@ -390,12 +398,14 @@ class PDFMaker(object):
             print("PDFMaker.compute_region_densities not run. Exiting method.")
             return None
         
-        self.bootstrap_array = np.empty((self._redshift_reg_array.shape[1],
+        self.bootstrap_array = np.empty((self._redshift_reg_array.shape[0],
                                          n_bootstraps))
+        print self._unknown_reg_array.shape
         
         for boot_idx in xrange(n_bootstraps):
             boot_regions = np.random.randint(self.region_array.shape[0],
                                              size = self.region_array.shape[0])
+
             self.bootstrap_array[:, boot_idx] = (
                 self._unknown_reg_array[:, boot_regions].sum(axis = 1) /
                 self._rand_reg_array[:, boot_regions].sum(axis = 1) - 1.0)
@@ -403,12 +413,15 @@ class PDFMaker(object):
         self.redshift_array = (self._redshift_reg_array.sum(axis = 1) /
                                self._n_target_reg_array.sum(axis = 1))
         self.density_array = self.bootstrap_array.mean(axis = 1)
-        self.density_array_err = self.bootstrap_array.std(axis = 1)
+        self.density_err_array = self.bootstrap_array.std(axis = 1)
         self.n_target_array = self._n_target_reg_array.sum(axis = 1)
         self.unknown_array = self._unknown_reg_array.sum(axis = 1)
         self.rand_array = self._rand_reg_array.sum(axis = 1)
         self.area_array = self._area_reg_array.sum(axis = 1)
-            
+        
+        self._computed_pdf = True
+        self._computed_bootstraps = True
+        
         return None
     
     def write_bootstrap_samples_to_ascii(self, output_name):
@@ -453,7 +466,7 @@ class PDFMaker(object):
         output_file.writelines('#type4 = n_points\n')
         output_file.writelines('#type5 = n_random\n')
         output_file.writelines('#type6 = area\n')
-        for bin_idx in xrange(self._redshift_array.shape[0]):
+        for bin_idx in xrange(self.redshift_array.shape[0]):
             
             output_file.writelines(
                 '%.6e %.6e %.6e %.6e %.6e %.6e\n' %

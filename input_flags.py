@@ -1,13 +1,65 @@
 import argparse
 
-"""
-The Redshift wiZZard.
-Adapted from Mubdi Rahman's wizard engine. Rahman et al. 2015
 
-_input_flags.py
-
-Definitions for command line parsing for The Redshift wiZZard.
-"""
+def parse_input_pdf_args():
+    
+    """
+    Command line argument parser for The-wiZZ PDF creator. If you have a given
+    survey file pair HDF5 file from The-wiZZ, you can set these arguments for
+    the PDF maker portion of the library and get a robust estimate of the 
+    redshift distribution for your specific subsample of the survey catalog.
+    Args:
+        None
+    Returns:
+        ArgumentParser.parse_args object
+    """
+    
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--input_pair_hdf5_file', default = '',
+                        type = str, help = 'Name of input HDF5 file to read '
+                        'the pair counts between the spectroscopic and unknown '
+                        'photometric data from.')
+    parser.add_argument('--pair_scale_name', default = 'kpc30t300',
+                        type = str, help = 'Name of the pair data scale to '
+                        'load. This should be the name of the HDF5 group '
+                        'the pair data is stored in. The format is '
+                        'kpc[min]t[max].')
+    parser.add_argument('--unknown_sample_file', default = '',
+                        type = str, help = 'Name of unknown redshift '
+                        'Photometric fits catalog containing the indices to '
+                        'mask in the pair data file.')
+    parser.add_argument('--unknown_index_name', default = 'SeqNr',
+                        type = str, help = 'Name of unique object index for '
+                        'the unknown objects. Indexes must be of type uint32')
+    parser.add_argument('--unknown_weight_name', default = None,
+                        type = str, help = 'Name of object weight for '
+                        'the unknown objects.')
+    parser.add_argument('--output_pdf_file_name', default = '',
+                        type = str, help = 'Name of the output file to write '
+                        'the resultant PDF to.')
+    parser.add_argument('--z_min', default = 0.01,
+                        type = float, help = 'Minimum redshift for both the '
+                        'pair_maker and pdf_maker.')
+    parser.add_argument('--z_max', default = 10.0,
+                        type = float, help = 'Maximum redshift for both the '
+                        'pair_maker and pdf_maker.')
+    parser.add_argument('--z_n_bins', default = 100,
+                        type = float, help = 'Number of redshifts to specify '
+                        'between z_min and z_max')
+    parser.add_argument('--z_binning_type', default = 'linear',
+                        type = str, help = 'Specify which type of binning to '
+                        'use for the redshift bins. Choices are: '
+                        '    linear: linear binning in redshift'
+                        '    adapt: chose bins so that each has equal number '
+                        'tarets.'
+                        '    comoving: linear binning in comoving distance')
+    parser.add_argument('--use_inverse_weighting', action = 'store_true',
+                        help = 'Use the inverse distance weighted columns from '
+                        'the pair file instead of just a straight sum of pairs.'
+                        )
+    
+    return parser.parse_args()
 
 def parse_input_pair_args():
     
@@ -88,65 +140,5 @@ def parse_input_pair_args():
                         type = str, help = 'Name of output HDF5 file to write '
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data to.')
-    
-    return parser.parse_args()
-
-def parse_input_pdf_args():
-    
-    """
-    Command line argument parser for The-wiZZ PDF creator. If you have a given
-    survey file pair HDF5 file from The-wiZZ, you can set these arguments for
-    the PDF maker portion of the library and get a robust estimate of the 
-    redshift distribution for your specific subsample of the survey catalog.
-    Args:
-        None
-    Returns:
-        ArgumentParser.parse_args object
-    """
-    
-    parser = argparse.ArgumentParser()
-    
-    parser.add_argument('--input_pair_hdf5_file', default = '',
-                        type = str, help = 'Name of input HDF5 file to read '
-                        'the pair counts between the spectroscopic and unknown '
-                        'photometric data from.')
-    parser.add_argument('--pair_scale_name', default = 'kpc30t300',
-                        type = str, help = 'Name of the pair data scale to '
-                        'load. This should be the name of the HDF5 group '
-                        'the pair data is stored in. The format is '
-                        'kpc[min]t[max].')
-    parser.add_argument('--unknown_sample_file', default = '',
-                        type = str, help = 'Name of unknown redshift '
-                        'Photometric fits catalog containing the indices to '
-                        'mask in the pair data file.')
-    parser.add_argument('--unknown_index_name', default = 'SeqNr',
-                        type = str, help = 'Name of unique object index for '
-                        'the unknown objects. Indexes must be of type uint32')
-    parser.add_argument('--unknown_weight_name', default = None,
-                        type = str, help = 'Name of object weight for '
-                        'the unknown objects.')
-    parser.add_argument('--output_pdf_file_name', default = '',
-                        type = str, help = 'Name of the output file to write '
-                        'the resultant PDF to.')
-    parser.add_argument('--z_min', default = 0.01,
-                        type = float, help = 'Minimum redshift for both the '
-                        'pair_maker and pdf_maker.')
-    parser.add_argument('--z_max', default = 10.0,
-                        type = float, help = 'Maximum redshift for both the '
-                        'pair_maker and pdf_maker.')
-    parser.add_argument('--z_n_bins', default = 100,
-                        type = float, help = 'Number of redshifts to specify '
-                        'between z_min and z_max')
-    parser.add_argument('--z_binning_type', default = 'linear',
-                        type = str, help = 'Specify which type of binning to '
-                        'use for the redshift bins. Choices are: '
-                        '    linear: linear binning in redshift'
-                        '    adapt: chose bins so that each has equal number '
-                        'tarets.'
-                        '    comoving: linear binning in comoving distance')
-    parser.add_argument('--use_inverse_weighting', action = 'store_true',
-                        help = 'Use the inverse distance weighted columns from '
-                        'the pair file instead of just a straight sum of pairs.'
-                        )
     
     return parser.parse_args()
