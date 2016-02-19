@@ -35,7 +35,9 @@ def set_verbose(v_bool):
 
 def verbose_print_statement(statement_string):
     
-    pass
+    if verbose:
+        print(statement_string)
+    return None
 
 def _initialize_cosmology():
     
