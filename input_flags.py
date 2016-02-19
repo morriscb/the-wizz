@@ -61,6 +61,12 @@ def parse_input_pair_args():
     parser.add_argument('--unknown_index_name', default = None,
                         type = str, help = 'Name of unique object index for '
                         'the unknown objects. Indexes must be of type uint32')
+    parser.add_argument('--z_min', default = 0.01,
+                        type = float, help = 'Minimum redshift for both the '
+                        'pair_maker and pdf_maker.')
+    parser.add_argument('--z_max', default = 10.0,
+                        type = float, help = 'Maximum redshift for both the '
+                        'pair_maker and pdf_maker.')
     parser.add_argument('--min_scale', default = '30',
                         type = str, help = 'Coma seperated list of minimum '
                         'physical scales to measure the redshift recovery. '
