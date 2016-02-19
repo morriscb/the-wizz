@@ -7,7 +7,6 @@ import h5py
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
 import sys
-from __builtin__ import None
 
 
 """
