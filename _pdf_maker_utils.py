@@ -1,6 +1,6 @@
 
 import _core_utils
-import _input_flags
+import input_flags
 import h5py
 from multiprocessing import Pool
 import numpy as np
@@ -83,7 +83,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
             annulus.
         unknown_data: open fits data containing object ids and relivent weights
         args: ArgumentParser.parse_args object returned from
-            _input_flags.parse_input_pdf_args
+            input_flags.parse_input_pdf_args
     Returns:
         PDFMaker class object containing the resultant over densities.
     """
@@ -153,7 +153,7 @@ class PDFMaker(object):
             hdf5_pair_group: HDF5 group object containing the target object
                 pairs
             args: ArgumentParser.parse_args object from
-                _input_flags.parse_input_pdf_args
+                input_flags.parse_input_pdf_args
         """
         
         self.target_redshift_array = np.empty(len(hdf5_pair_group),
@@ -183,7 +183,7 @@ class PDFMaker(object):
             hdf5_pair_group: HDF5 group object containing the target object
                 pairs
             args: ArgumentParser.parse_args object from
-                _input_flags.parse_input_pdf_args
+                input_flags.parse_input_pdf_args
         Returns:
             None
         """

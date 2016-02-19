@@ -1,7 +1,7 @@
 
 import _core_utils
 import _stomp_utils
-import _input_flags
+import input_flags
 import _pair_maker_utils
 import h5py
 import numpy as np
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     print("The wiZZ has begun conjuring!")
     
     ### load the command line arguments 
-    args = _input_flags.parse_input_pair_args()
+    args = input_flags.parse_input_pair_args()
     
     ### load the stomp geometry coving the area of spectroscopic overlap
     ### TODO:

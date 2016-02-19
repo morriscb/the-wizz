@@ -29,7 +29,7 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
             sample. Assumed file type is FITS.
         stomp_map: STOMP.Map object specifying the geomometry of the area
             considered.
-        args: ArgumentParser.parse_args object returned from _input_flags.
+        args: ArgumentParser.parse_args object returned from input_flags.
     Returns:
         a STOMP.iTree map object
     """
@@ -60,13 +60,13 @@ def load_target_sample(sample_file_name, stomp_map, args):
     objects are masked against the requested geomometry and stored with their
     redshifts and into a STOMP.CosmoVector object. The code also returns an
     array of the indices of the target objects from the columns requested in
-    _input_flags or simply counts.
+    input_flags or simply counts.
     Args:
         sample_file_name: string name of the file containing the target, known
             redshift objects. Currently only FITS is supported.
         stomp_map: STOMP.Map object specifying the geomometry of the area
             considered.
-        args: ArgumentParser.parse_args object returned from _input_flags.
+        args: ArgumentParser.parse_args object returned from input_flags.
     """
     
     print("Loading target sample...")

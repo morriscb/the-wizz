@@ -117,10 +117,10 @@ def create_hdf5_file(hdf5_file_name, args):
     
     """
     Convenience function for creating an HDF5 file with attributes set in
-    _input_flags.
+    input_flags.
     Args:
         hdf5_file_name: string name of the HDF5 file to create
-        args: argparse ArgumentParser.parse_args object from _input_flags
+        args: argparse ArgumentParser.parse_args object from input_flags
     Returns:
         open HDF5 file object
     """

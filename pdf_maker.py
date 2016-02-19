@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 import _core_utils
-import _input_flags
+import input_flags
 import _pdf_maker_utils
 import h5py
 import numpy as np
@@ -10,8 +10,8 @@ import sys
 if __name__ == "__main__": 
     
     ### First we parse the command line for arguments as usual. See
-    ### _input_flags.py for a full list of input arguments. 
-    args = _input_flags.parse_input_pdf_args()
+    ### input_flags.py for a full list of input arguments. 
+    args = input_flags.parse_input_pdf_args()
     
     ### Load the file containing all matched pairs of spectroscopic and
     ### photometric objects.
