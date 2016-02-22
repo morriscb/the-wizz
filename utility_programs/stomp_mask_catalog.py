@@ -51,7 +51,7 @@ if __name__ == "__main__":
     ### Write file to disk and close the currently open fits file.
     out_tbhdu = fits.BinTableHDU.from_columns(
         [fits.Column(name = data.names[idx], format = data.formats[idx],
-                     array = data[data.names[idx]])
+                     array = data[data.names[idx]][mask])
          for idx in xrange(len(data.names))])
     hdu.close()
     ### Done!
