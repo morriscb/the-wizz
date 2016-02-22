@@ -40,7 +40,7 @@ if __name__ == "__main__":
     stomp_map = stomp.Map(args.stomp_map)
     
     ### Create a empty mask of the objects considered from the input_fits_file
-    mask = np.zeros(data.shape[0], type = np.bool)
+    mask = np.zeros(data.shape[0], dtype = np.bool)
     for idx, obj in enumerate(data):
         tmp_ang = stomp.AngularCoordinate(obj[args.ra_name], obj[args.dec_name],
                                           stomp.AngularCoordinate.Equatorial)
