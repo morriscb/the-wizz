@@ -15,10 +15,11 @@ setting the verbosity of the outputs.
 """
 
 
+global verbose
+global _initialized_cosmology
+ 
 verbose = False
 _initialized_cosmology = False
-_comov_dist_to_redshift_spline = None
-
 
 def set_verbose(v_bool):
     
@@ -30,6 +31,7 @@ def set_verbose(v_bool):
         None
     """
     
+    global verbose
     verbose = v_bool
     return None
 
@@ -50,10 +52,15 @@ def _initialize_cosmology():
         None
     """
     
+    ### TODO:
+    ###     Talk to someone about this. Are globals the best way to do this.
     redshift_array = np.linspace(0.0, 10.0, 1000)
     comov_array = Planck13.comoving_distance(redshift_array)
+    global _comov_dist_to_redshift_spline
     _comov_dist_to_redshift_spline = iu_spline(comov_array, redshift_array)
+    global _initilized_cosmology
     _initilized_cosmology = True
+    
 
 def redshift(comov_dist):
     

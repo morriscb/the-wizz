@@ -65,10 +65,12 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
         edges. The n_bin + 1 edge is equal to z_max.
     """
     
-    comov_min = _core_utils.Planck13.comoving_distance(z_min)
-    comov_max = _core_utils.Planck13.comoving_distance(z_max)
-    return _core_utils.redshift(np.arange(comov_min, comov_max,
-                                       (comov_max - comov_min) / (1. * n_bins)))
+    comov_min = _core_utils.Planck13.comoving_distance(z_min).value
+    comov_max = _core_utils.Planck13.comoving_distance(z_max).value
+    print  np.linspace(comov_min, comov_max, n_bins + 1)
+    return _core_utils.redshift(
+        np.arange(comov_min, comov_max,
+                  (comov_max - comov_min) / (1. * n_bins)))
 
 def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
         
