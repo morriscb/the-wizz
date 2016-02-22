@@ -53,5 +53,6 @@ if __name__ == "__main__":
         [fits.Column(name = data.names[idx], format = data.formats[idx],
                      array = data[data.names[idx]][mask])
          for idx in xrange(len(data.names))])
+    out_tbhdu.writeto(args.output_fits_file)
     hdu.close()
     ### Done!
