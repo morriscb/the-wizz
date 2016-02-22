@@ -55,8 +55,6 @@ if __name__ == "__main__":
         print("\tcomoving: linear binning in comoving distance")
         print("\nThe wiZZ is exitting.")
         sys.exit()
-        
-    print z_bin_edge_array
     
     ### This is a temporary solution for the KiDS busy week Feb 15th-19th.
     ### TODO:
