@@ -49,6 +49,9 @@ if __name__ == "__main__":
         mask[idx] = stomp_map.Contains(tmp_ang)
     
     ### Write file to disk and close the currently open fits file.
-    data[mask].writeto(args.output_fits_file)
+    out_tbhdu = fits.BinTableHDU.from_columns(
+        [fits.Column(name = data.names[idx], format = data.formats[idx],
+                     array = data[data.names[idx]])
+         for idx in xrange(len(data.names))])
     hdu.close()
     ### Done!
