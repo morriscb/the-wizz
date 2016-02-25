@@ -171,6 +171,8 @@ class PDFMaker(object):
                                           dtype = np.float32)
         self.target_region_array = np.empty(len(hdf5_pair_group),
                                             dtype = np.uint32)
+        self.target_resolution_array = np.empty(len(hdf5_pair_group),
+                                                dtype = np.uint32)
         
         self._load_data_from_hdf5(hdf5_pair_group, args)
         
@@ -196,9 +198,12 @@ class PDFMaker(object):
         for target_idx, key_name in enumerate(hdf5_pair_group.keys()):
             
             target_grp = hdf5_pair_group[key_name]
-            self.target_redshift_array[target_idx] = target_grp.attrs['redshift']
+            self.target_redshift_array[target_idx] = (
+                target_grp.attrs['redshift'])
             self.target_area_array[target_idx] = target_grp.attrs['area']
             self.target_region_array[target_idx] = target_grp.attrs['region']
+            self.target_resolution_array[target_idx] = (
+                target_grp.attrs['bin_resolution'])
             if args.use_inverse_weighting:
                 self.target_rand_array[target_idx] = (
                     target_grp.attrs['rand_inv_dist'])
@@ -312,6 +317,9 @@ class PDFMaker(object):
         self._area_reg_array = np.zeros(
             (z_bin_edge_array.shape[0], self.region_array.shape[0]),
             dtype = np.float32)
+        self._resolution_reg_array = np.zeros(
+            (z_bin_edge_array.shape[0], self.region_array.shape[0]),
+            dtype = np.uint)
         
         for target_idx, redshift in enumerate(self.target_redshift_array):
             
@@ -327,6 +335,8 @@ class PDFMaker(object):
                 self.target_rand_array[target_idx])
             self._area_reg_array[bin_idx, region_idx] += (
                 self.target_area_array[target_idx])
+            self._resolution_reg_array[bin_idx, region_idx] += (
+                self.target_resolution_array[target_idx])
             
         self._computed_region_densities = True
             
@@ -378,6 +388,8 @@ class PDFMaker(object):
         self.unknown_array = self._unknown_reg_array.sum(axis = 1)
         self.rand_array = self._rand_reg_array.sum(axis = 1)
         self.area_array = self._area_reg_array.sum(axis = 1)
+        self.resolution_array = (self._resolution_reg_array.sum(axis = 1) /
+                                 (1. * self._n_target_reg_array.sum(axis = 1)))
         
         self._computed_pdf = True
         
@@ -419,6 +431,8 @@ class PDFMaker(object):
         self.unknown_array = self._unknown_reg_array.sum(axis = 1)
         self.rand_array = self._rand_reg_array.sum(axis = 1)
         self.area_array = self._area_reg_array.sum(axis = 1)
+        self.resolution_array = (self._resolution_reg_array.sum(axis = 1) /
+                                 (1. * self._n_target_reg_array.sum(axis = 1)))
         
         self._computed_pdf = True
         self._computed_bootstraps = True
@@ -467,13 +481,15 @@ class PDFMaker(object):
         output_file.writelines('#type4 = n_points\n')
         output_file.writelines('#type5 = n_random\n')
         output_file.writelines('#type6 = area\n')
+        output_file.writelines('#type7 = ave resolution\n')
         for bin_idx in xrange(self.redshift_array.shape[0]):
             
             output_file.writelines(
-                '%.6e %.6e %.6e %.6e %.6e %.6e\n' %
+                '%.6e %.6e %.6e %.6e %.6e %.6e %.6e\n' %
                 (self.redshift_array[bin_idx], self.density_array[bin_idx],
                  self.density_err_array[bin_idx], self.unknown_array[bin_idx],
-                 self.rand_array[bin_idx], self.area_array[bin_idx]))
+                 self.rand_array[bin_idx], self.area_array[bin_idx],
+                 self.resolution_array[bin_idx]))
             
         output_file.close()
         
