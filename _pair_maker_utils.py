@@ -212,6 +212,7 @@ class RawPairFinder(object):
         """
         
         tmp_grp = hdf5_file.create_group('%s' % (scale_name))
+        
         tmp_grp.attrs.create(
                'n_unknown', self._unknown_itree.NPoints())
         

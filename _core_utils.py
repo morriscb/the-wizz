@@ -126,7 +126,8 @@ def create_hdf5_file(hdf5_file_name, args):
     
     """
     Convenience function for creating an HDF5 file with attributes set in
-    input_flags.
+    input_flags. Saves the current input flags to the group input_flags for
+    later reference
     Args:
         hdf5_file_name: string name of the HDF5 file to create
         args: argparse ArgumentParser.parse_args object from input_flags
@@ -135,6 +136,13 @@ def create_hdf5_file(hdf5_file_name, args):
     """
     
     hdf5_file = h5py.File(hdf5_file_name, 'w-', libver = 'latest')
+    flag_grp = hdf5_file.create_group('input_flags')
+    
+    for arg in vars(args):
+        if getattr(args, arg) is None:
+            flag_grp.attrs.create(arg, 'None')
+        else:
+            flag_grp.attrs.create(arg, getattr(args, arg))
     
     return hdf5_file
     
