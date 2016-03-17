@@ -118,7 +118,7 @@ class RawPairFinder(object):
                 
                 unmasked_frac += tmp_unmasked
                 area += tmp_unmasked * pix.Area(radial_bin.Resolution())
-                dist = target_obj.AngularDistance(pix.Ang())
+                dist = target_obj.ProjectedRadius(pix.Ang())
                 
                 tmp_i_ang_vect = stomp.IAngularVector()
                 self._unknown_itree.Points(tmp_i_ang_vect, pix)
