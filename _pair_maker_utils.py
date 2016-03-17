@@ -182,7 +182,7 @@ class RawPairFinder(object):
                 if tmp_unmasked <= 0.0:
                     continue
                 
-                dist = target_obj.AngularDistance(pix.Ang())
+                dist = target_obj.ProjectedRadius(pix.Ang())
                 tmp_n_points = random_tree.NPoints(pix)
                 n_points += tmp_n_points
                 inv_dist += tmp_n_points / dist
