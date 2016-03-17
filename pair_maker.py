@@ -35,6 +35,8 @@ if __name__ == "__main__":
     ### We request regionation for use with spatial bootstrapping. The
     ### resolution found for regionation also sets the 
     stomp_map.InitializeRegions(args.n_regions)
+    print("Created %i Regions at resolution %i..." %
+          (stomp_map.NRegion(), stomp_map.RegionResolution()))
     
     ### load the sample with known redshifts 
     target_vector, target_ids = _stomp_utils.load_target_sample(
@@ -43,7 +45,7 @@ if __name__ == "__main__":
     ### load the unknown sample from disc. Assumed data type is fits though hdf5
     ### will be allowed in later versions
     unknown_itree = _stomp_utils.load_unknown_sample(args.unknown_sample_file,
-                                                    stomp_map, args)
+                                                     stomp_map, args)
     
     ### We also wish to subtract a random sample from density estimate. This
     ### function creates a set of uniform data points on the geometry of the

@@ -82,7 +82,7 @@ def parse_input_pair_args():
                         'geometry on the sky for the target and unknown '
                         'samples.')
     parser.add_argument('--n_regions', default = 16,
-                        type = str, help = 'Number of sub resgions to break up '
+                        type = int, help = 'Number of sub resgions to break up '
                         'the stomp map into for bootstrap/jackknifing. It is '
                         'recommended that the region size be no smaller than '
                         'the max scale requested in degrees.')
