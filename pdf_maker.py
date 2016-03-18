@@ -21,11 +21,8 @@ if __name__ == "__main__":
     ### This is a temporary solution for the KiDS busy week Feb 15th-19th.
     ### TODO:
     ###     Evenutually want this to be a request for single point PDFs from
-    ###     machine learning.
+    ###     machine learning. Maybe put this in it's own method
     unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
-    
-    ### TODO:
-    ###     Clean up this for the new version of pdf_maker
     
     ### This is where the heavy lifting happens. We create our PDF maker object
     ### which will hold the pair file for use, calculate the over density per

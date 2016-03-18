@@ -393,9 +393,21 @@ class PDFMaker(object):
         
         self._computed_pdf = True
         
-        return None  
-        
+        return None
+    
     def compute_pdf_bootstrap(self, n_bootstraps):
+        
+        if not self._computed_region_densities:
+            print("PDFMaker.compute_region_densities not run. Exiting method.")
+            return None
+        
+        self.bootstrap_regions = np.random.randint(
+            self.region_array.shape[0], 
+            size = (n_bootstraps, self.region_array.shape[0]))
+        
+        return None
+        
+    def _compute_pdf_bootstrap(self, boot_region_array):
         
         """
         Similar to compute_pdf but now the region information is used to
@@ -412,12 +424,11 @@ class PDFMaker(object):
             return None
         
         self.bootstrap_array = np.empty((self._redshift_reg_array.shape[0],
-                                         n_bootstraps))
+                                         boot_region_array.shape[0]))
+        
         print self._unknown_reg_array.shape
         
-        for boot_idx in xrange(n_bootstraps):
-            boot_regions = np.random.randint(self.region_array.shape[0],
-                                             size = self.region_array.shape[0])
+        for boot_idx, boot_regions in enumerate(boot_region_array):
 
             self.bootstrap_array[:, boot_idx] = (
                 self._unknown_reg_array[:, boot_regions].sum(axis = 1) /
