@@ -56,8 +56,18 @@ def parse_input_pdf_args():
                         '    comoving: linear binning in comoving distance')
     parser.add_argument('--use_inverse_weighting', action = 'store_true',
                         help = 'Use the inverse distance weighted columns from '
-                        'the pair file instead of just a straight sum of pairs.'
-                        )
+                        'the pair file instead of just a straight sum of '
+                        'pairs.')
+    parser.add_argument('--n_bootstrap', default = 1000, type = int,
+                        help = 'Argument specifying the number of bootstrap '
+                        'resamplings of the recovery to compute errors.')
+    parser.add_argument('--bootstrap_samples', default = None, type = str,
+                        help = 'This is an optional argument specifying an '
+                        'ascii file containing specified bootstrap samplings '
+                        'to run. These should row-wise specifications of '
+                        'regions from the input pair hdf5 file. Overrides '
+                        'the number set in n_bootstrap.')
+    
     
     return parser.parse_args()
 

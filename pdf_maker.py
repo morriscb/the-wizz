@@ -79,7 +79,12 @@ if __name__ == "__main__":
     ### Now that we've "collapsed" the estimate around the target object we need
     ### to bin up the results in redshift and create our final PDF.
     print("Calculating pdf...")
-    pdf_maker.compute_pdf_bootstrap(1000)
+    if args.bootstrap_samples is None:
+        pdf_maker.compute_pdf_bootstrap(args.n_bootstrap)
+    else:
+        bootstrap_region_array = np.loadtxt(args.bootstrap_samples,
+                                            dtype = np.int_)
+        pdf_maker._compute_pdf_bootstrap(bootstrap_region_array)
     ### Now that we have the results. We just need to write them to file and we
     ### are done.
     print("Writing...")
