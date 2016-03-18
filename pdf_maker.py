@@ -18,6 +18,27 @@ if __name__ == "__main__":
     print("Loading file...")
     hdf5_pair_file = _core_utils.file_checker_loader(args.input_pair_hdf5_file)
     
+    ### This is a temporary solution for the KiDS busy week Feb 15th-19th.
+    ### TODO:
+    ###     Evenutually want this to be a request for single point PDFs from
+    ###     machine learning.
+    unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
+    
+    ### TODO:
+    ###     Clean up this for the new version of pdf_maker
+    
+    ### This is where the heavy lifting happens. We create our PDF maker object
+    ### which will hold the pair file for use, calculate the over density per
+    ### redshift bin, and also store intermediary results for later use. 
+    ### Before we can estimate the PDF, we must mask for the objects we want 
+    ### to estimate the redshit of. These objects can be color selected,
+    ### photo-z selected, or any other object seletion you would like. The code
+    ### line below turns the array of indices in the hdf5 pair file, into a
+    ### single density estimate around the target object.
+    print("Matching indices...")
+    pdf_maker = _pdf_maker_utils.collapse_ids_to_single_estimate(
+        hdf5_pair_file[args.pair_scale_name], unknown_data, args)
+    
     ### Now we figure out what kind of redshift binning we would like to have.
     ### This will be one of the largest impacts on the signal to noise of the
     ### measurement. Some rules of thumb are:
@@ -41,10 +62,9 @@ if __name__ == "__main__":
         z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'adaptive':
-        ### TODO:
-        ###     Fix this and allow for addaptive binning
         z_bin_edge_array = _pdf_maker_utils._create_adaptive_redshift_bin_edges(
-            args.z_min, args.z_max, args.z_n_bins, target_redshift_array)
+            args.z_min, args.z_max, args.z_n_bins,
+            pdf_maker.target_redshift_array)
     elif args.z_binning_type == 'comoving':
         z_bin_edge_array = _pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
@@ -53,29 +73,9 @@ if __name__ == "__main__":
         print("\tlinear: linear binning in redshift")
         print("\tadaptive: constant target objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
-        print("\nThe wiZZ is exitting.")
-        sys.exit()
-    
-    ### This is a temporary solution for the KiDS busy week Feb 15th-19th.
-    ### TODO:
-    ###     Evenutually want this to be a request for single point PDFs from
-    ###     machine learning.
-    unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
-    
-    ### TODO:
-    ###     Clean up this for the new version of pdf_maker
-    
-    ### This is where the heavy lifting happens. We create our PDF maker object
-    ### which will hold the pair file for use, calculate the over density per
-    ### redshift bin, and also store intermediary results for later use. 
-    ### Before we can estimate the PDF, we must mask for the objects we want 
-    ### to estimate the redshit of. These objects can be color selected,
-    ### photo-z selected, or any other object seletion you would like. The code
-    ### line below turns the array of indices in the hdf5 pair file, into a
-    ### single density estimate around the target object.
-    print("Matching indices...")
-    pdf_maker = _pdf_maker_utils.collapse_ids_to_single_estimate(
-        hdf5_pair_file[args.pair_scale_name], unknown_data, args)
+        print("\tRetunning linear binning...")
+        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+            args.z_min, args.z_max, args.z_n_bins)
     
     print("Calculating region densities...")
     pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
