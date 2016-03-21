@@ -54,7 +54,7 @@ if __name__ == "__main__":
     ### be changing oddly from bin to bin. It is recommended that the user try
     ### adaptive and comoving spaced bins for the best results. Comoving returns
     ### bins that are of equal comoving distance from the line of sight.
-    print("creating bins...")
+    print("Creating bins...")
     if args.z_binning_type == 'linear':
         z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         print("\tlinear: linear binning in redshift")
         print("\tadaptive: constant target objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
-        print("\tRetunning linear binning...")
+        print("Retunning linear binning...")
         z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     
@@ -93,4 +93,4 @@ if __name__ == "__main__":
     ### TODO:
     ###    Include bootstrapping and writing of the raw boostrap samples. 
     
-    print "Done!"
+    print("Done!")
