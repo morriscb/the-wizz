@@ -404,6 +404,7 @@ class PDFMaker(object):
         self.bootstrap_regions = np.random.randint(
             self.region_array.shape[0], 
             size = (n_bootstraps, self.region_array.shape[0]))
+        self._compute_pdf_bootstrap(self.bootstrap_regions)
         
         return None
         
