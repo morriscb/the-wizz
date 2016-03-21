@@ -123,8 +123,6 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
                     tmp_n_points += 1.0 * weight
         target_unknown_array[target_idx] = tmp_n_points
         
-    print target_unknown_array
-        
     pdf_maker.set_target_unknown_array(target_unknown_array)
     pdf_maker.scale_random_points(rand_ratio, ave_weight)
     
