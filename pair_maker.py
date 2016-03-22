@@ -18,10 +18,12 @@ that contains the raw pair information between the target and unknown sample.
 if __name__ == "__main__":
     
     print("")
-    print("The wiZZ has begun conjuring!")
+    print("The wiZZ has begun conjuring: running pair maker...")
     
     ### load the command line arguments 
     args = input_flags.parse_input_pair_args()
+    
+    input_flags.print_args(args)
     
     ### Create the output hdf5 file where we will store the output for the
     ### pair finding including raw pairs, area, unmasked fraction. We do this

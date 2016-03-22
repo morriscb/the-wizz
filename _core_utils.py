@@ -145,4 +145,26 @@ def create_hdf5_file(hdf5_file_name, args):
             flag_grp.attrs.create(arg, getattr(args, arg))
     
     return hdf5_file
+
+def create_ascii_file(ascii_file_name, args):
+    
+    """
+    Convenience function for creating an output ascii file. This method writes 
+    the current state of the input_flags arguments to the header of the file and
+    returns an open Python file handle object. The method will over write any
+    file it is given so use with caution.
+    Args:
+        ascii_file_name: string name of the file to write too
+        args: argparse ArgumentParser.parse_args object from input_flags
+    Returns:
+        open Python file object
+    """
+    
+    ascii_file = open(ascii_file_name, 'w')
+    
+    ascii_file.writelines('# input_flags:\n')
+    for arg in vars(args):
+        ascii_file.writelines('#\t%s : %s\n' % (arg, getattr(args, arg)))
+    
+    return ascii_file 
     

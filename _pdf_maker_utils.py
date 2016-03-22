@@ -394,6 +394,15 @@ class PDFMaker(object):
         return None
     
     def compute_pdf_bootstrap(self, n_bootstraps):
+        """
+        Similar to compute_pdf but now the region information is used to
+        spatially bootstrap the results in order to estimate errors.
+        Args:
+            n_bootstraps: int number of spatial bootstraps to sample from the
+                regions.
+        Returns:
+            None
+        """
         
         if not self._computed_region_densities:
             print("PDFMaker.compute_region_densities not run. Exiting method.")
@@ -409,11 +418,12 @@ class PDFMaker(object):
     def _compute_pdf_bootstrap(self, boot_region_array):
         
         """
-        Similar to compute_pdf but now the region information is used to
-        spatially bootstrap the results in order to estimate errors.
+        Work horse method for computing the bootstrap errors. This method takes
+        in an array of bootstrap samples specified by row-wise arrays of region
+        ids. Allows for computation of bootstrap errors using the same fixed
+        bootstrap samples. 
         Args:
-            n_bootstraps: int number of spatial bootstraps to sample from the
-                regions.
+            boot_region_array: array of integer region ids
         Returns:
             None
         """
@@ -424,8 +434,6 @@ class PDFMaker(object):
         
         self.bootstrap_array = np.empty((self._redshift_reg_array.shape[0],
                                          boot_region_array.shape[0]))
-        
-        print self._unknown_reg_array.shape
         
         for boot_idx, boot_regions in enumerate(boot_region_array):
 
@@ -465,13 +473,13 @@ class PDFMaker(object):
         
         return None
     
-    def write_pdf_to_ascii(self, output_name):
+    def write_pdf_to_ascii(self, output_file):
         
         """
         Method for writing the results of the different compute pdf methods to
         ascii.
         Args:
-            output_name: string specifying the name of the ascii file to write
+            output_name: Python file object specifying the ascii file to write
                 the pdf/density results to. By default any existing file will
                 be overwritten.
         Returns:
@@ -482,8 +490,6 @@ class PDFMaker(object):
             print("PDFMaker.compute_pdf or PDFMaker.compute_pdf_bootstrap not "
                   "run. Exiting method.")
             return None
-            
-        output_file = open(output_name, 'w')
         
         output_file.writelines('#type1 = redshift\n')
         output_file.writelines('#type2 = over_density\n')
@@ -500,8 +506,6 @@ class PDFMaker(object):
                  self.density_err_array[bin_idx], self.unknown_array[bin_idx],
                  self.rand_array[bin_idx], self.area_array[bin_idx],
                  self.resolution_array[bin_idx]))
-            
-        output_file.close()
         
         return None
     

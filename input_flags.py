@@ -152,3 +152,20 @@ def parse_input_pair_args():
                         'photometric data to.')
     
     return parser.parse_args()
+
+def print_args(args):
+    """
+    Convenience function for printing the current value of the input arguments
+    to the command line.
+    Args:
+        args: argparse object returned by ArgumentParser.parse_args()
+    Returns:
+        None
+    """
+    
+    print("Current input flags...")
+    for arg in vars(args):
+        print("\t%s : %s" % (arg, getattr(args, arg)))
+    
+    return None
+

@@ -13,6 +13,11 @@ if __name__ == "__main__":
     ### input_flags.py for a full list of input arguments. 
     args = input_flags.parse_input_pdf_args()
     
+    print("")
+    print("The wiZZ has begun conjuring: running pair maker...")
+    
+    input_flags.print_args(args)
+    
     ### Load the file containing all matched pairs of spectroscopic and
     ### photometric objects.
     print("Loading file...")
@@ -88,7 +93,9 @@ if __name__ == "__main__":
     ### Now that we have the results. We just need to write them to file and we
     ### are done.
     print("Writing...")
-    pdf_maker.write_pdf_to_ascii(args.output_pdf_file_name)
+    output_file = _core_utils.create_ascii_file(args.output_pdf_file_name, args)
+    pdf_maker.write_pdf_to_ascii(output_file)
+    output_file.close()
     
     ### TODO:
     ###    Include bootstrapping and writing of the raw boostrap samples. 
