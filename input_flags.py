@@ -16,7 +16,7 @@ def parse_input_pdf_args():
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--input_pair_hdf5_file', default = '',
+    parser.add_argument('--input_pair_hdf5_file', required = True,
                         type = str, help = 'Name of input HDF5 file to read '
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data from.')
@@ -25,7 +25,7 @@ def parse_input_pdf_args():
                         'load. This should be the name of the HDF5 group '
                         'the pair data is stored in. The format is '
                         'kpc[min]t[max].')
-    parser.add_argument('--unknown_sample_file', default = '',
+    parser.add_argument('--unknown_sample_file', required = True,
                         type = str, help = 'Name of unknown redshift '
                         'Photometric fits catalog containing the indices to '
                         'mask in the pair data file.')
@@ -35,7 +35,7 @@ def parse_input_pdf_args():
     parser.add_argument('--unknown_weight_name', default = None,
                         type = str, help = 'Name of object weight for '
                         'the unknown objects.')
-    parser.add_argument('--output_pdf_file_name', default = '',
+    parser.add_argument('--output_pdf_file_name', required = True,
                         type = str, help = 'Name of the output file to write '
                         'the resultant PDF to.')
     parser.add_argument('--z_min', default = 0.01,
@@ -87,7 +87,7 @@ def parse_input_pair_args():
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--stomp_map', default = '',
+    parser.add_argument('--stomp_map', required = True,
                         type = str, help = 'Name of the STOMP map defining the '
                         'geometry on the sky for the target and unknown '
                         'samples.')
@@ -96,7 +96,7 @@ def parse_input_pair_args():
                         'the stomp map into for bootstrap/jackknifing. It is '
                         'recommended that the region size be no smaller than '
                         'the max scale requested in degrees.')
-    parser.add_argument('--target_sample_file', default = '',
+    parser.add_argument('--target_sample_file', required = True,
                         type = str, help = 'Name of spectroscopic redshift '
                         'fits catalog.')
     parser.add_argument('--target_ra_name', default = 'ALPHA_J2000',
@@ -111,7 +111,7 @@ def parse_input_pair_args():
     parser.add_argument('--target_index_name', default = None,
                         type = str, help = 'Name of unique object index for '
                         'the target objects. Indexes must be of type uint32')
-    parser.add_argument('--unknown_sample_file', default = '',
+    parser.add_argument('--unknown_sample_file', required = True,
                         type = str, help = 'Name of unknown redshift '
                         'Photometric fits catalog.')
     parser.add_argument('--unknown_ra_name', default = 'ALPHA_J2000',
@@ -146,7 +146,7 @@ def parse_input_pair_args():
                         'run for the natural estimator of 2-point '
                         'correlations. Number of uniform random points will be '
                         'n_randoms * # unknown objects.')
-    parser.add_argument('--output_pair_hdf5_file', default = '',
+    parser.add_argument('--output_pair_hdf5_file', required = True,
                         type = str, help = 'Name of output HDF5 file to write '
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data to.')

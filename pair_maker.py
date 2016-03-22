@@ -23,6 +23,12 @@ if __name__ == "__main__":
     ### load the command line arguments 
     args = input_flags.parse_input_pair_args()
     
+    ### Create the output hdf5 file where we will store the output for the
+    ### pair finding including raw pairs, area, unmasked fraction. We do this
+    ### first to soft fail rather than run through the code.
+    output_pair_hdf5_file = _core_utils.create_hdf5_file(
+        args.output_pair_hdf5_file, args)
+    
     ### load the stomp geometry coving the area of spectroscopic overlap
     ### TODO:
     ###     create an external program that allows for the creation of an
@@ -53,11 +59,6 @@ if __name__ == "__main__":
     if args.n_randoms > 0:
         random_tree = _stomp_utils.create_random_data(
             args.n_randoms * unknown_itree.NPoints(), stomp_map)
-    
-    ### now create the output hdf5 file where we will store the output for the
-    ### pair finding including raw pairs, area, unmasked fraction.
-    output_pair_hdf5_file = _core_utils.create_hdf5_file(
-        args.output_pair_hdf5_file, args)
     
     ### now that we have everything set up we can send our data off to the pair
     ### finder
