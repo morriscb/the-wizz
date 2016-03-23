@@ -45,7 +45,7 @@ def parse_input_pdf_args():
                         type = float, help = 'Maximum redshift for both the '
                         'pair_maker and pdf_maker.')
     parser.add_argument('--z_n_bins', default = 100,
-                        type = float, help = 'Number of redshifts to specify '
+                        type = int, help = 'Number of redshifts to specify '
                         'between z_min and z_max')
     parser.add_argument('--z_binning_type', default = 'linear',
                         type = str, help = 'Specify which type of binning to '
