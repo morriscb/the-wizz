@@ -42,7 +42,7 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
 
     for idx, obj in enumerate(sample_data):
         tmp_iang = stomp.IndexedAngularCoordinate(
-            obj[args.target_ra_name], obj[args.target_dec_name], idx,
+            obj[args.unknown_ra_name], obj[args.unknown_dec_name], idx,
             stomp.AngularCoordinate.Equatorial)
         if args.unknown_index_name is not None:
             tmp_iang.SetIndex(int(obj[args.unknown_index_name]))
