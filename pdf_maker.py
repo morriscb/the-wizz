@@ -90,6 +90,11 @@ if __name__ == "__main__":
         bootstrap_region_array = np.loadtxt(args.bootstrap_samples,
                                             dtype = np.int_)
         pdf_maker._compute_pdf_bootstrap(bootstrap_region_array)
+    ### Write individual bootstraps to file.
+    if args.output_bootstraps_file is not None:
+        pdf_maker.write_bootstrap_samples_to_ascii(args.output_bootstraps_file,
+                                                   args)
+    
     ### Now that we have the results. We just need to write them to file and we
     ### are done.
     print("Writing...")

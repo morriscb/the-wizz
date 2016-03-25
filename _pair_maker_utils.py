@@ -36,6 +36,10 @@ class RawPairFinder(object):
         self._target_ids = target_ids
         self._region_ids = np.empty_like(target_ids, dtype = np.uint16)
         self._stomp_map = stomp_map
+        self._region_area = np.empty(self._stomp_map.NRegion(),
+                                     dtype = np.float32)
+        for reg_idx in xrange(self._stomp_map.NRegion()):
+            self._region_area[reg_idx] = self._stomp_map.RegionArea(reg_idx)
     
     def _reset_array_data(self):
         """
@@ -212,6 +216,11 @@ class RawPairFinder(object):
         """
         
         tmp_grp = hdf5_file.create_group('%s' % (scale_name))
+        
+        tmp_grp.attrs.create('area', self._stomp_map.Area())
+        tmp_grp.attrs.create('n_region', self._stomp_map.NRegion())
+        tmp_grp.attrs.create('region_area',
+                             self._region_area)
         
         tmp_grp.attrs.create(
                'n_unknown', self._unknown_itree.NPoints())

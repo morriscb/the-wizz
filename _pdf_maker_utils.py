@@ -91,6 +91,16 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
     
     rand_ratio = (unknown_data.shape[0] /
                   (1. * hdf5_pairs_group.attrs['n_random_points']))
+    if args.unknown_stomp_region_name is not None:
+        tmp_n_region = np.array(
+            [unknown_data[unknown_data[args.unknown_stomp_region_name] ==
+                          reg_idx].shape[0]
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+                                dtype = np.int_)
+        rand_ratio = (
+            (tmp_n_region / (1. * hdf5_pairs_group.attrs['n_random_points'])) *
+            (hdf5_pairs_group.attrs['area'] /
+             hdf5_pairs_group.attrs['region_area']))
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
@@ -252,7 +262,15 @@ class PDFMaker(object):
             None
         """
         
-        self.target_rand_array *= rand_ratio * ave_weight
+        try:
+            tmp_rand_ratio = rand_ratio[self.target_region_array]
+        except TypeError:
+            tmp_rand_ratio = rand_ratio
+        try:
+            tmp_ave_weight = ave_weight[self.target_region_array]
+        except TypeError:
+            tmp_ave_weight = ave_weight
+        self.target_rand_array *= tmp_rand_ratio * tmp_ave_weight
         
         return None
     
@@ -457,7 +475,7 @@ class PDFMaker(object):
         
         return None
     
-    def write_bootstrap_samples_to_ascii(self, output_name):
+    def write_bootstrap_samples_to_ascii(self, output_name, args):
         
         """
         Method for writing the individual bootstrap samples to ascii.
@@ -465,11 +483,18 @@ class PDFMaker(object):
             output_name: string specifying the name of the ascii file to write
                 the pdf/density results to. By default any existing file will
                 be overwritten.
+            args: ArgumentParser.parse_args object returned from
+                input_flags.parse_input_pdf_args
         Returns:
             None
         """
         
-        np.savetxt(output_name, self.bootstrap_array)
+        output_header = '# input_flags:\n'
+        for arg in vars(args):
+            output_header += '#\t%s : %s\n' % (arg, getattr(args, arg))
+        
+        np.savetxt(output_name, self.bootstrap_array, fmt = '%.8f',
+                   header = output_header)
         
         return None
     
@@ -501,7 +526,7 @@ class PDFMaker(object):
         for bin_idx in xrange(self.redshift_array.shape[0]):
             
             output_file.writelines(
-                '%.6e %.6e %.6e %.6e %.6e %.6e %.6e\n' %
+                '%.8e %.8e %.8e %.8e %.8e %.8e %.8e\n' %
                 (self.redshift_array[bin_idx], self.density_array[bin_idx],
                  self.density_err_array[bin_idx], self.unknown_array[bin_idx],
                  self.rand_array[bin_idx], self.area_array[bin_idx],

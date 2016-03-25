@@ -35,6 +35,14 @@ def parse_input_pdf_args():
     parser.add_argument('--unknown_weight_name', default = None,
                         type = str, help = 'Name of object weight for '
                         'the unknown objects.')
+    parser.add_argument('--unknown_stomp_region_name', default = None,
+                        type = str, help = 'Name of the column where the '
+                        'STOMP region that each object belongs to is stored. '
+                        'Setting this variable causes the code calculate the '
+                        'over-densities relative to the average in the region '
+                        'rather than globally. Useful if you are combining '
+                        'several photometric, non-overlapying '
+                        'surveys/pointings with different sensitivities.')
     parser.add_argument('--output_pdf_file_name', required = True,
                         type = str, help = 'Name of the output file to write '
                         'the resultant PDF to.')
@@ -67,7 +75,9 @@ def parse_input_pdf_args():
                         'to run. These should row-wise specifications of '
                         'regions from the input pair hdf5 file. Overrides '
                         'the number set in n_bootstrap.')
-    
+    parser.add_argument('--output_bootstraps_file', default = None, type = str,
+                        help = 'This is an optional argument specifying an '
+                        'ascii file to write the individual bootstrap pdfs to.')
     
     return parser.parse_args()
 
