@@ -6,9 +6,10 @@ from multiprocessing import Pool
 import numpy as np
 import sys
 from _core_utils import redshift
+from __builtin__ import True
 
 ### TODO:
-###     Restructure code for multiprocessing/numba. This will require changing
+###     Restructure code for multiprocessing. This will require changing
 ### the class structure to more of a container that gets acted on by functions
 ### in this file. This should be a feature of the code by the alpha state.
 
@@ -141,11 +142,6 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
 def _collapsed_multiplex():
     
     pass
-
-def _collapsed_numba():
-    
-    pass
-
 
 class PDFMaker(object):
     
