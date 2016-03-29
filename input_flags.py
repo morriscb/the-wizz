@@ -78,6 +78,11 @@ def parse_input_pdf_args():
     parser.add_argument('--output_bootstraps_file', default = None, type = str,
                         help = 'This is an optional argument specifying an '
                         'ascii file to write the individual bootstrap pdfs to.')
+    parser.add_argument('--n_processes', default = 1, type = int,
+                        help = 'Number of process to run.')
+    parser.add_argument('--n_target_load_size', default = 100000, type = int,
+                        help = 'Number of target pairs to load from the hdf5 '
+                        'file at once.')
     
     return parser.parse_args()
 

@@ -1,17 +1,13 @@
 
 import _core_utils
+from copy import copy
 import input_flags
 import h5py
-from multiprocessing import Pool
+from multiprocessing import Array, Pool
 import numpy as np
 import sys
 from _core_utils import redshift
 from __builtin__ import True
-
-### TODO:
-###     Restructure code for multiprocessing. This will require changing
-### the class structure to more of a container that gets acted on by functions
-### in this file. This should be a feature of the code by the alpha state.
 
 def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
     
@@ -105,43 +101,84 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
+    
     ave_weight = 1.0
+    weight_array = np.ones(unknown_data.shape[0], dtype = np.float32)
     if args.unknown_weight_name is not None:
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
-        ave_weight = weight_array.mean()
+        ave_weight = np.mean(weight_array)
     
     pdf_maker = PDFMaker(hdf5_pairs_group, args)
     
-    target_unknown_array = np.empty(len(hdf5_pairs_group), dtype = np.float32)
+    n_target = len(hdf5_pairs_group)
+    target_unknown_array = np.empty(n_target, dtype = np.float32)
     
-    for target_idx, key_name in enumerate(hdf5_pairs_group.keys()):
-        target_group = hdf5_pairs_group[key_name]
-        id_data_set = target_group['ids'][...]
-        inv_data_set = target_group['inv_dist'][...]
-        tmp_n_points = 0
-        for obj_id, inv_weight in zip(id_data_set, inv_data_set):
-            sort_idx = np.searchsorted(id_array, obj_id)
-            if sort_idx >= id_array.shape[0] or sort_idx < 0:
-                continue
-            if id_array[sort_idx] == obj_id:
-                if args.unknown_weight_name is None:
-                    weight = 1.0
-                else:
-                    weight = weight_array[sort_idx]
-                if args.use_inverse_weighting:
-                    tmp_n_points += inv_weight * weight
-                else:
-                    tmp_n_points += 1.0 * weight
-        target_unknown_array[target_idx] = tmp_n_points
+    pair_start = 0
+    hold_pair_start = 0
+    pair_data = []
+    pool = Pool(args.n_processes)
+    while hold_pair_start < n_target:
+   
+        ### TODO:
+        ###     Make the multiprocessing better. Currently the code copies over
+        ###     the full information of id_array and weight array to the child
+        ###     processes. This will be bad when these arrays become large. 
+        pool_iter = pool.imap(
+            _collapse_multiplex,
+            [(data_set, id_array, weight_array, args.use_inverse_weighting)
+             for pair_idx, data_set in enumerate(pair_data)],
+            chunksize = np.int(np.where(
+                np.logical_and(args.n_processes > 1, len(pair_data) > 1),
+                np.log(len(pair_data)) / np.log(args.n_processes), 1)))
         
+        pair_data = _load_pair_data(hdf5_pairs_group, pair_start,
+                                    args.n_target_load_size)
+        
+        for pair_idx, target_value in enumerate(pool_iter):
+            target_unknown_array[hold_pair_start + pair_idx] = target_value 
+        
+        hold_pair_start = pair_start
+        pair_start += args.n_target_load_size
+        
+    pool.close()
+    pool.join()
+    
     pdf_maker.set_target_unknown_array(target_unknown_array)
     pdf_maker.scale_random_points(rand_ratio, ave_weight)
     
     return pdf_maker
 
-def _collapsed_multiplex():
+def _collapse_multiplex(input_tuple):
+
+    (data_set, id_array, weight_array,
+     use_inverse_weighting) = input_tuple
+
+    tmp_n_points = 0
+    id_data_set, inv_data_set = data_set
+    for obj_id, inv_weight in zip(id_data_set, inv_data_set):
+        sort_idx = np.searchsorted(id_array, obj_id)
+        if sort_idx >= len(id_array) or sort_idx < 0:
+            continue
+        if id_array[sort_idx] == obj_id:
+            weight = weight_array[sort_idx]
+            if use_inverse_weighting:
+                tmp_n_points += inv_weight * weight
+            else:
+                tmp_n_points += 1.0 * weight
     
-    pass
+    return tmp_n_points
+
+def _load_pair_data(hdf5_group, key_start, n_load):
+
+    output_list = []
+    key_list = hdf5_group.keys()
+    key_end = key_start + n_load
+    if key_end > len(key_list):
+        key_end = len(key_list)
+    for key_idx in xrange(key_start, key_end):
+        output_list.append([hdf5_group[key_list[key_idx]]['ids'][...],
+                            hdf5_group[key_list[key_idx]]['inv_dist'][...]])
+    return output_list
 
 class PDFMaker(object):
     
