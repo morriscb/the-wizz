@@ -234,12 +234,16 @@ class RawPairFinder(object):
         for target_idx, target in enumerate(self._target_vect):
             tmp_target_grp = tmp_grp.create_group(
                 '%i' % self._target_ids[target_idx])
+            
             tmp_target_grp.create_dataset(
                 'ids', data = np.array(self._pair_list[target_idx],
-                                       dtype = np.uint32))
+                                       dtype = np.uint32),
+                compression = 'lzf')
             tmp_target_grp.create_dataset(
                 'inv_dist', data = np.array(self._pair_invdist_list[target_idx],
-                                            dtype = np.float32))
+                                            dtype = np.float32),
+                compression = 'lzf')
+            
             tmp_target_grp.attrs.create('redshift',
                                       target.Redshift())
             tmp_target_grp.attrs.create('unmasked_frac',
