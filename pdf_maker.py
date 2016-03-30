@@ -20,13 +20,8 @@ if __name__ == "__main__":
     
     ### Load the file containing all matched pairs of spectroscopic and
     ### photometric objects.
-    print("Loading file...")
+    print("Loading files...")
     hdf5_pair_file = _core_utils.file_checker_loader(args.input_pair_hdf5_file)
-    
-    ### This is a temporary solution for the KiDS busy week Feb 15th-19th.
-    ### TODO:
-    ###     Evenutually want this to be a request for single point PDFs from
-    ###     machine learning. Maybe put this in it's own method
     unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
     
     ### This is where the heavy lifting happens. We create our PDF maker object
@@ -34,10 +29,10 @@ if __name__ == "__main__":
     ### redshift bin, and also store intermediary results for later use. 
     ### Before we can estimate the PDF, we must mask for the objects we want 
     ### to estimate the redshit of. These objects can be color selected,
-    ### photo-z selected, or any other object seletion you would like. The code
+    ### photo-z selected, or any other object selection you would like. The code
     ### line below turns the array of indices in the hdf5 pair file, into a
     ### single density estimate around the target object.
-    print("Matching indices...")
+    print("Starting indices matcher...")
     pdf_maker = _pdf_maker_utils.collapse_ids_to_single_estimate(
         hdf5_pair_file[args.pair_scale_name], unknown_data, args)
     

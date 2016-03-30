@@ -86,6 +86,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
         PDFMaker class object containing the resultant over densities.
     """
     
+    print("\tpre-loading unknown data...")
     rand_ratio = (unknown_data.shape[0] /
                   (1. * hdf5_pairs_group.attrs['n_random_points']))
     if args.unknown_stomp_region_name is not None:
@@ -107,6 +108,13 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
     if args.unknown_weight_name is not None:
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
         ave_weight = np.mean(weight_array)
+        if args.unknown_stomp_region_name is not None:
+            ave_weight = np.array(
+                [unknown_data[args.unknown_weight_name][
+                     unknown_data[args.unknown_stomp_region_name] ==
+                     reg_idx].mean()
+                 for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+                                dtype = np.float_)
     
     pdf_maker = PDFMaker(hdf5_pairs_group, args)
     
@@ -122,20 +130,29 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
         ### TODO:
         ###     Make the multiprocessing better. Currently the code copies over
         ###     the full information of id_array and weight array to the child
-        ###     processes. This will be bad when these arrays become large. 
-        pool_iter = pool.imap(
-            _collapse_multiplex,
-            [(data_set, id_array, weight_array, args.use_inverse_weighting)
-             for pair_idx, data_set in enumerate(pair_data)],
-            chunksize = np.int(np.where(
-                np.logical_and(args.n_processes > 1, len(pair_data) > 1),
-                np.log(len(pair_data)) / np.log(args.n_processes), 1)))
+        ###     processes. This will be bad when these arrays become large.
+        if len(pair_data) > 0:
+            print("\t\tmatching pairs: starting targets %i-%i..." %
+                  (hold_pair_start, hold_pair_start + args.n_target_load_size))
+            pool_iter = pool.imap(
+                _collapse_multiplex,
+                [(data_set, id_array, weight_array, args.use_inverse_weighting)
+                 for pair_idx, data_set in enumerate(pair_data)],
+                chunksize = np.int(np.where(
+                    args.n_processes > 1,
+                    np.log(len(pair_data)) / np.log(args.n_processes), 1)))
         
+        print("\t\tloading next pairs...")
         pair_data = _load_pair_data(hdf5_pairs_group, pair_start,
                                     args.n_target_load_size)
         
-        for pair_idx, target_value in enumerate(pool_iter):
-            target_unknown_array[hold_pair_start + pair_idx] = target_value 
+        try:
+            type(pool_iter)
+            print("\t\tcomputing/storing pair count...")
+            for pair_idx, target_value in enumerate(pool_iter):
+                target_unknown_array[hold_pair_start + pair_idx] = target_value
+        except UnboundLocalError:
+            pass
         
         hold_pair_start = pair_start
         pair_start += args.n_target_load_size
