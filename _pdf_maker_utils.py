@@ -510,8 +510,8 @@ class PDFMaker(object):
             
         self.redshift_array = (self._redshift_reg_array.sum(axis = 1) /
                                self._n_target_reg_array.sum(axis = 1))
-        self.density_array = self.bootstrap_array.mean(axis = 1)
-        self.density_err_array = self.bootstrap_array.std(axis = 1)
+        self.density_array = np.nanmean(self.bootstrap_array, axis = 1)
+        self.density_err_array = np.nanstd(self.bootstrap_array, axis = 1)
         self.n_target_array = self._n_target_reg_array.sum(axis = 1)
         self.unknown_array = self._unknown_reg_array.sum(axis = 1)
         self.rand_array = self._rand_reg_array.sum(axis = 1)
