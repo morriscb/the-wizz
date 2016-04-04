@@ -504,9 +504,11 @@ class PDFMaker(object):
         
         for boot_idx, boot_regions in enumerate(boot_region_array):
 
-            self.bootstrap_array[:, boot_idx] = (
+            self.bootstrap_array[:, boot_idx] = np.where(
+                self._rand_reg_array[:, boot_regions].sum(axis = 1) > 0,     
                 self._unknown_reg_array[:, boot_regions].sum(axis = 1) /
-                self._rand_reg_array[:, boot_regions].sum(axis = 1) - 1.0)
+                self._rand_reg_array[:, boot_regions].sum(axis = 1) - 1.0,
+                0.0)
             
         self.redshift_array = (self._redshift_reg_array.sum(axis = 1) /
                                self._n_target_reg_array.sum(axis = 1))
