@@ -68,7 +68,8 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
         np.arange(comov_min, comov_max,
                   (comov_max - comov_min) / (1. * n_bins)))
 
-def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
+def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
+                                    unknown_data, args):
         
     """
     This is the heart of The-wiZZ. It enables the matching of
@@ -116,8 +117,6 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
                  for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
                                 dtype = np.float_)
     
-    pdf_maker = PDFMaker(hdf5_pairs_group, args)
-    
     n_target = len(hdf5_pairs_group)
     target_unknown_array = np.empty(n_target, dtype = np.float32)
     
@@ -160,10 +159,10 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, unknown_data, args):
     pool.close()
     pool.join()
     
-    pdf_maker.set_target_unknown_array(target_unknown_array)
-    pdf_maker.scale_random_points(rand_ratio, ave_weight)
+    pdf_maker_obj.set_target_unknown_array(target_unknown_array)
+    pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
     
-    return pdf_maker
+    return None
 
 def _collapse_multiplex(input_tuple):
 
@@ -318,7 +317,7 @@ class PDFMaker(object):
             tmp_rand_ratio = rand_ratio
         try:
             tmp_ave_weight = ave_weight[self.target_region_array]
-        except TypeError:
+        except IndexError:
             tmp_ave_weight = ave_weight
         self.target_rand_array *= tmp_rand_ratio * tmp_ave_weight
         
