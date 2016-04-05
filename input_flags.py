@@ -90,7 +90,7 @@ def parse_input_pdf_args():
     
     return parser.parse_args()
 
-def parse_input_k_nearest_pdf_args():
+def parse_input_pdf_single_galaxy_args():
     
     """
     Command line argument parser for The-wiZZ PDF creator. If you have a given
@@ -148,7 +148,7 @@ def parse_input_k_nearest_pdf_args():
                         'magnitudes, one can also use their information as a '
                         'difference or color. The columns will be taken as a '
                         'different in the order specifed. i.e. 0-1, 1-2, etc.')
-    parser.add_argument('--unknown_other_names', default = '',
+    parser.add_argument('--unknown_other_names', default = None,
                         type = str, help = 'For any other catalog variable one '
                         'would like to use (eg type, size, fixed apature flux) '
                         'can be specified here in addition to the '
