@@ -317,7 +317,7 @@ class PDFMaker(object):
             tmp_rand_ratio = rand_ratio
         try:
             tmp_ave_weight = ave_weight[self.target_region_array]
-        except IndexError:
+        except TypeError:
             tmp_ave_weight = ave_weight
         self.target_rand_array *= tmp_rand_ratio * tmp_ave_weight
         
