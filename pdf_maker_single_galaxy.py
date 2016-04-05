@@ -31,7 +31,7 @@ if __name__ == "__main__":
     pdf_maker = _pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
                                           args)
     if pdf_maker.target_redshift_array.max() < args.z_max:
-        print("WARNING: requested z_max is greater than avaliable target "
+        print("WARNING: requested z_max is greater than available target "
               "redshifts.")
         args.z_max = pdf_maker.target_redshift_array.max() + 1e-16
         print("\tResetting to %.4f..."  % args.z_max)
