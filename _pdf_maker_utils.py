@@ -224,8 +224,8 @@ class PDFMaker(object):
                                           dtype = np.float32)
         self.target_unknown_array = np.empty(len(hdf5_pair_group),
                                               dtype = np.float32)
-        self.target_rand_array = np.empty(len(hdf5_pair_group),
-                                          dtype = np.float32)
+        self.target_hold_rand_array = np.empty(len(hdf5_pair_group),
+                                               dtype = np.float32)
         self.target_region_array = np.empty(len(hdf5_pair_group),
                                             dtype = np.uint32)
         self.target_resolution_array = np.empty(len(hdf5_pair_group),
@@ -262,10 +262,11 @@ class PDFMaker(object):
             self.target_resolution_array[target_idx] = (
                 target_grp.attrs['bin_resolution'])
             if args.use_inverse_weighting:
-                self.target_rand_array[target_idx] = (
+                self.target_hold_rand_array[target_idx] = (
                     target_grp.attrs['rand_inv_dist'])
             else:
-                self.target_rand_array[target_idx] = target_grp.attrs['rand']
+                self.target_hold_rand_array[target_idx] = (
+                    target_grp.attrs['rand'])
                 
         max_n_regions = self.target_region_array.max() + 1
         region_list = []
@@ -319,7 +320,8 @@ class PDFMaker(object):
             tmp_ave_weight = ave_weight[self.target_region_array]
         except IndexError:
             tmp_ave_weight = ave_weight
-        self.target_rand_array *= tmp_rand_ratio * tmp_ave_weight
+        self.target_rand_array = (self.target_hold_rand_array * tmp_rand_ratio *
+                                  tmp_ave_weight)
         
         return None
     
