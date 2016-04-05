@@ -29,7 +29,7 @@ def parse_input_pdf_args():
                         type = str, help = 'Name of unknown redshift '
                         'Photometric fits catalog containing the indices to '
                         'mask in the pair data file.')
-    parser.add_argument('--unknown_index_name', default = 'SeqNr',
+    parser.add_argument('--unknown_index_name', required = True,
                         type = str, help = 'Name of unique object index for '
                         'the unknown objects. Indexes must be of type uint32')
     parser.add_argument('--unknown_weight_name', default = None,
@@ -46,6 +46,137 @@ def parse_input_pdf_args():
     parser.add_argument('--output_pdf_file_name', required = True,
                         type = str, help = 'Name of the output file to write '
                         'the resultant PDF to.')
+    parser.add_argument('--z_min', default = 0.01,
+                        type = float, help = 'Minimum redshift for both the '
+                        'pair_maker and pdf_maker.')
+    parser.add_argument('--z_max', default = 10.0,
+                        type = float, help = 'Maximum redshift for both the '
+                        'pair_maker and pdf_maker.')
+    parser.add_argument('--z_n_bins', default = 100,
+                        type = int, help = 'Number of redshifts to specify '
+                        'between z_min and z_max')
+    parser.add_argument('--z_binning_type', default = 'linear',
+                        type = str, help = 'Specify which type of binning to '
+                        'use for the redshift bins. Choices are: '
+                        '    linear: linear binning in redshift'
+                        '    adapt: chose bins so that each has equal number '
+                        'tarets.'
+                        '    comoving: linear binning in comoving distance')
+    parser.add_argument('--use_inverse_weighting', action = 'store_true',
+                        help = 'Use the inverse distance weighted columns from '
+                        'the pair file instead of just a straight sum of '
+                        'pairs.')
+    parser.add_argument('--n_bootstrap', default = 1000, type = int,
+                        help = 'Argument specifying the number of bootstrap '
+                        'resamplings of the recovery to compute errors.')
+    parser.add_argument('--bootstrap_samples', default = None, type = str,
+                        help = 'This is an optional argument specifying an '
+                        'ascii file containing specified bootstrap samplings '
+                        'to run. These should row-wise specifications of '
+                        'regions from the input pair hdf5 file. Overrides '
+                        'the number set in n_bootstrap.')
+    parser.add_argument('--output_bootstraps_file', default = None, type = str,
+                        help = 'This is an optional argument specifying an '
+                        'ascii file to write the individual bootstrap pdfs to.')
+    parser.add_argument('--n_processes', default = 1, type = int,
+                        help = 'Number of process to run. When computing large '
+                        'angles it is recommended that several cores be '
+                        'used(~4).')
+    parser.add_argument('--n_target_load_size', default = 10000, type = int,
+                        help = 'Number of target pairs to load from the hdf5 '
+                        'file at once. The chunk size should be set such that '
+                        'the code has time to load the new data while it is '
+                        'processing the current set.')
+    
+    return parser.parse_args()
+
+def parse_input_k_nearest_pdf_args():
+    
+    """
+    Command line argument parser for The-wiZZ PDF creator. If you have a given
+    survey file pair HDF5 file from The-wiZZ, you can set these arguments for
+    the PDF maker portion of the library and get a robust estimate of the 
+    redshift distribution for your specific subsample of the survey catalog.
+    Args:
+        None
+    Returns:
+        ArgumentParser.parse_args object
+    """
+    
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--input_pair_hdf5_file', required = True,
+                        type = str, help = 'Name of input HDF5 file to read '
+                        'the pair counts between the spectroscopic and unknown '
+                        'photometric data from.')
+    parser.add_argument('--pair_scale_name', default = 'kpc30t300',
+                        type = str, help = 'Name of the pair data scale to '
+                        'load. This should be the name of the HDF5 group '
+                        'the pair data is stored in. The format is '
+                        'kpc[min]t[max].')
+    parser.add_argument('--unknown_sample_file', required = True,
+                        type = str, help = 'Name of unknown redshift, '
+                        'photometric fits catalog containing the indices to '
+                        'match to the target data and columns to match in the '
+                        'kdtree. This should be the fits file created that '
+                        'covers the target redshift area.')
+    parser.add_argument('--unknown_index_name', required = True,
+                        type = str, help = 'Name of unique object index for '
+                        'the unknown objects. Indexes must be of type uint32')
+    parser.add_argument('--unknown_weight_name', default = None,
+                        type = str, help = 'Name of object weight for '
+                        'the unknown objects.')
+    parser.add_argument('--unknown_stomp_region_name', default = None,
+                        type = str, help = 'Name of the column where the '
+                        'STOMP region that each object belongs to is stored. '
+                        'Setting this variable causes the code calculate the '
+                        'over-densities relative to the average in the region '
+                        'rather than globally. Useful if you are combining '
+                        'several photometric, non-overlapying '
+                        'surveys/pointings with different sensitivities. This '
+                        'catalog is read as is. Any selections or removal of '
+                        'flagged values (eg -99, 99) must be beforehand or '
+                        'they will corrupt the results.')
+    parser.add_argument('--unknown_magnitude_names', required = True,
+                        type = str, help = 'Comma separated list of fits '
+                        'columns specifying the magnitudes to use in the '
+                        'kdtree. This catalog is read as is. Any selections or '
+                        'removal of flagged values (eg -99, 99) must be '
+                        'beforehand or they will corrupt the results.')
+    parser.add_argument('--use_as_colors', action = 'store_true',
+                        help = 'Instead of using the raw '
+                        'magnitudes, one can also use their information as a '
+                        'difference or color. The columns will be taken as a '
+                        'different in the order specifed. i.e. 0-1, 1-2, etc.')
+    parser.add_argument('--unknown_other_names', default = '',
+                        type = str, help = 'For any other catalog variable one '
+                        'would like to use (eg type, size, fixed apature flux) '
+                        'can be specified here in addition to the '
+                        '"magnitudes" above. It is recommended to have no more '
+                        'than around 10 columns in total. This catalog is read '
+                        'as is. Any selections or removal of flagged values '
+                        '(eg -99, 99) must be beforehand or they will corrupt '
+                        'the results.')
+    parser.add_argument('--match_sample_file', required = True,
+                        type = str, help = 'Name of the fits file you would '
+                        'to know the redshift distribution of each object. '
+                        'It should have the same columns as the unknown sample '
+                        'but need not cover the same area of the target '
+                        'objects. Each galaxy in this file will be matched to '
+                        'a sample of galaxies in the unknown sample usuing a '
+                        'kdtree. The return redshift distribution is then the '
+                        'distribution for objects in the unknown sample with '
+                        'similar properties to the input object matched.')
+    parser.add_argument('--n_kdtree_matched', default = 1024,
+                        type = int, help = 'The number of nearest neighbor '
+                        'objects to match from the unknown sample kdtree to '
+                        'the requested match objects. It is recommended to '
+                        'attempt to have a least on average 100 unknown sample '
+                        'objects per region.')
+    parser.add_argument('--output_pdf_file_name', required = True,
+                        type = str, help = 'Name of the output file to write '
+                        'the resultant PDF to. This will be written in the '
+                        'of the objects given in match_sample_file.')
     parser.add_argument('--z_min', default = 0.01,
                         type = float, help = 'Minimum redshift for both the '
                         'pair_maker and pdf_maker.')
