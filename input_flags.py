@@ -190,7 +190,7 @@ def parse_input_pdf_single_galaxy_args():
                         type = str, help = 'Specify which type of binning to '
                         'use for the redshift bins. Choices are: '
                         '    linear: linear binning in redshift'
-                        '    adapt: chose bins so that each has equal number '
+                        '    adaptive: chose bins so that each has equal number '
                         'tarets.'
                         '    comoving: linear binning in comoving distance')
     parser.add_argument('--use_inverse_weighting', action = 'store_true',
