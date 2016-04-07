@@ -78,9 +78,10 @@ if __name__ == "__main__":
     print("Making KDTree")
     mag_name_list = args.unknown_magnitude_names.split(',')
     try:
-        other_name_list = args.unknown_other_Names.split(',')
+        other_name_list = args.unknown_other_names.split(',')
     except AttributeError:
         other_name_list = []
+    print mag_name_list, other_name_list
     kdtree = _kdtree_utils.CatalogKDTree(
         _kdtree_utils.create_match_data(
             unknown_data, mag_name_list, other_name_list, args.use_as_colors))
