@@ -88,7 +88,7 @@ def parse_input_pdf_args():
                         'the code has time to load the new data while it is '
                         'processing the current set.')
     
-    return parser.parse_args()
+    return _verify_none_type(parser.parse_args())
 
 def parse_input_pdf_single_galaxy_args():
     
@@ -219,7 +219,7 @@ def parse_input_pdf_single_galaxy_args():
                         'the code has time to load the new data while it is '
                         'processing the current set.')
     
-    return parser.parse_args()
+    return _verify_none_type(parser.parse_args())
 
 def parse_input_pair_args():
     
@@ -301,7 +301,7 @@ def parse_input_pair_args():
                         'the pair counts between the spectroscopic and unknown '
                         'photometric data to.')
     
-    return parser.parse_args()
+    return _verify_none_type(parser.parse_args())
 
 def print_args(args):
     """
@@ -319,3 +319,19 @@ def print_args(args):
     
     return None
 
+def _verify_none_type(args):
+    
+    """
+    Function for safely handling if a user specifies "None" from the command
+    line.
+    Args:
+        args: argparse object returned by ArgumentParser.parse_args()
+    Returns:
+        argparse object returned by ArgumentParser.parse_args()
+    """
+    
+    for arg in vars(args):
+        if getattr(args, arg) == 'None' or getattr(args, arg) == 'none':
+            setattr(args, arg, None)
+            
+    return args
