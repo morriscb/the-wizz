@@ -14,7 +14,7 @@ if __name__ == "__main__":
     args = input_flags.parse_input_pdf_args()
     
     print("")
-    print("The wiZZ has begun conjuring: running pair maker...")
+    print("The-wiZZ has begun conjuring: running pair maker...")
     
     input_flags.print_args(args)
     

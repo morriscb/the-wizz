@@ -18,7 +18,7 @@ that contains the raw pair information between the target and unknown sample.
 if __name__ == "__main__":
     
     print("")
-    print("The wiZZ has begun conjuring: running pair maker...")
+    print("The-wiZZ has begun conjuring: running pair maker...")
     
     ### load the command line arguments 
     args = input_flags.parse_input_pair_args()
