@@ -10,7 +10,7 @@ objects. The code transforms each object's position into a STOMP pixel at a
 fixed resolution. The pixels are joined together to form a rough area of the
 survey. The resolution should be set such that at least one galaxy occupies the
 pixel's area. For reference a resolution 1 pixel has an area of 88.1474 deg^2
-and each resolution decreases the resolution by (resolution ^ 2).
+and each resolution decreases the area by a factor of resolution ^ 2.
 """
 
 if __name__ == '__main__':
