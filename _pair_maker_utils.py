@@ -46,8 +46,10 @@ class RawPairFinder(object):
         Utility function that creates/resets the interal data storage of the 
         class for the unknown sample.
         """   
-        self._area_array = np.empty(self._target_vect.size())
-        self._unmasked_array = np.empty(self._target_vect.size())
+        self._area_array = np.empty(self._target_vect.size(),
+                                    dtype = np.float32)
+        self._unmasked_array = np.empty(self._target_vect.size(),
+                                        dtype = np.float32)
         self._bin_resolution = np.empty(self._target_vect.size(),
                                         dtype = np.uint32)
         self._pair_list = []
