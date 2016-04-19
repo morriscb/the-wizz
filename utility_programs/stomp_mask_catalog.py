@@ -38,11 +38,13 @@ if __name__ == "__main__":
     parser.add_argument('--dec_name', default = 'DELTA_J2000',
                         type = str, help = 'Name of dec column in '
                         'unknown, photometric fits file')
+    parser.add_argument('--fits_hdu_number', default = 1,
+                        type = int, help = 'Number of the fits hdu to load.')
     args = parser.parse_args()
     
     ### Load the fits catalog
     hdu = fits.open(args.input_fits_file)
-    data = hdu[1].data
+    data = hdu[args.fits_hdu_number].data
     
     ### Load the stomp map
     stomp_map = stomp.Map(args.stomp_map)
