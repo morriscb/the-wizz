@@ -171,7 +171,12 @@ def _collapse_multiplex(input_tuple):
 
     tmp_n_points = 0
     id_data_set, inv_data_set = data_set
-    for obj_id, inv_weight in zip(id_data_set, inv_data_set):
+    data_start = np.searchsorted(id_data_set, id_array[0])
+    data_end = np.searchsorted(id_data_set, id_array[-1],
+                               side = 'right')
+    
+    for obj_id, inv_weight in zip(id_data_set[data_start:data_end],
+                                  inv_data_set[data_start:data_end]):
         sort_idx = np.searchsorted(id_array, obj_id)
         if sort_idx >= len(id_array) or sort_idx < 0:
             continue

@@ -237,13 +237,14 @@ class RawPairFinder(object):
             tmp_target_grp = tmp_grp.create_group(
                 '%i' % self._target_ids[target_idx])
             
+            sort_args = np.argsort(self._pair_list[target_idx])
             tmp_target_grp.create_dataset(
                 'ids', data = np.array(self._pair_list[target_idx],
-                                       dtype = np.uint32),
+                                       dtype = np.uint32)[sort_args],
                 compression = 'lzf')
             tmp_target_grp.create_dataset(
                 'inv_dist', data = np.array(self._pair_invdist_list[target_idx],
-                                            dtype = np.float32),
+                                            dtype = np.float32)[sort_args],
                 compression = 'lzf')
             
             tmp_target_grp.attrs.create('redshift',
@@ -264,4 +265,145 @@ class RawPairFinder(object):
                 continue
             
         return None
+    
+
+class TargetPairFinder(RawPairFinder):
+    
+    
+    def _reset_array_data(self):
+        """
+        Utility function that creates/resets the interal data storage of the 
+        class for the unknown sample.
+        """
+        
+        self._area_array = np.empty(self._target_vect.size(),
+                                    dtype = np.float32)
+        self._unmasked_array = np.empty(self._target_vect.size(),
+                                        dtype = np.float32)
+        self._bin_resolution = np.empty(self._target_vect.size(),
+                                        dtype = np.uint32)
+        
+        self._pair_array = np.empty(self._target_vect.size(),
+                                    dtype = np.float32)
+        
+        return None
+    
+    def find_pairs(self, max_scale):
+        """
+        Main functionality of the RawPairFinder class. Given the input data,
+        we find all the close pairs between the target, known redshift objects
+        and the unknown redshift oobjects. Stores the raw pair indices and also
+        the inverse distance weight.
+        Args:
+            min_scale: float value of the minimum scale to run the pair finder.
+                Units are physical kpc
+            max_scale: float value of the maximum scale to run the pair finder.
+                Units are physical kpc
+        Returns:
+           None
+        """
+        
+        self._reset_array_data()
+        
+        radial_bin = stomp.RadialBin(1e-8, max_scale/1000.0, 0.01)
+        
+        print("Finding real pairs...")
+        
+        max_dist_sq = (max_scale / 1000.0) ** 2
+        
+        for target_idx, target_obj in enumerate(self._target_vect):
+            
+            
+            self._region_ids[target_idx] = self._stomp_map.FindRegion(
+                target_obj)
+            radial_bin.SetRedshift(target_obj.Redshift())
+            max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
+                                                     max_scale / 1000.0)
+            radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
+                                           target_obj.Lambda() + max_ang)
+            
+            target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
+            target_dist = stomp.Cosmology_ComovingDistance(
+                target_obj.Redshift())
+            
+            covering_pix_vect = stomp.PixelVector()
+            target_pix.WithinRadius(max_ang, covering_pix_vect)
+            
+            self._bin_resolution[target_idx] = radial_bin.Resolution()
+            
+            unmasked_frac = 0
+            area = 0
+            
+            for pix in covering_pix_vect:
+                
+                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+                if tmp_unmasked <= 0.0:
+                    continue
+                
+                unmasked_frac += tmp_unmasked
+                area += tmp_unmasked * pix.Area(radial_bin.Resolution())
+                
+                tmp_cos_ang_vect = stomp.CosmoVector()
+                self._unknown_itree.Points(tmp_cos_ang_vect, pix)
+                for cos_ang in tmp_cos_ang_vect:
+                    dist_sq = (
+                        (target_dist -
+                         stomp.Cosmology_ComovingDistance(
+                             cos_ang.Redshift())) ** 2 +
+                        target_obj.ProjectedRadius(cos_ang) ** 2)
+                    if dist_sq > max_dist_sq or dist_sq < 1e-8:
+                        continue
+                    self._pair_array[target_idx] += 1/np.sqrt(dist_sq)
+                    
+            self._area_array[target_idx] = area
+            self._unmasked_array[target_idx] = unmasked_frac
+            
+        return None
+    
+    def random_loop(self, min_scale, max_scale, random_tree):
+        self._reset_random_data()
+        
+        self._n_random_points = random_tree.NPoints()
+        
+        radial_bin = stomp.RadialBin(1e-8, max_scale/1000.0, 0.01)
+        
+        print("Finding random pairs...")
+        
+        for target_idx, target_obj in enumerate(self._target_vect):
+            
+            
+            self._region_ids[target_idx] = self._stomp_map.FindRegion(
+                target_obj)
+            radial_bin.SetRedshift(target_obj.Redshift())
+            max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
+                                                     max_scale / 1000.0)
+            radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
+                                                 target_obj.Lambda() + max_ang)
+            
+            target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
+            
+            covering_pix_vect = stomp.PixelVector()
+            target_pix.WithinRadius(max_ang, covering_pix_vect)
+            
+            n_points = 0
+            inv_dist = 0.0
+            
+            for pix in covering_pix_vect:
+                
+                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+                if tmp_unmasked <= 0.0:
+                    continue
+                
+                dist = target_obj.ProjectedRadius(pix.Ang())
+                tmp_n_points = random_tree.NPoints(pix)
+                n_points += tmp_n_points
+                inv_dist += tmp_n_points / dist
+            
+            self._n_random_per_target[target_idx] = n_points
+            self._n_random_invdist_per_target[target_idx] = np.float32(inv_dist)
+            
+        return None
+    
+    def write_to_hdf5(self, hdf5_file, scale_name):
+        pass
             
