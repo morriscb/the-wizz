@@ -5,6 +5,7 @@ import input_flags
 import h5py
 from multiprocessing import Array, Pool
 import numpy as np
+import pickle
 import sys
 from _core_utils import redshift
 from __builtin__ import True
@@ -95,7 +96,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
             [unknown_data[unknown_data[args.unknown_stomp_region_name] ==
                           reg_idx].shape[0]
              for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-                                dtype = np.int_)
+                                   dtype = np.int_)
         rand_ratio = (
             (tmp_n_region / (1. * hdf5_pairs_group.attrs['n_random_points'])) *
             (hdf5_pairs_group.attrs['area'] /
@@ -115,7 +116,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                      unknown_data[args.unknown_stomp_region_name] ==
                      reg_idx].mean()
                  for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-                                dtype = np.float_)
+                                       dtype = np.float_)
     
     n_target = len(hdf5_pairs_group)
     target_unknown_array = np.empty(n_target, dtype = np.float32)
@@ -169,23 +170,45 @@ def _collapse_multiplex(input_tuple):
     (data_set, id_array, weight_array,
      use_inverse_weighting) = input_tuple
 
-    tmp_n_points = 0
     id_data_set, inv_data_set = data_set
-    data_start = np.searchsorted(id_data_set, id_array[0])
-    data_end = np.searchsorted(id_data_set, id_array[-1],
-                               side = 'right')
+    if len(id_data_set) == 0:
+        return 0.0
+    ### Since the ids around the target are partially localized spatially we
+    ### will loop over the unknown ids and match them into the target ids.
+    start_idx = np.searchsorted(id_array, id_data_set[0])
+    end_idx = np.searchsorted(id_array, id_data_set[-1],
+                              side = 'right')
+    if start_idx == end_idx:
+        return 0.0
     
-    for obj_id, inv_weight in zip(id_data_set[data_start:data_end],
-                                  inv_data_set[data_start:data_end]):
-        sort_idx = np.searchsorted(id_array, obj_id)
-        if sort_idx >= len(id_array) or sort_idx < 0:
+    if start_idx < 0:
+        start_idx = 0
+    if end_idx > id_array.shape[0]:
+        end_idx = id_array.shape[0]
+    
+    tmp_n_points = 0.0
+    for obj_id, weight in zip(id_array[start_idx:end_idx],
+                              weight_array[start_idx:end_idx]):
+        sort_idx = np.searchsorted(id_data_set, obj_id)
+        if sort_idx >= len(id_data_set) or sort_idx < 0:
             continue
-        if id_array[sort_idx] == obj_id:
-            weight = weight_array[sort_idx]
+        if id_data_set[sort_idx] == obj_id:
             if use_inverse_weighting:
-                tmp_n_points += inv_weight * weight
+                tmp_n_points += inv_data_set[sort_idx] * weight
             else:
                 tmp_n_points += 1.0 * weight
+    
+#     for obj_id, inv_weight in zip(id_data_set,
+#                                   inv_data_set):
+#         sort_idx = np.searchsorted(id_array, obj_id)
+#         if sort_idx >= len(id_array) or sort_idx < 0:
+#             continue
+#         if id_array[sort_idx] == obj_id:
+#             weight = weight_array[sort_idx]
+#             if use_inverse_weighting:
+#                 tmp_n_points += inv_weight * weight
+#             else:
+#                 tmp_n_points += 1.0 * weight
     
     return tmp_n_points
 
@@ -436,6 +459,17 @@ class PDFMaker(object):
         if not self._computed_region_densities:
             print("PDFMaker.compute_region_densities not run. Exiting method.")
             return None
+        
+        output_file = open(output_pickle_file)
+        output_dict = {"n_regions" : self.region_array.shape[0],
+                       "redshift" : self._redshift_reg_array,
+                       "n_target" : self._n_target_reg_array,
+                       "unknown" : self._unknown_reg_array,
+                       "rand" : self._rand_reg_array,
+                       "area" : self._area_reg_array,
+                       "resolution" : self._resolution_reg_array}
+        pickle.dump(output_dict, output_file)
+        output_file.close()
         
         return None
         
