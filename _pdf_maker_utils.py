@@ -198,18 +198,6 @@ def _collapse_multiplex(input_tuple):
             else:
                 tmp_n_points += 1.0 * weight
     
-#     for obj_id, inv_weight in zip(id_data_set,
-#                                   inv_data_set):
-#         sort_idx = np.searchsorted(id_array, obj_id)
-#         if sort_idx >= len(id_array) or sort_idx < 0:
-#             continue
-#         if id_array[sort_idx] == obj_id:
-#             weight = weight_array[sort_idx]
-#             if use_inverse_weighting:
-#                 tmp_n_points += inv_weight * weight
-#             else:
-#                 tmp_n_points += 1.0 * weight
-    
     return tmp_n_points
 
 def _load_pair_data(hdf5_group, key_start, n_load):
@@ -444,11 +432,12 @@ class PDFMaker(object):
             
         return None
     
-    def write_region_densities(self, output_pickle_file):
+    def write_region_densities(self, output_pickle_file, args):
         
         """
         Method to write all internal variables describing the over-density per
-        spatial region to a pickle file.
+        spatial region to a pickle file. The data is pickled as a Python
+        dictionary.
         Args:
             output_pickle_file: string name of the pickle file to to write out
                 to.
@@ -460,8 +449,9 @@ class PDFMaker(object):
             print("PDFMaker.compute_region_densities not run. Exiting method.")
             return None
         
-        output_file = open(output_pickle_file)
-        output_dict = {"n_regions" : self.region_array.shape[0],
+        output_file = open(output_pickle_file, 'w')
+        output_dict = {"input_flags" : args,
+                       "n_regions" : self.region_array.shape[0],
                        "redshift" : self._redshift_reg_array,
                        "n_target" : self._n_target_reg_array,
                        "unknown" : self._unknown_reg_array,

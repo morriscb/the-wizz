@@ -69,15 +69,6 @@ def parse_input_pdf_args():
     parser.add_argument('--n_bootstrap', default = 1000, type = int,
                         help = 'Argument specifying the number of bootstrap '
                         'resamplings of the recovery to compute errors.')
-    parser.add_argument('--bootstrap_samples', default = None, type = str,
-                        help = 'This is an optional argument specifying an '
-                        'ascii file containing specified bootstrap samplings '
-                        'to run. These should row-wise specifications of '
-                        'regions from the input pair hdf5 file. Overrides '
-                        'the number set in n_bootstrap.')
-    parser.add_argument('--output_bootstraps_file', default = None, type = str,
-                        help = 'This is an optional argument specifying an '
-                        'ascii file to write the individual bootstrap pdfs to.')
     parser.add_argument('--n_processes', default = 1, type = int,
                         help = 'Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
@@ -87,6 +78,23 @@ def parse_input_pdf_args():
                         'file at once. The chunk size should be set such that '
                         'the code has time to load the new data while it is '
                         'processing the current set.')
+    parser.add_argument('--bootstrap_samples', default = None, type = str,
+                        help = 'This is an optional argument specifying an '
+                        'ascii file containing specified bootstrap samplings '
+                        'to run. These should row-wise specifications of '
+                        'regions from the input pair hdf5 file. Overrides '
+                        'the number set in n_bootstrap.')
+    parser.add_argument('--output_bootstraps_file', default = None, type = str,
+                        help = 'This is an optional argument specifying an '
+                        'ascii file to write the individual bootstrap pdfs to.')
+    parser.add_argument('--output_region_pickle_file', default = None,
+                        type = str, help = 'This is an optional argument '
+                        'specifying an output file to write a pickle of the '
+                        'densities in each region. This can be used later to '
+                        'combine with other surveys / pointings to create a '
+                        'combined recovery. To see how the data is stored/used '
+                        'look to the methods write_region_densities and '
+                        'compute_pdf_bootstrap methods in _pdf_maker_utils.py.')
     
     return _verify_none_type(parser.parse_args())
 

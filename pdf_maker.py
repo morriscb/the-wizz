@@ -85,6 +85,8 @@ if __name__ == "__main__":
     ### are in each of the regions calculated on the area we consider.
     print("Calculating region densities...")
     pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
+    if args.output_region_pickle_file is not None:
+        pdf_maker.write_region_densities(args.output_region_pickle_file, args)
     ### Now that we've "collapsed" the estimate around the target object we need
     ### to bin up the results in redshift and create our final PDF.
     print("Calculating pdf...")
