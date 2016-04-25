@@ -46,9 +46,9 @@ class RawPairFinder(object):
         Utility function that creates/resets the interal data storage of the 
         class for the unknown sample.
         """   
-        self._area_array = np.empty(self._target_vect.size(),
+        self._area_array = np.zeros(self._target_vect.size(),
                                     dtype = np.float32)
-        self._unmasked_array = np.empty(self._target_vect.size(),
+        self._unmasked_array = np.zeros(self._target_vect.size(),
                                         dtype = np.float32)
         self._bin_resolution = np.empty(self._target_vect.size(),
                                         dtype = np.uint32)
@@ -66,10 +66,10 @@ class RawPairFinder(object):
         class for the random sample following the geometry of the unknown
         sample.  
         """ 
-        self._n_random_per_target = (np.ones_like(self._target_ids,
-                                                  dtype = np.uint32) * -99)
-        self._n_random_invdist_per_target = (
-            np.ones_like(self._target_ids, dtype = np.float32) * -99)
+        self._n_random_per_target = np.zeros_like(self._target_ids,
+                                                 dtype = np.uint32)
+        self._n_random_invdist_per_target = np.zeros_like(self._target_ids,
+                                                          dtype = np.float32)
         
         return None
             
@@ -113,27 +113,55 @@ class RawPairFinder(object):
             
             self._bin_resolution[target_idx] = radial_bin.Resolution()
             
-            unmasked_frac = 0
-            area = 0
-            
             for pix in covering_pix_vect:
                 
-                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-                if tmp_unmasked <= 0.0:
-                    continue
+                if pix.Resolution() < self._stomp_map.RegionResolution():
+                    
+                    pix_vect = stomp.PixelVector()
+                    pix.SubPix(self._stomp_map.RegionResolution(),
+                               pix_vect)
+                    for sub_pix in pix_vect:
+                        if (self._stomp_map.FindRegion(sub_pix) ==
+                            self._region_ids[target_idx]):
+                            self._store_target_unknown_pixel(
+                                target_idx, target_obj, sub_pix)
+                else:
+                    if (self._stomp_map.FindRegion(pix) ==
+                        self._region_ids[target_idx]):
+                        self._store_target_unknown_pixel(
+                            target_idx, target_obj, pix)
+            
+        return None
+    
+    def _store_target_unknown_pixel(self, target_idx, target_obj, pix):
+        """
+        Internal class function for finding the number of unknown objects and
+        their ids in a single stomp pixel.
+        Args:
+            target_idx: int array index of the target object
+            target_obj: stomp.CosmoCoordinate object containing the spatial and
+                redshift information of the considered target object.
+            pix: stomp.Pixel object to compute the number of randoms in.
+        Returns:
+            None
+        """
+        
+        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+        
+        if tmp_unmasked <= 0.0:
+            return None
+        
+        self._unmasked_array[target_idx] += tmp_unmasked
+        self._area_array[target_idx] += (tmp_unmasked *
+                                         pix.Area(pix.Resolution()))
+        dist = target_obj.ProjectedRadius(pix.Ang())
                 
-                unmasked_frac += tmp_unmasked
-                area += tmp_unmasked * pix.Area(radial_bin.Resolution())
-                dist = target_obj.ProjectedRadius(pix.Ang())
-                
-                tmp_i_ang_vect = stomp.IAngularVector()
-                self._unknown_itree.Points(tmp_i_ang_vect, pix)
-                for i_ang in tmp_i_ang_vect:
-                    self._pair_list[target_idx].append(i_ang.Index())
-                    self._pair_invdist_list[target_idx].append(
-                        np.float32(1. / dist))
-            self._area_array[target_idx] = area
-            self._unmasked_array[target_idx] = unmasked_frac
+        tmp_i_ang_vect = stomp.IAngularVector()
+        self._unknown_itree.Points(tmp_i_ang_vect, pix)
+        for i_ang in tmp_i_ang_vect:
+            self._pair_list[target_idx].append(i_ang.Index())
+            self._pair_invdist_list[target_idx].append(
+            np.float32(1. / dist))
             
         return None
             
@@ -171,7 +199,7 @@ class RawPairFinder(object):
             max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
                                                      max_scale / 1000.0)
             radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
-                                                 target_obj.Lambda() + max_ang)
+                                           target_obj.Lambda() + max_ang)
             
             target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
             
@@ -179,23 +207,50 @@ class RawPairFinder(object):
             target_pix.WithinAnnulus(target_obj, radial_bin.Resolution(),
                                      radial_bin, covering_pix_vect)
             
-            n_points = 0
-            inv_dist = 0.0
-            
             for pix in covering_pix_vect:
                 
-                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-                if tmp_unmasked <= 0.0:
-                    continue
-                
-                dist = target_obj.ProjectedRadius(pix.Ang())
-                tmp_n_points = random_tree.NPoints(pix)
-                n_points += tmp_n_points
-                inv_dist += tmp_n_points / dist
+                if pix.Resolution() < self._stomp_map.RegionResolution():
+                    pix_vect = stomp.PixelVector()
+                    pix.SubPix(self._stomp_map.RegionResolution(),
+                               pix_vect)
+                    for sub_pix in pix_vect:
+                        if (self._stomp_map.FindRegion(sub_pix) ==
+                            self._region_ids[target_idx]):
+                            self._store_target_random_pixel(
+                                target_idx, target_obj, sub_pix,
+                                random_tree)
+                else:
+                    if (self._stomp_map.FindRegion(pix) ==
+                        self._region_ids[target_idx]):
+                        self._store_target_random_pixel(
+                            target_idx, target_obj, sub_pix,
+                            random_tree)
             
-            self._n_random_per_target[target_idx] = n_points
-            self._n_random_invdist_per_target[target_idx] = np.float32(inv_dist)
-            
+        return None
+    
+    def _store_target_random_pixel(self, target_idx, target_obj, pix,
+                                   random_tree):
+        """
+        Internal class function for finding the number of randoms in a single
+        stomp pixel.
+        Args:
+            target_idx: int array index of the target object
+            target_obj: stomp.CosmoCoordinate object containing the spatial and
+                redshift information of the considered target object.
+            pix: stomp.Pixel object to compute the number of randoms in.
+        Returns:
+            None
+        """
+        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+        if tmp_unmasked <= 0.0:
+            return None
+        
+        dist = target_obj.ProjectedRadius(pix.Ang())
+        tmp_n_points = random_tree.NPoints(pix)
+        self._n_random_per_target[target_idx] += tmp_n_points
+        self._n_random_invdist_per_target[target_idx] += np.float32(
+            tmp_n_points / dist)
+        
         return None
     
     def write_to_hdf5(self, hdf5_file, scale_name):

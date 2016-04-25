@@ -89,6 +89,8 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     """
     
     print("\tpre-loading unknown data...")
+    if args.unknown_weight_name is not None:
+        unknown_data = unknown_data[unknown_data[args.weight_name] != 0]
     rand_ratio = (unknown_data.shape[0] /
                   (1. * hdf5_pairs_group.attrs['n_random_points']))
     if args.unknown_stomp_region_name is not None:
