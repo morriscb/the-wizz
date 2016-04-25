@@ -161,7 +161,7 @@ class RawPairFinder(object):
         for i_ang in tmp_i_ang_vect:
             self._pair_list[target_idx].append(i_ang.Index())
             self._pair_invdist_list[target_idx].append(
-            np.float32(1. / dist))
+                np.float32(1. / dist))
             
         return None
             
@@ -223,7 +223,7 @@ class RawPairFinder(object):
                     if (self._stomp_map.FindRegion(pix) ==
                         self._region_ids[target_idx]):
                         self._store_target_random_pixel(
-                            target_idx, target_obj, sub_pix,
+                            target_idx, target_obj, pix,
                             random_tree)
             
         return None
