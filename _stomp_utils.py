@@ -2,7 +2,6 @@
 ###     Move all of the stomp reliant functions to this core file.
 
 import _core_utils
-from astropy.cosmology import Planck13
 from astropy.io import fits
 import h5py
 import numpy as np

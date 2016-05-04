@@ -1,7 +1,7 @@
 ### TODO:
 ###     split core into two with one having the stomp calls and one not.
 
-from astropy.cosmology import Planck13
+from astropy.cosmology import WMAP5
 from astropy.io import fits
 import h5py
 import numpy as np
@@ -45,7 +45,7 @@ def _initialize_cosmology():
     
     """
     Initlized internal __core__ variables storing the trend of redshift vs
-    comoving distance. Default cosmology is from Planck13.
+    comoving distance. Default cosmology is from WMAP5.
     Args:
         None
     Returns:
@@ -55,7 +55,7 @@ def _initialize_cosmology():
     ### TODO:
     ###     Talk to someone about this. Are globals the best way to do this.
     redshift_array = np.linspace(0.0, 10.0, 1000)
-    comov_array = Planck13.comoving_distance(redshift_array)
+    comov_array = WMAP5.comoving_distance(redshift_array)
     global _comov_dist_to_redshift_spline
     _comov_dist_to_redshift_spline = iu_spline(comov_array, redshift_array)
     global _initilized_cosmology
@@ -66,7 +66,7 @@ def redshift(comov_dist):
     
     """
     Spline wrapper for converting a comoving line of sight distance into a
-    redshift assuming the Planck13 cosmology.
+    redshift assuming the WMAP5 cosmology.
     Args:
         comov_dist: float or float array cosmoving distance in Mpc
     Returns:
