@@ -61,7 +61,8 @@ def parse_input_pdf_args():
                         '    linear: linear binning in redshift'
                         '    adapt: chose bins so that each has equal number '
                         'tarets.'
-                        '    comoving: linear binning in comoving distance')
+                        '    comoving: linear binning in comoving distance'
+                        '    logspace: linear binning in ln(1 + z)')
     parser.add_argument('--use_inverse_weighting', action = 'store_true',
                         help = 'Use the inverse distance weighted columns from '
                         'the pair file instead of just a straight sum of '

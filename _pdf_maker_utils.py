@@ -48,6 +48,27 @@ def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
                                      useable_z_array.shape[0] / (1.0 * n_bins),
                                      dtype = np.int_)]
     
+def _create_logspace_redshift_bin_edges(z_min, z_max, n_bins):
+    
+    """
+    Simple utility for computing redshift bins that are equally spaced in
+    comoving, line of sight distance. This creates bins that have a smoother
+    bias versus redshift.
+    args:
+        z_min: float, minimum redshift to bin from
+        z_max: float, maximum redshift to bin to
+        n_bins: int, number of bins
+    returns:
+        numpy.array of type float and shape (n_bins,) containing the lower bin
+        edges. The n_bin + 1 edge is equal to z_max.
+    """
+    
+    log_min = np.log(1 + z_min)
+    log_max = np.log(1 + z_max)
+    return (np.exp(np.arange(log_min, log_max,
+                             (log_max - log_min) / (1. * n_bins))) -
+            1.0)
+    
 def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     
     """

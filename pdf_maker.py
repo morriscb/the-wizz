@@ -49,7 +49,11 @@ if __name__ == "__main__":
     ### adaptive and has the same draw backs as adaptive is that the bias could
     ### be changing oddly from bin to bin. It is recommended that the user try
     ### adaptive and comoving spaced bins for the best results. Comoving returns
-    ### bins that are of equal comoving distance from the line of sight.
+    ### bins that are of equal comoving distance from the line of sight. We also
+    ### provide binning in equal ln(1 + z). This is for people who want a
+    ### comoving like binning but without the dependece on cosmology. It also
+    ### has the convienent property of giving errors that can be more easlily
+    ### compared the usual simga/(1 + z) error.
     print("Creating bins...")
     if args.z_binning_type == 'linear':
         z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
@@ -60,6 +64,9 @@ if __name__ == "__main__":
             pdf_maker.target_redshift_array)
     elif args.z_binning_type == 'comoving':
         z_bin_edge_array = _pdf_maker_utils._create_comoving_redshift_bin_edges(
+            args.z_min, args.z_max, args.z_n_bins)
+    elif args.z_binning_type == 'logspace':
+        z_bin_edge_array = _pdf_maker_utils._create_logspace_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     else:
         print("Requested binning name invalid. Valid types are:")
