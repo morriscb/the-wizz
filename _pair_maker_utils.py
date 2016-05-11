@@ -67,7 +67,7 @@ class RawPairFinder(object):
         sample.  
         """ 
         self._n_random_per_target = np.zeros_like(self._target_ids,
-                                                 dtype = np.uint32)
+                                                  dtype = np.uint32)
         self._n_random_invdist_per_target = np.zeros_like(self._target_ids,
                                                           dtype = np.float32)
         
@@ -255,11 +255,6 @@ class RawPairFinder(object):
     
     def write_to_hdf5(self, hdf5_file, scale_name):
         
-        ### TODO:
-        ###     Write more descriptive information about columns and settings
-        ###     used in the run. Possibly write out all of the current arguments
-        ###     in the Argparser object into the data file.
-        
         """
         Method to write the raw pairs to an HDF5 file. These "pair files" are
         the heart of The-wiZZ and allow for quick computation and recomputation
@@ -303,11 +298,11 @@ class RawPairFinder(object):
                 compression = 'lzf')
             
             tmp_target_grp.attrs.create('redshift',
-                                      target.Redshift())
+                                        target.Redshift())
             tmp_target_grp.attrs.create('unmasked_frac',
-                                      self._unmasked_array[target_idx])
+                                        self._unmasked_array[target_idx])
             tmp_target_grp.attrs.create('bin_resolution',
-                                      self._bin_resolution[target_idx])
+                                        self._bin_resolution[target_idx])
             tmp_target_grp.attrs.create('area', self._area_array[target_idx])
             tmp_target_grp.attrs.create('region', self._region_ids[target_idx])
             try:
@@ -324,34 +319,52 @@ class RawPairFinder(object):
 
 class TargetPairFinder(RawPairFinder):
     
+    """
+    Derived class for calculating and storing the over-density of the target 
+    objects around themselves. It handles both the real data and random
+    samples in slightly different pair loops since we don't need to store
+    indices for random samples.
+    """
     
     def _reset_array_data(self):
         """
         Utility function that creates/resets the interal data storage of the 
-        class for the unknown sample.
+        class for the target sample.
         """
         
-        self._area_array = np.empty(self._target_vect.size(),
+        self._area_array = np.zeros(self._target_vect.size(),
                                     dtype = np.float32)
-        self._unmasked_array = np.empty(self._target_vect.size(),
+        self._unmasked_array = np.zeros(self._target_vect.size(),
                                         dtype = np.float32)
-        self._bin_resolution = np.empty(self._target_vect.size(),
+        self._bin_resolution = np.zeros(self._target_vect.size(),
                                         dtype = np.uint32)
+        self._redshift_array = np.empty(self._target_vect.size(),
+                                        dtype = np.float32)
         
-        self._pair_array = np.empty(self._target_vect.size(),
+        self._pair_array = np.zeros(self._target_vect.size(),
                                     dtype = np.float32)
+        
+        return None
+    
+    def _reset_random_data(self):
+        """
+        Utility function that creates/resets the interal data storage of the 
+        class for the random sample following the geometry of the unknown
+        sample.  
+        """ 
+        self._n_random_per_target = np.zeros_like(self._target_ids,
+                                                  dtype = np.uint32)
         
         return None
     
     def find_pairs(self, max_scale):
         """
-        Main functionality of the RawPairFinder class. Given the input data,
-        we find all the close pairs between the target, known redshift objects
-        and the unknown redshift oobjects. Stores the raw pair indices and also
-        the inverse distance weight.
+        Main functionality of the TargetPairFinder class. Given the input data,
+        we compute the number of target objects within a fixed angular scale
+        around themselves (aka an auto-correlation).
+        
         Args:
-            min_scale: float value of the minimum scale to run the pair finder.
-                Units are physical kpc
+
             max_scale: float value of the maximum scale to run the pair finder.
                 Units are physical kpc
         Returns:
@@ -368,6 +381,95 @@ class TargetPairFinder(RawPairFinder):
         
         for target_idx, target_obj in enumerate(self._target_vect):
             
+            self._region_ids[target_idx] = self._stomp_map.FindRegion(
+                target_obj)
+            radial_bin.SetRedshift(target_obj.Redshift())
+            max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
+                                                     max_scale / 1000.0)
+            radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
+                                           target_obj.Lambda() + max_ang)
+            
+            self._redshift_array[target_idx] = target_obj.Redshift()
+            target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
+            target_dist = stomp.Cosmology_ComovingDistance(
+                target_obj.Redshift())
+            
+            covering_pix_vect = stomp.PixelVector()
+            target_pix.WithinRadius(max_ang, covering_pix_vect)
+            
+            self._bin_resolution[target_idx] = radial_bin.Resolution()
+            
+            for pix in covering_pix_vect:
+                
+                if pix.Resolution() < self._stomp_map.RegionResolution():
+                    pix_vect = stomp.PixelVector()
+                    pix.SubPix(self._stomp_map.RegionResolution(),
+                               pix_vect)
+                    for sub_pix in pix_vect:
+                        if (self._stomp_map.FindRegion(sub_pix) ==
+                            self._region_ids[target_idx]):
+                            self._store_target_unknown_pixel(
+                                target_idx, target_obj, target_dist,
+                                max_dist_sq, sub_pix)
+                else:
+                    if (self._stomp_map.FindRegion(pix) ==
+                        self._region_ids[target_idx]):
+                        self._store_target_unknown_pixel(
+                            target_idx, target_obj, target_dist,
+                            max_dist_sq, pix)
+            
+        return None
+    
+    def _store_target_unknown_pixel(self, target_idx, target_obj, target_dist,
+                                    max_dist_sq, pix):
+        """
+        Internal class function for finding the number of unknown objects and
+        their ids in a single stomp pixel.
+        Args:
+            target_idx: int array index of the target object
+            target_obj: stomp.CosmoCoordinate object containing the spatial and
+                redshift information of the considered target object.
+            pix: stomp.Pixel object to compute the number of randoms in.
+        Returns:
+            None
+        """
+        
+        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+        
+        if tmp_unmasked <= 0.0:
+            return None
+        
+        self._unmasked_array[target_idx] += tmp_unmasked
+        self._area_array[target_idx] += (tmp_unmasked *
+                                         pix.Area(pix.Resolution()))
+        proj_dist_sq = target_obj.ProjectedRadius(pix.Ang()) ** 2
+                
+        tmp_cos_ang_vect = stomp.CosmoVector()
+        self._unknown_itree.Points(tmp_cos_ang_vect, pix)
+        for cos_ang in tmp_cos_ang_vect:
+            dist_sq = (
+                (target_dist -
+                 stomp.Cosmology_ComovingDistance(cos_ang.Redshift())) ** 2 +
+                proj_dist_sq)
+            if dist_sq > max_dist_sq or dist_sq < 1e-16:
+                return None
+            self._pair_array[target_idx] += 1.0
+            
+        return None
+    
+    def random_loop(self, max_scale, random_tree):
+        
+        self._reset_random_data()
+        
+        self._n_random_points = random_tree.NPoints()
+        
+        radial_bin = stomp.RadialBin(1e-8, max_scale/1000.0, 0.01)
+        
+        max_dist_sq = (max_scale / 1000.0) ** 2
+        
+        print("Finding random pairs...")
+        
+        for target_idx, target_obj in enumerate(self._target_vect):
             
             self._region_ids[target_idx] = self._stomp_map.FindRegion(
                 target_obj)
@@ -384,81 +486,116 @@ class TargetPairFinder(RawPairFinder):
             covering_pix_vect = stomp.PixelVector()
             target_pix.WithinRadius(max_ang, covering_pix_vect)
             
-            self._bin_resolution[target_idx] = radial_bin.Resolution()
-            
-            unmasked_frac = 0
-            area = 0
-            
             for pix in covering_pix_vect:
                 
-                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-                if tmp_unmasked <= 0.0:
-                    continue
-                
-                unmasked_frac += tmp_unmasked
-                area += tmp_unmasked * pix.Area(radial_bin.Resolution())
-                
-                tmp_cos_ang_vect = stomp.CosmoVector()
-                self._unknown_itree.Points(tmp_cos_ang_vect, pix)
-                for cos_ang in tmp_cos_ang_vect:
-                    dist_sq = (
-                        (target_dist -
-                         stomp.Cosmology_ComovingDistance(
-                             cos_ang.Redshift())) ** 2 +
-                        target_obj.ProjectedRadius(cos_ang) ** 2)
-                    if dist_sq > max_dist_sq or dist_sq < 1e-8:
-                        continue
-                    self._pair_array[target_idx] += 1/np.sqrt(dist_sq)
-                    
-            self._area_array[target_idx] = area
-            self._unmasked_array[target_idx] = unmasked_frac
+                if pix.Resolution() < self._stomp_map.RegionResolution():
+                    pix_vect = stomp.PixelVector()
+                    pix.SubPix(self._stomp_map.RegionResolution(),
+                               pix_vect)
+                    for sub_pix in pix_vect:
+                        if (self._stomp_map.FindRegion(sub_pix) ==
+                            self._region_ids[target_idx]):
+                            self._store_target_random_pixel(
+                                target_idx, target_obj, target_dist,
+                                max_dist_sq, sub_pix, random_tree)
+                else:
+                    if (self._stomp_map.FindRegion(pix) ==
+                        self._region_ids[target_idx]):
+                        self._store_target_random_pixel(
+                            target_idx, target_obj, target_dist, max_dist_sq,
+                            pix,random_tree)
             
         return None
     
-    def random_loop(self, min_scale, max_scale, random_tree):
-        self._reset_random_data()
+    def _store_target_random_pixel(self, target_idx, target_obj, target_dist,
+                                   max_dist_sq, pix, random_tree):
+        """
+        Internal class function for finding the number of randoms in a single
+        stomp pixel.
+        Args:
+            target_idx: int array index of the target object
+            target_obj: stomp.CosmoCoordinate object containing the spatial and
+                redshift information of the considered target object.
+            pix: stomp.Pixel object to compute the number of randoms in.
+        Returns: 
+            None
+        """
         
-        self._n_random_points = random_tree.NPoints()
+        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+        if tmp_unmasked <= 0.0:
+            return None
         
-        radial_bin = stomp.RadialBin(1e-8, max_scale/1000.0, 0.01)
+        proj_dist_sq = target_obj.ProjectedRadius(pix.Ang()) ** 2
         
-        print("Finding random pairs...")
+        tmp_cos_ang_vect = stomp.CosmoVector()
+        random_tree.Points(tmp_cos_ang_vect, pix)
+        for cos_ang in tmp_cos_ang_vect:
+            dist_sq = (
+                (target_dist -
+                 stomp.Cosmology_ComovingDistance(cos_ang.Redshift())) ** 2 +
+                proj_dist_sq)
+            if dist_sq > max_dist_sq or dist_sq < 1e-16:
+                return None
+            self._n_random_per_target[target_idx] += 1.0
         
-        for target_idx, target_obj in enumerate(self._target_vect):
-            
-            
-            self._region_ids[target_idx] = self._stomp_map.FindRegion(
-                target_obj)
-            radial_bin.SetRedshift(target_obj.Redshift())
-            max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
-                                                     max_scale / 1000.0)
-            radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
-                                                 target_obj.Lambda() + max_ang)
-            
-            target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
-            
-            covering_pix_vect = stomp.PixelVector()
-            target_pix.WithinRadius(max_ang, covering_pix_vect)
-            
-            n_points = 0
-            inv_dist = 0.0
-            
-            for pix in covering_pix_vect:
-                
-                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-                if tmp_unmasked <= 0.0:
-                    continue
-                
-                dist = target_obj.ProjectedRadius(pix.Ang())
-                tmp_n_points = random_tree.NPoints(pix)
-                n_points += tmp_n_points
-                inv_dist += tmp_n_points / dist
-            
-            self._n_random_per_target[target_idx] = n_points
-            self._n_random_invdist_per_target[target_idx] = np.float32(inv_dist)
-            
         return None
     
-    def write_to_hdf5(self, hdf5_file, scale_name):
-        pass
+    def compute_target_overdensity(self):
+        
+        self._target_overdensity = np.where(
+            self._n_random_per_target > 0,
+            self._pair_array / self._n_random_per_target - 1.0,
+            0.0)
+        
+        return None
+    
+    def write_to_hdf5(self, hdf5_file, group_name):
+        
+        """
+        Method to write the over-density and raw number counts. These "pair files" are
+        the heart of The-wiZZ and allow for quick computation and recomputation
+        of clustering redshift recovery PDFs.
+        Args:
+            hdf5_file: Open HDF5 file object from h5py
+            scale_name: Name of the specific scale that was run. This will end
+                up being the name of the HDF5 group for the stored data.
+        Returns:
+            None
+        """
+        
+        tmp_grp = hdf5_file.create_group('%s' % (group_name))
+        
+        tmp_grp.attrs.create('area', self._stomp_map.Area())
+        tmp_grp.attrs.create('n_region', self._stomp_map.NRegion())
+        tmp_grp.attrs.create('region_area',
+                             self._region_area)
+        
+        try:
+            tmp_grp.attrs.create(
+               'n_random_points', self._n_random_points)
+        except AttributeError:
+            pass
+        
+        tmp_grp.create_dataset('n_target', data = self._pair_array,
+                               compression = 'lzf')
+        tmp_grp.create_dataset('redshift', data = self._redshift_array,
+                               compression = 'lzf')
+        tmp_grp.create_dataset('unmasked_frac', data = self._unmasked_array,
+                               compression = 'lzf')
+        tmp_grp.create_dataset('bin_resolution', self._bin_resolution,
+                               compression = 'lzf')
+        tmp_grp.create_dataset('area', self._bin_resolution,
+                               compression = 'lzf')
+        tmp_grp.create_dataset('region', self._bin_resolution,
+                               compression = 'lzf')
+        
+        try:
+            tmp_grp.create_dataset('n_random', data = self._n_random_per_target,
+                                   compression = 'lzf')
+            tmp_grp.create_dataset('ovrden', data = self._target_overdensity,
+                                   compression = 'lzf')
+        except AttributeError:
+            pass
+            
+        return None
             
