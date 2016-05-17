@@ -144,10 +144,8 @@ if __name__ == "__main__":
                np.array([redshift_array, density_array,
                          density_err_array]).transpose())
     
-        
-        
-        
-        
+    if args.output_bootstraps_file is not None:
+        np.savetxt(args.output_bootstraps_file, bootstrap_samples)
         
         
         
