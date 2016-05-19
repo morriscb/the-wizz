@@ -98,55 +98,95 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    ### Load the input pickles.
     file_name_list = args.input_region_pickle_files.split(',')
     region_dict = load_from_pickle(file_name_list)
+    ### If we want a treat a set of data specially in the bootstrapping process
+    ### we load it here.
     if args.input_special_region_pickle_files is not None:
         file_name_list = args.input_special_region_pickle_files.split(',')
         region_special_dict = load_from_pickle(file_name_list)
-        
+    
+    ### Create the array of indices for the regions we will bootstrap over.
     if args.bootstrap_samples is None:
-        bootstrap_samples = np.empty((region_dict['redshift'].shape[0],
-                                      args.n_bootstrap))
+        bootstrap_samples = np.random.randint(region_dict['n_regions'],
+                                              size = (args.n_bootstrap,
+                                                      region_dict['n_regions']))
+        ### Create the bootstraps for the "special" sample and concatenate them
+        ### to the end of the bootstrap samples.
+        if args.input_special_region_pickle_files is not None:
+            bootstrap_samples = np.concatenate(
+                (bootstrap_samples,
+                 np.random.randint(
+                     region_special_dict['n_regions'],
+                     size = (args.n_bootstrap,
+                             region_special_dict['n_regions']))),
+                axis = 1)
+    ### If requested, the code can load a set of fixed bootstraps from disc.
+    ### If using a "special" sample make sure the bootstraps are formated as
+    ### above with the region ids appended to the end of the "normal" regions.
     else:
-        bootstrap_samples = np.loadtxt(args.bootstrap_samples)
+        bootstrap_samples = np.loadtxt(args.bootstrap_samples,
+                                       dtype = np.int_)
         args.n_bootstrap = bootstrap_samples.shape[0]
-        
+    ### Create empty array for storage of the bootstraps.
+    density_bootstrap_array = np.empty((region_dict['redshift'].shape[0],
+                                        args.n_bootstrap))
+    
+    ### Computing mean redshift per bin.
     redshift_array = np.sum(region_dict['redshift'], axis = 1)
     n_target_array = np.sum(region_dict['n_target'], axis = 1)
     if args.input_special_region_pickle_files is not None:
         redshift_array += np.sum(region_special_dict['redshift'], axis = 1)
         n_target_array += np.sum(region_special_dict['n_target'], axis = 1)
     redshift_array /= n_target_array
+    
+    ### Start the actual bootstrap process.
+    for boot_idx, boot_reg_ids in enumerate(bootstrap_samples):
         
-    for boot_idx in xrange(args.n_bootstrap):
-        
-        boot_reg_ids = np.random.randint(region_dict['n_regions'],
-                                         size = region_dict['n_regions'])
-        boot_unknown_array = np.sum(region_dict['unknown'][:,boot_reg_ids],
+        tmp_boot_reg_ids = boot_reg_ids[:region_dict['n_regions']]
+        boot_unknown_array = np.sum(region_dict['unknown'][:,tmp_boot_reg_ids],
                                     axis = 1)
-        boot_rand_array = np.sum(region_dict['rand'][:,boot_reg_ids],
+        boot_rand_array = np.sum(region_dict['rand'][:,tmp_boot_reg_ids],
                                  axis = 1)
+        ### Compute the bootstrap average for the "special" samples.
         if args.input_special_region_pickle_files is not None:
-            boot_reg_ids = np.random.randint(
-                region_special_dict['n_regions'],
-                size = region_special_dict['n_regions'])
+            tmp_boot_reg_ids = boot_reg_ids[region_dict['n_regions']:]
             boot_unknown_array += np.sum(
-                region_special_dict['unknown'][:,boot_reg_ids], axis = 1)
+                region_special_dict['unknown'][:,tmp_boot_reg_ids], axis = 1)
             boot_rand_array += np.sum(
-                region_special_dict['rand'][:,boot_reg_ids], axis = 1)
-        bootstrap_samples[:, boot_idx] = (boot_unknown_array / boot_rand_array -
-                                          1.0)
+                region_special_dict['rand'][:,tmp_boot_reg_ids], axis = 1)
+        ### Compute the over density for the current bootstrap.
+        density_bootstrap_array[:, boot_idx] = (boot_unknown_array /
+                                                boot_rand_array - 1.0)
     
-    density_array = np.nanmean(bootstrap_samples, axis = 1)
-    density_err_array = np.nanstd(bootstrap_samples, axis = 1)
+    ### Compute the mean and standard deviation using nan safe means and
+    ### variances.
+    density_array = np.nanmean(density_bootstrap_array, axis = 1)
+    density_err_array = np.nanstd(density_bootstrap_array, axis = 1)
     
+    ### Create the output ascii header we will use to store the information on
+    ### this run.
+    output_header = 'input_flags:\n'
+    for arg in vars(args):
+        output_header += '\t%s : %s\n' % (arg, getattr(args, arg))
+    
+    ### If requested output the individual bootstraps to a file.
+    if args.output_bootstraps_file is not None:
+        np.savetxt(args.output_bootstraps_file, bootstrap_samples,
+                   header = output_header)
+        
+    ### Add the column names to the header.
+    output_header += ("type1 = z_mean\n"
+                      "type2 = phi(z)\n"
+                      "type3 = phi_err(z)\n")
+    
+    ### Write the output.
     np.savetxt(args.output_pdf_file,
                np.array([redshift_array, density_array,
-                         density_err_array]).transpose())
+                         density_err_array]).transpose(),
+               header = output_header)
     
-    if args.output_bootstraps_file is not None:
-        np.savetxt(args.output_bootstraps_file, bootstrap_samples)
-        
         
         
         

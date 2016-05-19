@@ -67,9 +67,14 @@ if __name__ == "__main__":
             region_array[idx] = stomp_map.FindRegion(tmp_ang)
     
     ### Write file to disk and close the currently open fits file.
-    col_list = [fits.Column(name = data.names[idx], format = data.formats[idx],
-                            array = data[data.names[idx]][mask])
-                for idx in xrange(len(data.names))]
+    col_list = []
+    for idx in xrange(len(data.names)):
+        if (args.n_regions is not None and
+            data.names[idx] == args.region_column_name):
+            continue
+        col_list.append(fits.Column(name = data.names[idx],
+                                    format = data.formats[idx],
+                                    array = data[data.names[idx]][mask]))
     if args.n_regions is not None:
         col_list.append(fits.Column(name = args.region_column_name,
                                     format = 'I',
