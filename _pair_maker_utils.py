@@ -288,14 +288,15 @@ class RawPairFinder(object):
                 '%i' % self._target_ids[target_idx])
             
             sort_args = np.argsort(self._pair_list[target_idx])
+            
             tmp_target_grp.create_dataset(
                 'ids', data = np.array(self._pair_list[target_idx],
                                        dtype = np.uint32)[sort_args],
-                compression = 'lzf')
+                compression = 'lzf', maxshape = (None,))
             tmp_target_grp.create_dataset(
                 'inv_dist', data = np.array(self._pair_invdist_list[target_idx],
                                             dtype = np.float32)[sort_args],
-                compression = 'lzf')
+                compression = 'lzf', maxshape = (None,))
             
             tmp_target_grp.attrs.create('redshift',
                                         target.Redshift())
