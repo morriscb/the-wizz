@@ -12,6 +12,8 @@ import sys
 """
 This is the main program for running the pair finder and creating the data file
 that contains the raw pair information between the target and unknown sample.
+It should be run with the complete photometric, unknown catalog of interest to
+allow users to later subselect samples from this catalog.
 """
 
 
