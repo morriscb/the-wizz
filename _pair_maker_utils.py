@@ -72,6 +72,19 @@ class RawPairFinder(object):
                                                           dtype = np.float32)
         
         return None
+    
+    def _compute_unknown_weight(self, dist):
+        """
+        Convienence function for computing the weighting of an unknown object
+        as a function of projected physical Mpc from the target object. This
+        function is declared here for easy modification by intersted users.
+        The normal behavior is inverse distance.
+        Args:
+            dist: float array of distances in projected physical Mpc
+        Rreturns:
+            float array of weights
+        """
+        return np.where(dist > 1e-8, 1. / dist, 1e8)
             
     def find_pairs(self, min_scale, max_scale):
         """
@@ -154,14 +167,15 @@ class RawPairFinder(object):
         self._unmasked_array[target_idx] += tmp_unmasked
         self._area_array[target_idx] += (tmp_unmasked *
                                          pix.Area(pix.Resolution()))
-        dist = target_obj.ProjectedRadius(pix.Ang())
+        weight = self._compute_unknown_weight(
+            target_obj.ProjectedRadius(pix.Ang()))
                 
         tmp_i_ang_vect = stomp.IAngularVector()
         self._unknown_itree.Points(tmp_i_ang_vect, pix)
         for i_ang in tmp_i_ang_vect:
             self._pair_list[target_idx].append(i_ang.Index())
             self._pair_invdist_list[target_idx].append(
-                np.float32(1. / dist))
+                np.float32(weight))
             
         return None
             
@@ -245,11 +259,12 @@ class RawPairFinder(object):
         if tmp_unmasked <= 0.0:
             return None
         
-        dist = target_obj.ProjectedRadius(pix.Ang())
+        weight = self._compute_unknown_weight(
+            target_obj.ProjectedRadius(pix.Ang()))
         tmp_n_points = random_tree.NPoints(pix)
         self._n_random_per_target[target_idx] += tmp_n_points
         self._n_random_invdist_per_target[target_idx] += np.float32(
-            tmp_n_points / dist)
+            tmp_n_points * weight)
         
         return None
     
