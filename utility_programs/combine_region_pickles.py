@@ -89,12 +89,6 @@ if __name__ == "__main__":
                         'to run. These should row-wise specifications of '
                         'regions from the input pair hdf5 file. Overrides '
                         'the number set in n_bootstrap.')
-    parser.add_argument('--bootstrap_special_samples', default = None,
-                        type = str, help = 'This is an optional argument '
-                        'specifying an ascii file containing specified '
-                        'bootstrap samplings to run. These should row-wise '
-                        'specifications of regions from the input pair hdf5 '
-                        'file. Overrides the number set in n_bootstrap.')
     
     args = parser.parse_args()
     
@@ -173,7 +167,7 @@ if __name__ == "__main__":
     
     ### If requested output the individual bootstraps to a file.
     if args.output_bootstraps_file is not None:
-        np.savetxt(args.output_bootstraps_file, bootstrap_samples,
+        np.savetxt(args.output_bootstraps_file, density_bootstrap_array,
                    header = output_header)
         
     ### Add the column names to the header.
