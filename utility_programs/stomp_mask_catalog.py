@@ -57,6 +57,7 @@ if __name__ == "__main__":
     mask = np.zeros(data.shape[0], dtype = np.bool)
     if args.n_regions is not None:
         region_array = np.empty(data.shape[0], dtype = np.uint32)
+    print("Masking...")
     for idx, obj in enumerate(data):
         tmp_ang = stomp.AngularCoordinate(obj[args.ra_name], obj[args.dec_name],
                                           stomp.AngularCoordinate.Equatorial)
@@ -65,6 +66,7 @@ if __name__ == "__main__":
         mask[idx] = stomp_map.Contains(tmp_ang)
         if args.n_regions is not None and mask[idx]:
             region_array[idx] = stomp_map.FindRegion(tmp_ang)
+    print("\tkept %i / %i" % (data[mask].shape[0], data.shape[0]))
     
     ### Write file to disk and close the currently open fits file.
     col_list = []

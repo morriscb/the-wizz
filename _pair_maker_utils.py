@@ -128,6 +128,9 @@ class RawPairFinder(object):
             
             for pix in covering_pix_vect:
                 
+                target_weight = self._compute_unknown_weight(
+                    target_obj.ProjectedRadius(pix.Ang()))
+                
                 if pix.Resolution() < self._stomp_map.RegionResolution():
                     
                     pix_vect = stomp.PixelVector()
@@ -137,16 +140,17 @@ class RawPairFinder(object):
                         if (self._stomp_map.FindRegion(sub_pix) ==
                             self._region_ids[target_idx]):
                             self._store_target_unknown_pixel(
-                                target_idx, target_obj, sub_pix)
+                                target_idx, target_obj, target_weight, sub_pix)
                 else:
                     if (self._stomp_map.FindRegion(pix) ==
                         self._region_ids[target_idx]):
                         self._store_target_unknown_pixel(
-                            target_idx, target_obj, pix)
+                            target_idx, target_obj, target_weight, pix)
             
         return None
     
-    def _store_target_unknown_pixel(self, target_idx, target_obj, pix):
+    def _store_target_unknown_pixel(self, target_idx, target_obj, target_weight,
+                                    pix):
         """
         Internal class function for finding the number of unknown objects and
         their ids in a single stomp pixel.
@@ -167,15 +171,13 @@ class RawPairFinder(object):
         self._unmasked_array[target_idx] += tmp_unmasked
         self._area_array[target_idx] += (tmp_unmasked *
                                          pix.Area(pix.Resolution()))
-        weight = self._compute_unknown_weight(
-            target_obj.ProjectedRadius(pix.Ang()))
                 
         tmp_i_ang_vect = stomp.IAngularVector()
         self._unknown_itree.Points(tmp_i_ang_vect, pix)
         for i_ang in tmp_i_ang_vect:
             self._pair_list[target_idx].append(i_ang.Index())
             self._pair_invdist_list[target_idx].append(
-                np.float32(weight))
+                np.float32(target_weight))
             
         return None
             
@@ -223,6 +225,13 @@ class RawPairFinder(object):
             
             for pix in covering_pix_vect:
                 
+                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+                if tmp_unmasked <= 0.0:
+                    continue
+                
+                target_weight = self._compute_unknown_weight(
+                    target_obj.ProjectedRadius(pix.Ang()))
+                
                 if pix.Resolution() < self._stomp_map.RegionResolution():
                     pix_vect = stomp.PixelVector()
                     pix.SubPix(self._stomp_map.RegionResolution(),
@@ -231,19 +240,19 @@ class RawPairFinder(object):
                         if (self._stomp_map.FindRegion(sub_pix) ==
                             self._region_ids[target_idx]):
                             self._store_target_random_pixel(
-                                target_idx, target_obj, sub_pix,
+                                target_idx, target_obj, target_weight, sub_pix,
                                 random_tree)
                 else:
                     if (self._stomp_map.FindRegion(pix) ==
                         self._region_ids[target_idx]):
                         self._store_target_random_pixel(
-                            target_idx, target_obj, pix,
+                            target_idx, target_obj, target_weight, pix,
                             random_tree)
             
         return None
     
-    def _store_target_random_pixel(self, target_idx, target_obj, pix,
-                                   random_tree):
+    def _store_target_random_pixel(self, target_idx, target_obj, target_weight,
+                                   pix, random_tree):
         """
         Internal class function for finding the number of randoms in a single
         stomp pixel.
@@ -259,12 +268,10 @@ class RawPairFinder(object):
         if tmp_unmasked <= 0.0:
             return None
         
-        weight = self._compute_unknown_weight(
-            target_obj.ProjectedRadius(pix.Ang()))
         tmp_n_points = random_tree.NPoints(pix)
         self._n_random_per_target[target_idx] += tmp_n_points
         self._n_random_invdist_per_target[target_idx] += np.float32(
-            tmp_n_points * weight)
+            tmp_n_points * target_weight)
         
         return None
     
