@@ -129,7 +129,10 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
     if args.unknown_stomp_region_name is not None:
-        region_array = region_array[id_args_array]
+        id_array = np.array(
+            [id_array[unknown_data[args.unknown_stomp_region_name == reg_idx]]
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+            dtype = np.int_)
     
     ave_weight = 1.0
     weight_array = np.ones(unknown_data.shape[0], dtype = np.float32)
@@ -137,12 +140,16 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
         ave_weight = np.mean(weight_array)
         if args.unknown_stomp_region_name is not None:
-            ave_weight = np.array(
-                [unknown_data[args.unknown_weight_name][
-                     unknown_data[args.unknown_stomp_region_name] ==
-                     reg_idx].mean()
+            weight_array = np.array(
+                [weight_array[unknown_data[args.unknown_stomp_region_name ==
+                                           reg_idx]]
                  for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-                                       dtype = np.float_)
+                dtype = np.float_)
+            ave_weight = np.array(
+                [weight_array[reg_idx].mean()
+                 for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+                dtype = np.float_)
+            
     
     n_target = len(hdf5_pairs_group)
     target_unknown_array = np.empty(n_target, dtype = np.float32)
@@ -165,10 +172,8 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                 pool_iter = pool.imap(
                     _collapse_multiplex,
                     [(data_set,
-                      id_array[region_array ==
-                               pdf_maker_obj.target_region_array[pair_idx]],
-                      weight_array[region_array ==
-                                   pdf_maker_obj.target_region_array[pair_idx]],
+                      id_array[pdf_maker_obj.target_region_array[pair_idx]],
+                      weight_array[pdf_maker_obj.target_region_array[pair_idx]],
                       args.use_inverse_weighting)
                      for pair_idx, data_set in enumerate(pair_data)],
                     chunksize = np.int(np.where(
