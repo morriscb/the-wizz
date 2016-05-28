@@ -106,7 +106,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         args: ArgumentParser.parse_args object returned from
             input_flags.parse_input_pdf_args
     Returns:
-        PDFMaker class object containing the resultant over densities.
+        None
     """
     
     print("\tpre-loading unknown data...")
@@ -124,7 +124,6 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
             (tmp_n_region / (1. * hdf5_pairs_group.attrs['n_random_points'])) *
             (hdf5_pairs_group.attrs['area'] /
              hdf5_pairs_group.attrs['region_area']))
-        region_array = unknown_data[args.unknown_stomp_region_name]
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
@@ -213,6 +212,16 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     return None
 
 def _collapse_multiplex(input_tuple):
+    """
+    Function for matching indices and calculating the over densities of a 
+    specific set of unknown objects around the target object. This specific
+    function is ment to be used within the context of python multiprocessing.
+    Args:
+        input_tuple: tuple of arrays and values specifying the current data to 
+            consider for the target object.
+    Returns:
+        float n_points
+    """
 
     (data_set, id_array, weight_array,
      use_inverse_weighting) = input_tuple
@@ -248,6 +257,15 @@ def _collapse_multiplex(input_tuple):
     return tmp_n_points
 
 def _load_pair_data(hdf5_group, key_start, n_load):
+    """
+    Functions for loading individual target objects from the HDF5 file.
+    Args:
+        hdf5_group: an h5py group object
+        key_start: int index of starting object to load
+        n_load: int number of objects to load
+    Returns:
+        list of numpy arrays
+    """
 
     output_list = []
     key_list = hdf5_group.keys()
@@ -258,6 +276,61 @@ def _load_pair_data(hdf5_group, key_start, n_load):
         output_list.append([hdf5_group[key_list[key_idx]]['ids'][...],
                             hdf5_group[key_list[key_idx]]['inv_dist'][...]])
     return output_list
+
+def collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
+    """
+    Convience function for collapsing the full sample of ids into a single
+    estimate.
+    Args:
+        hdf5_pairs_group: hdf5 group object containing the pair ids for a fixed
+            annulus.
+        unknown_data: open fits data containing object ids and relivent weights
+        args: ArgumentParser.parse_args object returned from
+            input_flags.parse_input_pdf_args
+    Returns:
+        None
+    """
+    
+    print("\tpre-loading unknown data...")
+    if args.unknown_weight_name is not None:
+        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+    rand_ratio = (unknown_data.shape[0] /
+                  (1. * hdf5_pairs_group.attrs['n_random_points']))
+    if args.unknown_stomp_region_name is not None:
+        tmp_n_region = np.array(
+            [unknown_data[unknown_data[args.unknown_stomp_region_name] ==
+                          reg_idx].shape[0]
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+                                   dtype = np.int_)
+        rand_ratio = (
+            (tmp_n_region / (1. * hdf5_pairs_group.attrs['n_random_points'])) *
+            (hdf5_pairs_group.attrs['area'] /
+             hdf5_pairs_group.attrs['region_area']))
+    id_array = unknown_data[args.unknown_index_name]
+    id_args_array = id_array.argsort()
+    id_array = id_array[id_args_array]
+    if args.unknown_stomp_region_name is not None:
+        id_array = np.array(
+            [id_array[unknown_data[args.unknown_stomp_region_name == reg_idx]]
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+            dtype = np.int_)
+    
+    n_target = len(hdf5_pairs_group)
+    target_unknown_array = np.empty(n_target, dtype = np.float32)
+    for target_idx, key_name in enumerate(hdf5_pairs_group.keys()):
+        target_grp = hdf5_pairs_group[key_name]
+        if args.use_inverse_weighting:
+            target_unknown_array[target_idx] = np.sum(
+                target_grp['inv_dist'][...])
+        else:
+            target_unknown_array[target_idx] = (
+                1. * target_grp['ids'][...]).shape[0]
+    
+    pdf_maker_obj.set_target_unknown_array(target_unknown_array)
+    pdf_maker_obj.scale_random_points(rand_ratio, 1.0)
+    
+    return None
+
 
 class PDFMaker(object):
     
