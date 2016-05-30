@@ -112,26 +112,23 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     print("\tpre-loading unknown data...")
     if args.unknown_weight_name is not None:
         unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+    id_array = unknown_data[args.unknown_index_name]
+    id_args_array = id_array.argsort()
+    id_array = id_array[id_args_array]
     rand_ratio = (unknown_data.shape[0] /
                   (1. * hdf5_pairs_group.attrs['n_random_points']))
     if args.unknown_stomp_region_name is not None:
+        id_array = [id_array[unknown_data[args.unknown_stomp_region_name] ==
+                             reg_idx]
+                    for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
         tmp_n_region = np.array(
-            [unknown_data[unknown_data[args.unknown_stomp_region_name] ==
-                          reg_idx].shape[0]
+            [id_array[reg_idx].shape[0]
              for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-                                   dtype = np.int_)
+            dtype = np.int_)
         rand_ratio = (
             (tmp_n_region / (1. * hdf5_pairs_group.attrs['n_random_points'])) *
             (hdf5_pairs_group.attrs['area'] /
              hdf5_pairs_group.attrs['region_area']))
-    id_array = unknown_data[args.unknown_index_name]
-    id_args_array = id_array.argsort()
-    id_array = id_array[id_args_array]
-    if args.unknown_stomp_region_name is not None:
-        id_array = np.array(
-            [id_array[unknown_data[args.unknown_stomp_region_name == reg_idx]]
-             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-            dtype = np.int_)
     
     ave_weight = 1.0
     weight_array = np.ones(unknown_data.shape[0], dtype = np.float32)
@@ -139,11 +136,10 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
         ave_weight = np.mean(weight_array)
         if args.unknown_stomp_region_name is not None:
-            weight_array = np.array(
-                [weight_array[unknown_data[args.unknown_stomp_region_name ==
-                                           reg_idx]]
-                 for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-                dtype = np.float_)
+            weight_array = [
+                weight_array[unknown_data[args.unknown_stomp_region_name] ==
+                                          reg_idx]
+                for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
             ave_weight = np.array(
                 [weight_array[reg_idx].mean()
                  for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
@@ -171,8 +167,12 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                 pool_iter = pool.imap(
                     _collapse_multiplex,
                     [(data_set,
-                      id_array[pdf_maker_obj.target_region_array[pair_idx]],
-                      weight_array[pdf_maker_obj.target_region_array[pair_idx]],
+                      id_array[
+                          pdf_maker_obj.target_region_array[hold_pair_start +
+                                                            pair_idx]],
+                      weight_array[
+                          pdf_maker_obj.target_region_array[hold_pair_start +
+                                                            pair_idx]],
                       args.use_inverse_weighting)
                      for pair_idx, data_set in enumerate(pair_data)],
                     chunksize = np.int(np.where(
