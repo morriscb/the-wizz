@@ -34,7 +34,7 @@ if __name__ == "__main__":
               "mistake, ignore this message and continue, else kill this "
               "process and use pdf_maker.py instead." %
               args.unknown_weight_name)
-        print("Continuing...")
+        print("\tContinuing...")
     
     ### Load the file containing all matched pairs of spectroscopic and
     ### photometric objects.
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     ### line below turns the array of indices in the hdf5 pair file, into a
     ### single density estimate around the target object.
     print("Collapsing indices...")
-    _pdf_maker_utils.collapse_full_sample(
+    _pdf_maker_utils._collapse_full_sample(
         hdf5_pair_file[args.pair_scale_name], pdf_maker, unknown_data, args)
     
     ### Before we calculated the pdfs, we want to know what the over densities

@@ -135,15 +135,15 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     if args.unknown_weight_name is not None:
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
         ave_weight = np.mean(weight_array)
-        if args.unknown_stomp_region_name is not None:
-            weight_array = [
-                weight_array[unknown_data[args.unknown_stomp_region_name] ==
-                                          reg_idx]
-                for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
-            ave_weight = np.array(
-                [weight_array[reg_idx].mean()
-                 for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-                dtype = np.float_)
+    if args.unknown_stomp_region_name is not None:
+        weight_array = [
+            weight_array[unknown_data[args.unknown_stomp_region_name] ==
+                                      reg_idx]
+            for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
+        ave_weight = np.array(
+            [weight_array[reg_idx].mean()
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+            dtype = np.float_)
             
     
     n_target = len(hdf5_pairs_group)
@@ -277,7 +277,7 @@ def _load_pair_data(hdf5_group, key_start, n_load):
                             hdf5_group[key_list[key_idx]]['inv_dist'][...]])
     return output_list
 
-def collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
+def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
     """
     Convience function for collapsing the full sample of ids into a single
     estimate.
@@ -309,14 +309,10 @@ def collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
-    if args.unknown_stomp_region_name is not None:
-        id_array = np.array(
-            [id_array[unknown_data[args.unknown_stomp_region_name == reg_idx]]
-             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
-            dtype = np.int_)
     
     n_target = len(hdf5_pairs_group)
     target_unknown_array = np.empty(n_target, dtype = np.float32)
+    print("\t\tcomputing/storing pair count...")
     for target_idx, key_name in enumerate(hdf5_pairs_group.keys()):
         target_grp = hdf5_pairs_group[key_name]
         if args.use_inverse_weighting:
