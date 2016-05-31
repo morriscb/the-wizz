@@ -214,7 +214,7 @@ def _collapse_multiplex(input_tuple):
     """
     Function for matching indices and calculating the over densities of a 
     specific set of unknown objects around the target object. This specific
-    function is ment to be used within the context of python multiprocessing.
+    function is meant to be used within the context of python multiprocessing.
     Args:
         input_tuple: tuple of arrays and values specifying the current data to 
             consider for the target object.
@@ -226,10 +226,10 @@ def _collapse_multiplex(input_tuple):
      use_inverse_weighting) = input_tuple
 
     id_data_set, inv_data_set = data_set
-    if len(id_data_set) == 0:
+    if len(id_data_set) == 0 or len(id_array) == 0:
         return 0.0
-    ### Since the ids around the target are partially localized spatially we
-    ### will loop over the unknown ids and match them into the target ids.
+    ### Since the ids around the target are partially localized spatially a
+    ### cut in id is also a cut spatially. Here we take advantage of this.
     start_idx = np.searchsorted(id_array, id_data_set[0])
     end_idx = np.searchsorted(id_array, id_data_set[-1],
                               side = 'right')
