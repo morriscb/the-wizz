@@ -243,16 +243,28 @@ def _collapse_multiplex(input_tuple):
         end_idx = id_array.shape[0]
     
     tmp_n_points = 0.0
-    for obj_id, weight in zip(id_array[start_idx:end_idx],
-                              weight_array[start_idx:end_idx]):
-        sort_idx = np.searchsorted(id_data_set, obj_id)
-        if sort_idx >= len(id_data_set) or sort_idx < 0:
-            continue
-        if id_data_set[sort_idx] == obj_id:
-            if use_inverse_weighting:
-                tmp_n_points += inv_data_set[sort_idx] * weight
-            else:
-                tmp_n_points += 1.0 * weight
+    if id_array[start_idx:end_idx].shape[0] <= id_data_set.shape[0]:
+        for obj_id, weight in zip(id_array[start_idx:end_idx],
+                                  weight_array[start_idx:end_idx]):
+            sort_idx = np.searchsorted(id_data_set, obj_id)
+            if sort_idx >= len(id_data_set) or sort_idx < 0:
+                continue
+            if id_data_set[sort_idx] == obj_id:
+                if use_inverse_weighting:
+                    tmp_n_points += inv_data_set[sort_idx] * weight
+                else:
+                    tmp_n_points += 1.0 * weight
+    else:
+        for pair_id, inv_dist in zip(id_data_set, inv_data_set):
+            sort_idx = np.searchsorted(id_array[start_idx:end_idx], pair_id)
+            if sort_idx >= len(id_array[start_idx:end_idx]) or sort_idx < 0:
+                continue
+            if id_array[start_idx:end_idx][sort_idx] == pair_id:
+                weight = weight_array[start_idx:end_idx][sort_idx]
+                if use_inverse_weighting:
+                    tmp_n_points += inv_dist * weight
+                else:
+                    tmp_n_points += 1.0 * weight
     
     return tmp_n_points
 
