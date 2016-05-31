@@ -155,10 +155,9 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     pool = Pool(args.n_processes)
     while hold_pair_start < n_target:
    
-        ### TODO:
-        ###     Make the multiprocessing better. Currently the code copies over
-        ###     the full information of id_array and weight array to the child
-        ###     processes. This will be bad when these arrays become large.
+        ### This is where the heavy lifting of pair matching happens. There are
+        ### two options for if we use regions or not. If we use regions, the
+        ### code runs significantly quicker.
         if len(pair_data) > 0:
             print("\t\tmatching pairs: starting targets %i-%i..." %
                   (hold_pair_start, hold_pair_start + args.n_target_load_size))
@@ -243,6 +242,9 @@ def _collapse_multiplex(input_tuple):
         end_idx = id_array.shape[0]
     
     tmp_n_points = 0.0
+    ### We test to see which array is longer, the hdf5 id array or our
+    ### unknown array. We loop over the shorter of the two. This can yeild a 
+    ### significant speed boost for small scales. 
     if id_array[start_idx:end_idx].shape[0] <= id_data_set.shape[0]:
         for obj_id, weight in zip(id_array[start_idx:end_idx],
                                   weight_array[start_idx:end_idx]):
