@@ -133,7 +133,7 @@ if __name__ == "__main__":
         tmp_grp.create_dataset(
                 'bootstraps', data = np.array(pdf_maker.bootstrap_array,
                                               dtype = np.float32),
-                maxshape = (None,), compression = 'lzf', shuffle = True)
+                compression = 'lzf', shuffle = True)
         
         
     ### Now we close out the hdf5 file.

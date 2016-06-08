@@ -98,7 +98,8 @@ def file_checker_loader(input_file_name):
     
     data_type = input_file_name.split('.')[-1]
     
-    if data_type == 'fit' or data_type == 'fits' or data_type == 'cat':
+    if (data_type == 'fit' or data_type == 'fits' or data_type == 'gz' or
+        data_type == 'cat'):
         
         hdu_list = fits.open(input_file_name)
         data = hdu_list[1].data

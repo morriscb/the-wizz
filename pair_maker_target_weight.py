@@ -57,6 +57,7 @@ if __name__ == "__main__":
             target_obj.UnitSphereX(), target_obj.UnitSphereY(),
             target_obj.UnitSphereZ(), target_idx)
         unknown_itree.AddPoint(tmp_i_ang)
+    print("%i Galaxies in tree" % unknown_itree.NPoints())
     
     ### We also wish to subtract a random sample from density estimate. This
     ### function creates a set of uniform data points on the geometry of the
@@ -85,10 +86,12 @@ if __name__ == "__main__":
         
     over_density_list = []
     ### loop over the min/max scales requested.
-    output_file = _core_utils.create_ascii_file(args.output_hdf5_file, args)
+    output_file = _core_utils.create_ascii_file(args.output_pair_hdf5_file,
+                                                args)
+    output_file.writelines('#type0 = redshift\n')
     for scale_idx in xrange(len(min_scale_list)):
         output_file.writelines('#type%i = kpc%st%s\n' %
-                               (scale_idx,
+                               (scale_idx + 1,
                                 min_scale_list[scale_idx],
                                 max_scale_list[scale_idx]))
         print("Running scale: %s to %s" % (min_scale_list[scale_idx],
@@ -109,16 +112,17 @@ if __name__ == "__main__":
             
         over_density_array = np.empty(len(pair_finder._pair_list))
         for target_idx, target_id_list in enumerate(pair_finder._pair_list):
-            
             over_density_array[target_idx] = (
-                len(target_id_list) * args.n_randoms /
-                pair_finder._n_random_per_target[target_idx])
+                1. * len(target_id_list) * args.n_randoms /
+                (1. * pair_finder._n_random_per_target[target_idx]))
         over_density_list.append(over_density_array)
     
-    for target_idx in xrange(target_vector.size()):
-        line = ''
+    for target_idx, target_obj in enumerate(target_vector):
+        line = '%.8e ' % target_obj.Redshift()
         for scale_idx in xrange(len(over_density_list)):
-            line += '%.8e ' % over_density_list[scale_idx][target_idx]
+            line += '%.8e ' % np.where(
+                over_density_list[scale_idx][target_idx] > 0,
+                over_density_list[scale_idx][target_idx], 1.0)
         output_file.writelines(line + '\n')
     output_file.close()
     ### And that's it. We are done.
