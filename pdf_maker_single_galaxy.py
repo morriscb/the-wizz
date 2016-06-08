@@ -21,6 +21,10 @@ if __name__ == "__main__":
     
     input_flags.print_args(args)
     
+    ### Create the HDF5 file we will write out to store the PDFs.
+    output_pdf_hdf5_file = _core_utils.create_hdf5_file(
+        args.output_pdf_hdf5_file, args)
+    
     ### Load the file containing all matched pairs of spectroscopic and
     ### photometric objects.
     print("Loading files...")
@@ -73,6 +77,10 @@ if __name__ == "__main__":
         print("Retunning linear binning...")
         z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
+    ### Now that we know the redshift array, we create the group where we will
+    ### store the output pdfs.
+    scale_group = output_pdf_hdf5_file.create_group(args.pair_scale_name)
+    scale_group.attrs.create('redshift_lower_edge_array', z_bin_edge_array)
     
     ### This portion of the code creates the kdtree on the unknown sample that 
     ### we will match our match sample to. 
@@ -92,8 +100,6 @@ if __name__ == "__main__":
     print("Creating matching data array...")
     match_data_array = _kdtree_utils.create_match_data(
         match_data, mag_name_list, other_name_list, args.use_as_colors)
-    match_data_density_array = np.empty((match_data_array.shape[0],
-                                        z_bin_edge_array.shape[0]))
     
     ### Now we loop over each match objects data array, match it to the unknown
     ### sample's kdtree and submit those galaxies to pdf_maker to create an
@@ -115,24 +121,22 @@ if __name__ == "__main__":
             pdf_maker.compute_pdf_bootstrap(args.n_bootstrap)
         else:
             bootstrap_region_array = np.loadtxt(args.bootstrap_samples,
-                                            dtype = np.int_)
+                                                dtype = np.int_)
             pdf_maker._compute_pdf_bootstrap(bootstrap_region_array)
         
-        match_data_density_array[match_idx, :] = pdf_maker.density_array
+        tmp_grp = scale_group.create_group(
+            '%i' % match_data[args.unknown_index_name][match_idx])
+        tmp_grp.create_dataset(
+                'pdf', data = np.array(pdf_maker.density_array,
+                                       dtype = np.float32),
+                maxshape = (None,), compression = 'lzf', shuffle = True)
+        tmp_grp.create_dataset(
+                'bootstraps', data = np.array(pdf_maker.bootstrap_array,
+                                              dtype = np.float32),
+                maxshape = (None,), compression = 'lzf', shuffle = True)
         
-    ### Now we create the output header for the output ascii file.
-    ### TODO:
-    ###     Maybe change this output to HDF5
-    output_header = 'input_flags:\n'
-    for arg in vars(args):
-        output_header += '\t%s : %s\n' % (arg, getattr(args, arg))
-    output_header += "redshifts : "
-    for z in pdf_maker.redshift_array:
-        output_header += '%.8e ' % z
-    output_header += '\n'
-    
-    ### Write out the ascii file.
-    np.savetxt(args.output_pdf_file_name, match_data_density_array, 
-               fmt = '%.8e', header = output_header)
+        
+    ### Now we close out the hdf5 file.
+    output_pdf_hdf5_file.close()
     
     print "Done!"

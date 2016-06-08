@@ -182,10 +182,13 @@ def parse_input_pdf_single_galaxy_args():
                         'the requested match objects. It is recommended to '
                         'attempt to have a least on average 100 unknown sample '
                         'objects per region.')
-    parser.add_argument('--output_pdf_file_name', required = True,
-                        type = str, help = 'Name of the output file to write '
-                        'the resultant PDF to. This will be written in the '
-                        'of the objects given in match_sample_file.')
+    parser.add_argument('--output_pdf_hdf5_file', required = True,
+                        type = str, help = 'Name of the output hdf5_ file to '
+                        'write the resultant PDFs to. The file structure is '
+                        'similar to the output of pair_maker in that a PDF is '
+                        'is stored as a HDF5 group named after the index of '
+                        'each object and they are stored in a group named for .'
+                        'the scale run.')
     parser.add_argument('--z_min', default = 0.01,
                         type = float, help = 'Minimum redshift for both the '
                         'pair_maker and pdf_maker.')
@@ -215,9 +218,6 @@ def parse_input_pdf_single_galaxy_args():
                         'to run. These should row-wise specifications of '
                         'regions from the input pair hdf5 file. Overrides '
                         'the number set in n_bootstrap.')
-    parser.add_argument('--output_bootstraps_file', default = None, type = str,
-                        help = 'This is an optional argument specifying an '
-                        'ascii file to write the individual bootstrap pdfs to.')
     parser.add_argument('--n_processes', default = 1, type = int,
                         help = 'Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
