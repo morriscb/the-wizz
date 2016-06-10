@@ -131,9 +131,14 @@ if __name__ == "__main__":
                                        dtype = np.float32),
                 maxshape = (None,), compression = 'lzf', shuffle = True)
         tmp_grp.create_dataset(
-                'bootstraps', data = np.array(pdf_maker.bootstrap_array,
-                                              dtype = np.float32),
-                compression = 'lzf', shuffle = True)
+                'pdf_err', data = np.array(pdf_maker.density_err_array,
+                                           dtype = np.float32),
+                maxshape = (None,), compression = 'lzf', shuffle = True)
+        if args.save_bootstraps:
+            tmp_grp.create_dataset(
+                    'bootstraps', data = np.array(pdf_maker.bootstrap_array,
+                                                  dtype = np.float32),
+                    compression = 'lzf', shuffle = True)
         
         
     ### Now we close out the hdf5 file.

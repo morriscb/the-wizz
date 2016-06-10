@@ -218,6 +218,13 @@ def parse_input_pdf_single_galaxy_args():
                         'to run. These should row-wise specifications of '
                         'regions from the input pair hdf5 file. Overrides '
                         'the number set in n_bootstrap.')
+    parser.add_argument('--save_bootstraps', action = 'store_true',
+                        help = 'Write the results of the individual bootstraps '
+                        'to disk. This is only recommended to use when also '
+                        'using the bootstrap_samples flag. Fair warning that '
+                        'this will increase the ammount of storeage required '
+                        'by roughly a factor of the number of bootstraps '
+                        'requested.')
     parser.add_argument('--n_processes', default = 1, type = int,
                         help = 'Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
