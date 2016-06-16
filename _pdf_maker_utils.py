@@ -144,7 +144,6 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
             [weight_array[reg_idx].mean()
              for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
             dtype = np.float_)
-            
     
     n_target = len(hdf5_pairs_group)
     target_unknown_array = np.empty(n_target, dtype = np.float32)
@@ -383,6 +382,18 @@ class PDFMaker(object):
         self._computed_region_densities = False
         self._computed_pdf = False
         self._computed_bootstraps = False
+        
+    def reset_pairs(self):
+        
+        self.target_unknown_array = np.zeros_like(self.target_redshift_array)
+        self.target_rand_array = np.zeros_like(self.target_redshift_array)
+        
+        self._target_unknown_array_set = False
+        self._computed_region_densities = False
+        self._computed_pdf = False
+        self._computed_bootstraps = False
+        
+        return None
         
     def _load_data_from_hdf5(self, hdf5_pair_group, args):
         

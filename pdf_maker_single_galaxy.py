@@ -91,9 +91,10 @@ if __name__ == "__main__":
     except AttributeError:
         other_name_list = []
     print mag_name_list, other_name_list
-    kdtree = _kdtree_utils.CatalogKDTree(
-        _kdtree_utils.create_match_data(
-            unknown_data, mag_name_list, other_name_list, args.use_as_colors))
+    unknown_value_array = _kdtree_utils.create_match_data(
+        unknown_data, mag_name_list, other_name_list, args.use_as_colors)
+    print unknown_value_array.shape, unknown_data.shape
+    kdtree = _kdtree_utils.CatalogKDTree(unknown_value_array)
     
     ### Now we create the same array as the unknown sample for our match
     ### sample.
@@ -108,10 +109,12 @@ if __name__ == "__main__":
     print("Starting match object loop...")
     for match_idx, match_obj in enumerate(match_data_array):
         
+        pdf_maker.reset_pairs()
+        
         ### match the ids
+        tmp_data = unknown_data[kdtree(match_obj, args.n_kdtree_matched)]
         _pdf_maker_utils.collapse_ids_to_single_estimate(
-            hdf5_pair_file[args.pair_scale_name], pdf_maker,
-            unknown_data[kdtree(match_obj, args.n_kdtree_matched)], args)
+            hdf5_pair_file[args.pair_scale_name], pdf_maker, tmp_data, args)
         
         ### Get the region densities
         pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)

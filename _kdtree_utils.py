@@ -9,7 +9,7 @@ from scipy.spatial import cKDTree
 
 
 def create_match_data(input_catalog, mag_name_list, other_name_list,
-                  use_as_colors):
+                      use_as_colors):
     
     kdtree_data_array = np.empty((input_catalog.shape[0], len(mag_name_list)))
     
@@ -127,3 +127,9 @@ class CatalogKDTree(object):
                 self._std_array[col_idx])
         
         return None
+    
+    def get_mean_array(self):
+        return self._mean_array
+    
+    def get_std_array(self):
+        return self._std_array
