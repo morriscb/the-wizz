@@ -1,5 +1,6 @@
 #! /usr/bin/python
 
+from astropy.io import fits
 import _core_utils
 import input_flags
 import _kdtree_utils
@@ -112,9 +113,9 @@ if __name__ == "__main__":
         pdf_maker.reset_pairs()
         
         ### match the ids
-        tmp_data = unknown_data[kdtree(match_obj, args.n_kdtree_matched)]
         _pdf_maker_utils.collapse_ids_to_single_estimate(
-            hdf5_pair_file[args.pair_scale_name], pdf_maker, tmp_data, args)
+            hdf5_pair_file[args.pair_scale_name], pdf_maker,
+            unknown_data[kdtree(match_obj, args.n_kdtree_matched)], args)
         
         ### Get the region densities
         pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
