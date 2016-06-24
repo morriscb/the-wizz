@@ -48,8 +48,6 @@ if __name__ == "__main__":
     if pdf_maker.target_redshift_array.max() < args.z_max:
         print("WARNING: requested z_max is greater than available target "
               "redshifts.")
-        args.z_max = pdf_maker.target_redshift_array.max() + 1e-16
-        print("\tResetting to %.4f..."  % args.z_max)
     ### Now we figure out what kind of redshift binning we would like to have.
     ### This will be one of the largest impacts on the signal to noise of the
     ### measurement. Some rules of thumb are:
