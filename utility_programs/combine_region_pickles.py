@@ -99,7 +99,8 @@ if __name__ == "__main__":
     ### we load it here.
     if args.input_special_region_pickle_files is not None:
         file_name_list = args.input_special_region_pickle_files.split(',')
-        region_special_dict = load_from_pickle(file_name_list)
+        region_special_list = [load_from_pickle([file_name])
+                               for file_name in file_name_list]
     
     ### Create the array of indices for the regions we will bootstrap over.
     if args.bootstrap_samples is None:
@@ -109,13 +110,14 @@ if __name__ == "__main__":
         ### Create the bootstraps for the "special" sample and concatenate them
         ### to the end of the bootstrap samples.
         if args.input_special_region_pickle_files is not None:
-            bootstrap_samples = np.concatenate(
-                (bootstrap_samples,
-                 np.random.randint(
-                     region_special_dict['n_regions'],
-                     size = (args.n_bootstrap,
-                             region_special_dict['n_regions']))),
-                axis = 1)
+            for region_special_dict in region_special_list:
+                bootstrap_samples = np.concatenate(
+                    (bootstrap_samples,
+                     np.random.randint(
+                         region_special_dict['n_regions'],
+                         size = (args.n_bootstrap,
+                                 region_special_dict['n_regions']))),
+                    axis = 1)
     ### If requested, the code can load a set of fixed bootstraps from disc.
     ### If using a "special" sample make sure the bootstraps are formated as
     ### above with the region ids appended to the end of the "normal" regions.
@@ -131,8 +133,9 @@ if __name__ == "__main__":
     redshift_array = np.sum(region_dict['redshift'], axis = 1)
     n_target_array = np.sum(region_dict['n_target'], axis = 1)
     if args.input_special_region_pickle_files is not None:
-        redshift_array += np.sum(region_special_dict['redshift'], axis = 1)
-        n_target_array += np.sum(region_special_dict['n_target'], axis = 1)
+        for region_special_dict in region_special_list:
+            redshift_array += np.sum(region_special_dict['redshift'], axis = 1)
+            n_target_array += np.sum(region_special_dict['n_target'], axis = 1)
     redshift_array /= n_target_array
     
     ### Start the actual bootstrap process.
@@ -145,11 +148,18 @@ if __name__ == "__main__":
                                  axis = 1)
         ### Compute the bootstrap average for the "special" samples.
         if args.input_special_region_pickle_files is not None:
-            tmp_boot_reg_ids = boot_reg_ids[region_dict['n_regions']:]
-            boot_unknown_array += np.sum(
-                region_special_dict['unknown'][:,tmp_boot_reg_ids], axis = 1)
-            boot_rand_array += np.sum(
-                region_special_dict['rand'][:,tmp_boot_reg_ids], axis = 1)
+            n_special_region = 0
+            for region_special_dict in region_special_list:
+                tmp_boot_reg_ids = boot_reg_ids[
+                    region_dict['n_regions'] + n_special_region:
+                    region_dict['n_regions'] + n_special_region +
+                    region_special_dict['n_regions']]
+                n_special_region += region_special_dict['n_regions']
+                boot_unknown_array += np.sum(
+                    region_special_dict['unknown'][:,tmp_boot_reg_ids],
+                    axis = 1)
+                boot_rand_array += np.sum(
+                    region_special_dict['rand'][:,tmp_boot_reg_ids], axis = 1)
         ### Compute the over density for the current bootstrap.
         density_bootstrap_array[:, boot_idx] = (boot_unknown_array /
                                                 boot_rand_array - 1.0)
