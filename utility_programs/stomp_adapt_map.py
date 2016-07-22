@@ -64,6 +64,6 @@ if __name__ == '__main__':
           (output_stomp_map.Area(),
            output_stomp_map.Area() / latlon_bound.Area()))
     print("\tObjects per pixel %.8f" %
-          data.shape[0] / (1. * output_stomp_map.Size))
+          data.shape[0] / (1. * output_stomp_map.Size()))
     
     output_stomp_map.Write(args.output_stomp_map)
