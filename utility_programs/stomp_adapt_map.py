@@ -63,5 +63,7 @@ if __name__ == '__main__':
     print("\tFinal Map Area: %.8f deg ^2; Ratio vs bounding box: %.8f" %
           (output_stomp_map.Area(),
            output_stomp_map.Area() / latlon_bound.Area()))
+    print("\tObjects per pixel %.8f" %
+          data.shape[0] / (1. * output_stomp_map.Size))
     
     output_stomp_map.Write(args.output_stomp_map)
