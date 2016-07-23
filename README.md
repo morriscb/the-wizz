@@ -18,6 +18,14 @@ the indices of all closer pairs around the target objects in an output HDF5
 data file. Users then query this data file using pdf_maker.py and the indices of
 their unknown sample, producing an output recovery.
 
+CITING The-wiZZ
+---------------
+
+Papers utilizing The-wiZZ should provide a link back to this repository. It is
+also requested that users cite Morrison et al. (in prep), once the paper is
+available. The other cites at mentioned at the start of this README are highly
+recommended as citations as well.
+
 REQUIREMENTS
 ------------
 
@@ -181,14 +189,6 @@ This problem could be solved with an appropreate weighting scheme on the
 reference catalog. The PDFs returned by The-wiZZ are unomalized because everyone
 has their favorite technique to do this (e.g. spline integral, trapzoid sum,
 rectangular sum). The choice is left to the user.
-
-CITING The-wiZZ
----------------
-
-Papers utilizing The-wiZZ should provide a link back to this repository. It is
-also requested that users cite Morrison et al. (in prep), once the paper is
-available. The other cites at mentioned at the start of this README are highly
-recommended as citations as well.
 
 MAINTAINERS
 -----------
