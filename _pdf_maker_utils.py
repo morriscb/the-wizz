@@ -24,7 +24,7 @@ def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
         edges. The n_bin + 1 edge is equal to z_max.
     """
         
-    return np.arange(z_min, z_max, (z_max - z_min) / (1. * n_bins))
+    return np.linspace(z_min, z_max, n_bins + 1)[:-1]
 
 def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
     
@@ -65,9 +65,7 @@ def _create_logspace_redshift_bin_edges(z_min, z_max, n_bins):
     
     log_min = np.log(1 + z_min)
     log_max = np.log(1 + z_max)
-    return (np.exp(np.arange(log_min, log_max,
-                             (log_max - log_min) / (1. * n_bins))) -
-            1.0)
+    return np.exp(np.linspace(log_min, log_max, n_bins + 1)[:-1]) - 1.0
     
 def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     
@@ -87,8 +85,7 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     comov_min = _core_utils.WMAP5.comoving_distance(z_min).value
     comov_max = _core_utils.WMAP5.comoving_distance(z_max).value
     return _core_utils.redshift(
-        np.arange(comov_min, comov_max,
-                  (comov_max - comov_min) / (1. * n_bins)))
+        np.linspace(comov_min, comov_max, n_bins + 1)[:-1])
 
 def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                                     unknown_data, args):

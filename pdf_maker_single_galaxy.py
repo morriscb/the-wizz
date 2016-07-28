@@ -111,9 +111,10 @@ if __name__ == "__main__":
         pdf_maker.reset_pairs()
         
         ### match the ids
+        id_array, median_dist = kdtree(match_obj, args.n_kdtree_matched)
         _pdf_maker_utils.collapse_ids_to_single_estimate(
             hdf5_pair_file[args.pair_scale_name], pdf_maker,
-            unknown_data[kdtree(match_obj, args.n_kdtree_matched)], args)
+            unknown_data[id_array], args)
         
         ### Get the region densities
         pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
@@ -128,6 +129,7 @@ if __name__ == "__main__":
         
         tmp_grp = scale_group.create_group(
             '%i' % match_data[args.unknown_index_name][match_idx])
+        tmp_grp.attrs.create('median_dist', median_dist)
         tmp_grp.create_dataset(
                 'pdf', data = np.array(pdf_maker.density_array,
                                        dtype = np.float32),

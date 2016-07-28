@@ -347,7 +347,8 @@ def _verify_none_type(args):
     """
     
     for arg in vars(args):
-        if getattr(args, arg) == 'None' or getattr(args, arg) == 'none':
+        if (getattr(args, arg) == 'None' or getattr(args, arg) == 'none' or
+            getattr(args, arg) == 'NONE'):
             setattr(args, arg, None)
             
     return args
