@@ -1,12 +1,8 @@
 
 import _core_utils
-from copy import copy
-import input_flags
-import h5py
-from multiprocessing import Array, Pool
+from multiprocessing import Pool
 import numpy as np
 import pickle
-import sys
 from _core_utils import redshift
 from __builtin__ import True
 

@@ -36,6 +36,9 @@ if __name__ == "__main__":
     print("Preloading target data...")
     pdf_maker = _pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
                                           args)
+    target_pair_data = _pdf_maker_utils._load_pair_data(
+        hdf5_pair_file[args.pair_scale_name], 0,
+        pdf_maker.target_redshift_array.shape[0])
     if pdf_maker.target_redshift_array.max() < args.z_max:
         print("WARNING: requested z_max is greater than available target "
               "redshifts.")
@@ -106,14 +109,15 @@ if __name__ == "__main__":
     ### estimate of the pdf from the unknown sample objects with the closest
     ### properites.
     print("Starting match object loop...")
+    
     for match_idx, match_obj in enumerate(match_data_array):
         
         pdf_maker.reset_pairs()
         
         ### match the ids
         id_array, median_dist = kdtree(match_obj, args.n_kdtree_matched)
-        _pdf_maker_utils.collapse_ids_to_single_estimate(
-            hdf5_pair_file[args.pair_scale_name], pdf_maker,
+        _kdtree_utils.collapse_ids_to_single_estimate(
+            hdf5_pair_file[args.pair_scale_name], target_pair_data, pdf_maker,
             unknown_data[id_array], args)
         
         ### Get the region densities

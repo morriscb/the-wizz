@@ -1,4 +1,6 @@
 
+from _pdf_maker_utils import _collapse_multiplex
+from multiprocessing import Pool
 import numpy as np
 from scipy.spatial import cKDTree
 
@@ -6,7 +8,98 @@ from scipy.spatial import cKDTree
 ###     Pickling doesn't work with either KDTree object. Need to think of a
 ###     better way of loading and storing the nearest neighbors.
 
-
+def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
+                                    unknown_data, args):
+        
+    """
+    This is the heart of The-wiZZ. It enables the matching of
+    a set of catalog ids to the ids stored as pairs to the spectroscopic
+    objects. The result of this calculation is a intermediary data product
+    containing the density of unknown objects around each target object stored
+    in the PDFMaker data structure class. This specific version is for when
+    all the spectra have been pre-loaded in anticipation of running a large
+    number of sub-samples as is the case with kdtree recovery.
+    Args:
+        hdf5_pairs_group: hdf5 group object containing the pair ids for a fixed
+            annulus.
+        unknown_data: open fits data containing object ids and relivent weights
+        args: ArgumentParser.parse_args object returned from
+            input_flags.parse_input_pdf_args
+    Returns:
+        None
+    """
+    
+    print("\tpre-loading unknown data...")
+    if args.unknown_weight_name is not None:
+        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+    id_array = unknown_data[args.unknown_index_name]
+    id_args_array = id_array.argsort()
+    id_array = id_array[id_args_array]
+    rand_ratio = (unknown_data.shape[0] /
+                  (1. * hdf5_pairs_group.attrs['n_random_points']))
+    if args.unknown_stomp_region_name is not None:
+        id_array = [id_array[
+            unknown_data[args.unknown_stomp_region_name][id_args_array] ==
+            reg_idx]
+            for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
+        tmp_n_region = np.array(
+            [id_array[reg_idx].shape[0]
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+            dtype = np.int_)
+        rand_ratio = (
+            (tmp_n_region / (1. * hdf5_pairs_group.attrs['n_random_points'])) *
+            (hdf5_pairs_group.attrs['area'] /
+             hdf5_pairs_group.attrs['region_area']))
+    
+    ave_weight = 1.0
+    weight_array = np.ones(unknown_data.shape[0], dtype = np.float32)
+    if args.unknown_weight_name is not None:
+        weight_array = unknown_data[args.unknown_weight_name][id_args_array]
+        ave_weight = np.mean(weight_array)
+    if args.unknown_stomp_region_name is not None:
+        weight_array = [weight_array[
+            unknown_data[args.unknown_stomp_region_name][id_args_array] ==
+            reg_idx]
+            for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
+        ave_weight = np.array(
+            [weight_array[reg_idx].mean()
+             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+            dtype = np.float_)
+    
+    n_target = len(hdf5_pairs_group)
+    target_unknown_array = np.empty(n_target, dtype = np.float32)
+    
+    pool = Pool(args.n_processes)
+    if args.unknown_stomp_region_name is not None:
+        pool_iter = pool.imap(
+            _collapse_multiplex,
+            [(data_set,
+              id_array[pdf_maker_obj.target_region_array[pair_idx]],
+              weight_array[pdf_maker_obj.target_region_array[pair_idx]],
+              args.use_inverse_weighting)
+             for pair_idx, data_set in enumerate(pair_data)],
+            chunksize = np.int(np.where(args.n_processes > 1,
+                               np.log(len(pair_data)) /
+                               np.log(args.n_processes), 1)))
+    else:
+        pool_iter = pool.imap(
+            _collapse_multiplex,
+            [(data_set, id_array, weight_array, args.use_inverse_weighting)
+             for pair_idx, data_set in enumerate(pair_data)],
+            chunksize = np.int(np.where(args.n_processes > 1,
+                                        np.log(len(pair_data)) /
+                                        np.log(args.n_processes), 1)))
+        
+    print("\t\tcomputing/storing pair count...")
+    for pair_idx, target_value in enumerate(pool_iter):
+        target_unknown_array[pair_idx] = target_value
+    pool.close()
+    pool.join()
+    
+    pdf_maker_obj.set_target_unknown_array(target_unknown_array)
+    pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
+    
+    return None
 
 def create_match_data(input_catalog, mag_name_list, other_name_list,
                       use_as_colors):
