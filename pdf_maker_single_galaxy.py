@@ -71,6 +71,9 @@ if __name__ == "__main__":
     elif args.z_binning_type == 'comoving':
         z_bin_edge_array = _pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
+    elif args.z_binning_type == 'logspace':
+        z_bin_edge_array = _pdf_maker_utils._create_logspace_redshift_bin_edges(
+            args.z_min, args.z_max, args.z_n_bins)
     else:
         print("Requested binning name invalid. Valid types are:")
         print("\tlinear: linear binning in redshift")
@@ -111,6 +114,7 @@ if __name__ == "__main__":
     print("Starting match object loop...")
     
     for match_idx, match_obj in enumerate(match_data_array):
+        print("\tCurrent idx: %i" % match_idx)
         
         pdf_maker.reset_pairs()
         
