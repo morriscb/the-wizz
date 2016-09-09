@@ -35,6 +35,11 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
     
     print("Loading unknown sample...")
     
+    ### TODO: This is the main bottle neck of the code. Need to make loading,
+    ###     masking, and creating the quadtree much faster. This may require
+    ###     creating a python wrapped C++ function for loading and creating
+    ###     a STOMP iTreeMap.
+    
     sample_data = _core_utils.file_checker_loader(sample_file_name)
     
     unknown_itree_map = stomp.IndexedTreeMap(stomp_map.RegionResolution(), 200)

@@ -74,7 +74,7 @@ def parse_input_pdf_args():
                         help = 'Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
                         'used(~4).')
-    parser.add_argument('--n_target_load_size', default = 10000, type = int,
+    parser.add_argument('--n_target_load_size', default = 100000, type = int,
                         help = 'Number of target pairs to load from the hdf5 '
                         'file at once. The chunk size should be set such that '
                         'the code has time to load the new data while it is '

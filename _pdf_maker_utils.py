@@ -237,7 +237,10 @@ def _collapse_multiplex(input_tuple):
     tmp_n_points = 0.0
     ### We test to see which array is longer, the hdf5 id array or our
     ### unknown array. We loop over the shorter of the two. This can yeild a 
-    ### significant speed boost for small scales. 
+    ### significant speed boost for small scales.
+    
+    ### TODO: change this so most of it happens within numpy.
+    
     if id_array[start_idx:end_idx].shape[0] <= id_data_set.shape[0]:
         for obj_id, weight in zip(id_array[start_idx:end_idx],
                                   weight_array[start_idx:end_idx]):

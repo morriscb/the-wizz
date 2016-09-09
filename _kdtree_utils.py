@@ -166,6 +166,8 @@ class CatalogKDTree(object):
         
         tmp_array = (input_array - self._mean_array) / self._std_array
         d, i = self._kd_tree.query(tmp_array, k)
+        ### TODO: Output more summary statistics like quartiles or 1 sigma
+        ###     percentiles
         return i, d[int(k/2)]
     
     def k_nearest_ball_point(self, input_array, max_dist):
