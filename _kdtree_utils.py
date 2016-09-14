@@ -161,14 +161,15 @@ class CatalogKDTree(object):
                 bands)
             k: int number of nearest neighbors to return.
         Returns:
-            array of integer array indices of objects
+            tuple;
+                array of integer array indices of objects
+                list of quartile and max distances 
         """
         
         tmp_array = (input_array - self._mean_array) / self._std_array
         d, i = self._kd_tree.query(tmp_array, k)
-        ### TODO: Output more summary statistics like quartiles or 1 sigma
-        ###     percentiles
-        return i, d[int(k/2)]
+
+        return i, d[[int(k / 4.), int(k / 2.), int(3. * k / 4.), -1]]
     
     def k_nearest_ball_point(self, input_array, max_dist):
         

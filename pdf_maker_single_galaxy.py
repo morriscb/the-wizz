@@ -119,7 +119,7 @@ if __name__ == "__main__":
         pdf_maker.reset_pairs()
         
         ### match the ids
-        id_array, median_dist = kdtree(match_obj, args.n_kdtree_matched)
+        id_array, quartile_dists = kdtree(match_obj, args.n_kdtree_matched)
         _kdtree_utils.collapse_ids_to_single_estimate(
             hdf5_pair_file[args.pair_scale_name], target_pair_data, pdf_maker,
             unknown_data[id_array], args)
@@ -137,7 +137,10 @@ if __name__ == "__main__":
         
         tmp_grp = scale_group.create_group(
             '%i' % match_data[args.unknown_index_name][match_idx])
-        tmp_grp.attrs.create('median_dist', median_dist)
+        tmp_grp.attrs.create('one_quarter_dist', quartile_dists[0])
+        tmp_grp.attrs.create('median_dist', quartile_dists[1])
+        tmp_grp.attrs.create('three_quarter_dist', quartile_dists[2])
+        tmp_grp.attrs.create('max_dist', quartile_dists[3])
         tmp_grp.create_dataset(
                 'pdf', data = np.array(pdf_maker.density_array,
                                        dtype = np.float32),

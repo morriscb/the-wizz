@@ -168,8 +168,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                       args.use_inverse_weighting)
                      for pair_idx, data_set in enumerate(pair_data)],
                     chunksize = np.int(np.where(
-                        args.n_processes > 1,
-                        np.log(len(pair_data)) / np.log(args.n_processes), 1)))
+                        args.n_processes > 1, np.log(len(pair_data)), 1)))
             else:
                 pool_iter = pool.imap(
                     _collapse_multiplex,
@@ -177,8 +176,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                       args.use_inverse_weighting)
                      for pair_idx, data_set in enumerate(pair_data)],
                     chunksize = np.int(np.where(
-                        args.n_processes > 1,
-                        np.log(len(pair_data)) / np.log(args.n_processes), 1)))
+                        args.n_processes > 1, np.log(len(pair_data)), 1)))
         
         print("\t\tloading next pairs...")
         pair_data = _load_pair_data(hdf5_pairs_group, pair_start,
@@ -236,8 +234,8 @@ def _collapse_multiplex(input_tuple):
     
     tmp_n_points = 0.0
     ### We test to see which array is longer, the hdf5 id array or our
-    ### unknown array. We loop over the shorter of the two. This can yeild a 
-    ### significant speed boost for small scales.
+    ### unknown array. We loop over the shorter of the two. This can yield a 
+    ### significant speed boost for small scales or sparse samples.
     
     ### TODO: change this so most of it happens within numpy.
     
