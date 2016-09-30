@@ -22,9 +22,10 @@ CITING The-wiZZ
 ---------------
 
 Papers utilizing The-wiZZ should provide a link back to this repository. It is
-also requested that users cite Morrison et al. (in prep), once the paper is
-available. The other cites mentioned at the start of this README are highly
-recommended as citations as well.
+also requested that users cite
+[Morrison et al. 2016](http://adsabs.harvard.edu/abs/2016arXiv160909085M). The
+other cites mentioned at the start of this README are highlyrecommended as
+citations as well.
 
 REQUIREMENTS
 ------------
