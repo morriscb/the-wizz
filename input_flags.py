@@ -1,5 +1,5 @@
-import argparse
 
+import argparse
 
 def parse_input_pdf_args():
     

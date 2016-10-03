@@ -5,8 +5,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 ### TODO:
-###     Pickling doesn't work with either KDTree object. Need to think of a
-###     better way of loading and storing the nearest neighbors.
+###     Add pickling of cKDTree
 
 def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
                                     unknown_data, args):
