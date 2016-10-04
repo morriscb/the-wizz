@@ -1,19 +1,17 @@
-### TODO:
-###     split core into two with one having the stomp calls and one not.
+
+"""Utilities for The-wiZZ library. Contains file loading/closing, cosmology,
+and setting the verbosity of the outputs.
+"""
+
+from __future__ import division, print_function, absolute_import
+
+import numpy as np
+import sys
 
 from astropy.cosmology import WMAP5
 from astropy.io import fits
 import h5py
-import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
-import sys
-
-
-"""
-Utilities for The-wiZZ library. Contains file loading/closing, cosmology, and 
-setting the verbosity of the outputs.
-"""
-
 
 global verbose
 global _initialized_cosmology
@@ -21,10 +19,11 @@ global _initialized_cosmology
 verbose = False
 _initialized_cosmology = False
 
+
 def set_verbose(v_bool):
     
-    """
-    Set the internal verbosity of the library at the time of running.
+    """Set the internal verbosity of the library at the time of running.
+    
     Args:
         v_bool: boolean variable specifying if the code should be verbose or not
     Returns:
@@ -35,25 +34,27 @@ def set_verbose(v_bool):
     verbose = v_bool
     return None
 
+
 def verbose_print_statement(statement_string):
     
     if verbose:
         print(statement_string)
     return None
 
+
 def _initialize_cosmology():
     
-    """
-    Initlized internal __core__ variables storing the trend of redshift vs
+    """Initlized internal __core__ variables storing the trend of redshift vs
     comoving distance. Default cosmology is from WMAP5.
+    
     Args:
         None
     Returns:
         None
     """
     
-    ### TODO:
-    ###     Talk to someone about this. Are globals the best way to do this.
+    # TODO:
+    #     Talk to someone about this. Are globals the best way to do this.
     redshift_array = np.linspace(0.0, 10.0, 1000)
     comov_array = WMAP5.comoving_distance(redshift_array)
     global _comov_dist_to_redshift_spline
@@ -64,9 +65,9 @@ def _initialize_cosmology():
 
 def redshift(comov_dist):
     
-    """
-    Spline wrapper for converting a comoving line of sight distance into a
+    """Spline wrapper for converting a comoving line of sight distance into a
     redshift assuming the WMAP5 cosmology.
+    
     Args:
         comov_dist: float or float array cosmoving distance in Mpc
     Returns:
@@ -77,11 +78,12 @@ def redshift(comov_dist):
         _initialize_cosmology()
     return _comov_dist_to_redshift_spline(comov_dist)
 
+
 def file_checker_loader(input_file_name):
     
-    """
-    Utility function for checking the existence of a file and loading the file
-    with the proper format. Currently checks for FITS files.
+    """Utility function for checking the existence of a file and loading the
+    file with the proper format. Currently checks for FITS files.
+    
     Args:
         sample_file_name: name of file on disk to load
     Returns:
@@ -96,16 +98,14 @@ def file_checker_loader(input_file_name):
               input_file_name)
         raise IOError("File not found.")
     
-    data_type = input_file_name.split('.')[-1]
-    
-    if (data_type == 'fit' or data_type == 'fits' or data_type == 'gz' or
-        data_type == 'cat'):
-        
+    if (input_file_name.endswith('fit') or input_file_name.endswith('fits') or
+        input_file_name.endswith('gz') or input_file_name.endswith('cat')):
+        # File is fits. Use astropy.io.fits to load and return a fits table.
         hdu_list = fits.open(input_file_name)
         data = hdu_list[1].data
         return data
     
-    if data_type == 'hdf5' or data_type == 'dat':
+    if input_file_name.endswith('hdf5') or input_file_name.endswith('dat'):
         
         hdf5_file = h5py.File(input_file_name, 'r')
         
@@ -118,17 +118,18 @@ def file_checker_loader(input_file_name):
     
     return None
 
+
 def create_hdf5_file(hdf5_file_name, args):
     
-    ### TODO:
-    ###     Decide if I want to use libver latest or not. Could be more stable 
-    ###     if we use the "earliest" version. Will have to speed test saving 
-    ###     and loading of the pairs.
+    # TODO:
+    #     Decide if I want to use libver latest or not. Could be more stable 
+    #     if we use the "earliest" version. Will have to speed test saving 
+    #     and loading of the pairs.
     
-    """
-    Convenience function for creating an HDF5 file with attributes set in
+    """Convenience function for creating an HDF5 file with attributes set in
     input_flags. Saves the current input flags to the group input_flags for
     later reference
+    
     Args:
         hdf5_file_name: string name of the HDF5 file to create
         args: argparse ArgumentParser.parse_args object from input_flags
@@ -147,10 +148,10 @@ def create_hdf5_file(hdf5_file_name, args):
     
     return hdf5_file
 
+
 def create_ascii_file(ascii_file_name, args):
     
-    """
-    Convenience function for creating an output ascii file. This method writes 
+    """Convenience function for creating an output ascii file. This method writes 
     the current state of the input_flags arguments to the header of the file and
     returns an open Python file handle object. The method will over write any
     file it is given so use with caution.
