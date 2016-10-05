@@ -1,4 +1,10 @@
 
+"""Utility functions for finding and storing close pairs between a target object
+with known redshifts and objects with unknown redshifts.
+"""
+
+from __future__ import division, print_function, absolute_import
+
 import numpy as np
 import stomp
 
@@ -307,11 +313,11 @@ class RawPairFinder(object):
             tmp_target_grp.create_dataset(
                 'ids', data=np.array(self._pair_list[target_idx],
                                      dtype=np.uint32)[sort_args],
-                maxshape=(None,), compression='lzf', shuffle=True)
+                compression='lzf', shuffle=True)
             tmp_target_grp.create_dataset(
                 'inv_dist', data=np.array(self._pair_invdist_list[target_idx],
                                           dtype=np.float32)[sort_args],
-                maxshape=(None,), compression='lzf', shuffle=True)
+                compression='lzf', shuffle=True)
         return None
 
 
