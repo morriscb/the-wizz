@@ -7,15 +7,15 @@ interest to allow users to later subselect samples from this catalog.
 
 from __future__ import division, print_function, absolute_import
 
-import numpy as np
 import sys
 
+import numpy as np
 import stomp
 
-from . import _core_utils
-from . import _stomp_utils
-from . import input_flags
-from . import _pair_maker_utils
+import _core_utils
+import _stomp_utils
+import input_flags
+import _pair_maker_utils
 
 if __name__ == "__main__":
     print("")
