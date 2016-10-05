@@ -2,7 +2,8 @@
 """This is the main program for running the pair finder and creating the data
 file that contains the raw pair information between the target and unknown
 sample. It should be run with the complete photometric, unknown catalog of
-interest to allow users to later subselect samples from this catalog.
+interest to allow users to later subselect samples from this catalog. See
+input_flags.py for a list of options or use --help from the command line.
 """
 
 from __future__ import division, print_function, absolute_import
@@ -20,7 +21,7 @@ import _pair_maker_utils
 if __name__ == "__main__":
     print("")
     print("The-wiZZ has begun conjuring: running pair maker...")
-    # load the command line arguments.
+    # Load the command line arguments.
     args = input_flags.parse_input_pair_args()
     input_flags.print_args(args)
     # Create the output hdf5 file where we will store the output for the
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     # first to soft fail rather than run through the code.
     output_pair_hdf5_file = _core_utils.create_hdf5_file(
         args.output_pair_hdf5_file, args)
-    # load the stomp geometry coving the area of spectroscopic overlap
+    # Load the stomp geometry coving the area of spectroscopic overlap.
     stomp_map = stomp.Map(args.stomp_map)
     # We request regionation for use with spatial bootstrapping. The
     # resolution found for regionation also sets the max resolution of the
