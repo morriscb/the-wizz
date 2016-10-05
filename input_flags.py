@@ -1,4 +1,10 @@
 
+"""The module contains all of the functions for loading flags and options from
+the command line.
+"""
+
+from __future__ import division, print_function, absolute_import
+
 import argparse
 
 
