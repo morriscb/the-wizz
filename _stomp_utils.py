@@ -1,5 +1,4 @@
 
-
 """Utility functions for creating and communicating with the STOMP spherical
 pixelization library. I set these files aside so that the part of the code that
 combines the pairs given a pair file and indexes is usable without having the
