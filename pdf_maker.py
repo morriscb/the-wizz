@@ -1,13 +1,22 @@
 #! /usr/bin/python
 
+"""This code is the main access point for the majority of users of The-wiZZ. It
+takes an input subselection of a survey catalog, a The-wiZZ HDF5 data file, and
+matches the two together to create a resultant clustering redshift estimate that
+can then be turned into a redshift PDF. This code also takes care of any
+weighting of the objects with unknown redshift, redshift binning, bootstrapping
+errors, and output. See input_flags.py for a list of options or use --help from
+the command line.
 """
-"""
+
+from __future__ import division, print_function, absolute_import
 
 import numpy as np
 
 import _core_utils
 import _pdf_maker_utils
 import input_flags
+
 
 if __name__ == "__main__":
     print("")
