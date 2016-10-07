@@ -306,15 +306,20 @@ class RawPairFinder(object):
             # For faster computation later we sort the indicies of the unkonwn
             # objects found and all arrays associated with them.
             sort_args = np.argsort(self._pair_list[target_idx])
+            # Check to see if the pair_list for this target is empty or not.
+            if self._pair_list[target_idx]:
+                tmp_max_shape = (len(self._pair_list[target_idx]),)
+            else:
+                tmp_max_shape = (None,)
             # Store the sorted ids and weights. Default is inverse distances.
             tmp_target_grp.create_dataset(
                 'ids', data=np.array(self._pair_list[target_idx],
                                      dtype=np.uint32)[sort_args],
-                maxshape=(None,), compression='lzf', shuffle=True)
+                maxshape=tmp_max_shape, compression='lzf', shuffle=True)
             tmp_target_grp.create_dataset(
                 'inv_dist', data=np.array(self._pair_invdist_list[target_idx],
                                           dtype=np.float32)[sort_args],
-                maxshape=(None,), compression='lzf', shuffle=True)
+                maxshape=tmp_max_shape, compression='lzf', shuffle=True)
         return None
 
 
