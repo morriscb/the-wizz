@@ -283,9 +283,6 @@ class RawPairFinder(object):
             pass
         # Start looping over each target object for storage.
         for target_idx, target in enumerate(self._target_vect):
-            # Check to see if there there are any pairs. If not continue.
-            if not self._pair_list[target_idx]:
-                continue
             # Create hdf5 group representing this single target object.
             tmp_target_grp = tmp_grp.create_group(
                 '%i' % self._target_ids[target_idx])
@@ -313,11 +310,11 @@ class RawPairFinder(object):
             tmp_target_grp.create_dataset(
                 'ids', data=np.array(self._pair_list[target_idx],
                                      dtype=np.uint32)[sort_args],
-                compression='lzf', shuffle=True)
+                maxshape=(None,), compression='lzf', shuffle=True)
             tmp_target_grp.create_dataset(
                 'inv_dist', data=np.array(self._pair_invdist_list[target_idx],
                                           dtype=np.float32)[sort_args],
-                compression='lzf', shuffle=True)
+                maxshape=(None,), compression='lzf', shuffle=True)
         return None
 
 
@@ -530,8 +527,7 @@ class TargetPairFinder(RawPairFinder):
         tmp_grp = hdf5_file.create_group('%s' % (group_name))
         tmp_grp.attrs.create('area', self._stomp_map.Area())
         tmp_grp.attrs.create('n_region', self._stomp_map.NRegion())
-        tmp_grp.attrs.create('region_area',
-                             self._region_area)
+        tmp_grp.attrs.create('region_area', self._region_area)
         try:
             tmp_grp.attrs.create('n_random_points', self._n_random_points)
         except AttributeError:
