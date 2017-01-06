@@ -68,6 +68,7 @@ def load_target_sample(sample_file_name, stomp_map, args):
     print("Loading target sample...")
     sample_data = _core_utils.file_checker_loader(sample_file_name)
     target_vect = stomp.CosmoVector()
+    target_tree_map = stomp.TreeMap(stomp_map.RegionResolution(), 200)
     target_idx_array = np.ones(sample_data.shape[0])*-99
     for idx, obj in enumerate(sample_data):
         if (obj[args.target_redshift_name] < args.z_min or
@@ -81,13 +82,15 @@ def load_target_sample(sample_file_name, stomp_map, args):
             stomp.AngularCoordinate.Equatorial)
         if stomp_map.Contains(tmp_cang):
             target_vect.push_back(tmp_cang)
+            target_tree_map.AddPoint(tmp_cang)
             if args.target_index_name is None:
                 target_idx_array[idx] = idx
             else:
                 target_idx_array[idx] = obj[args.target_index_name]
     print("\tLoaded %i / %i target galaxies..." %
           (target_vect.size(), sample_data.shape[0]))
-    return target_vect, target_idx_array[target_idx_array > -99]
+    return (target_vect, target_idx_array[target_idx_array > -99],
+            target_tree_map)
 
 
 def create_random_data(n_randoms, stomp_map):

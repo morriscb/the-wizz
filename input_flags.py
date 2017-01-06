@@ -71,6 +71,11 @@ def parse_input_pdf_args():
                         help='Use the inverse distance weighted columns from '
                         'the pair file instead of just a straight sum of '
                         'pairs.')
+    parser.add_argument('--use_reference_cleaning', action='store_true',
+                        help='Use a reference "cleaning" method similar to '
+                        'that of Rahman et al. 2015. This downweights areas '
+                        'of dense reference objects to produce a less noisy '
+                        'clustering-z.')
     parser.add_argument('--n_bootstrap', default=1000, type=int,
                         help='Argument specifying the number of bootstrap '
                         'resamplings of the recovery to compute errors.')

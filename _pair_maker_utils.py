@@ -16,7 +16,7 @@ class RawPairFinder(object):
     indices for random samples.
     """
     def __init__(self, unknown_itree, target_vector, target_ids,
-                 stomp_map):
+                 target_tree_map, stomp_map):
         """Initialization for the pair finding software. Utilizes the STOMP
         sphereical pixelization library to find and store all close pairs into
         a HDF5 data file.
@@ -34,6 +34,7 @@ class RawPairFinder(object):
         self._unknown_itree = unknown_itree
         self._target_vect = target_vector
         self._target_ids = target_ids
+        self._target_tree_map = target_tree_map
         self._region_ids = np.empty_like(target_ids, dtype=np.uint16)
         self._stomp_map = stomp_map
         self._region_area = np.empty(self._stomp_map.NRegion(),
@@ -51,6 +52,8 @@ class RawPairFinder(object):
                                         dtype=np.float32)
         self._bin_resolution = np.empty(self._target_vect.size(),
                                         dtype=np.uint32)
+        self._target_target_array = np.zeros(self._target_vect.size(),
+                                             dtype=np.uint32)
         self._pair_list = []
         self._pair_invdist_list = []
         for idx in xrange(self._target_vect.size()):
@@ -136,6 +139,8 @@ class RawPairFinder(object):
                             # the unknown objects it contains.
                             self._store_target_unknown_pixel(
                                 target_idx, target_obj, target_weight, sub_pix)
+                            self._store_target_target_pixel(
+                                target_idx, target_obj, sub_pix)
                 else:
                     if (self._stomp_map.FindRegion(pix) ==
                         self._region_ids[target_idx]):
@@ -143,6 +148,8 @@ class RawPairFinder(object):
                         # unknown objects it contains.
                         self._store_target_unknown_pixel(
                             target_idx, target_obj, target_weight, pix)
+                        self._store_target_target_pixel(
+                                target_idx, target_obj, pix)
         return None
 
     def _store_target_unknown_pixel(self, target_idx, target_obj,
@@ -170,6 +177,25 @@ class RawPairFinder(object):
             self._pair_list[target_idx].append(i_ang.Index())
             self._pair_invdist_list[target_idx].append(
                 np.float32(target_weight))
+        return None
+
+    def _store_target_target_pixel(self, target_idx, target_obj, pix):
+        """Internal class function for finding the number of randoms in a
+        single stomp pixel.
+        ------------------------------------------------------------------------
+        Args:
+            target_idx: int array index of the target object
+            target_obj: stomp.CosmoCoordinate object containing the spatial and
+                redshift information of the considered target object.
+            pix: stomp.Pixel object to compute the number of randoms in.
+        Returns:
+            None
+        """
+        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
+        if tmp_unmasked <= 0.0:
+            return None
+        tmp_n_points = self._target_tree_map.NPoints(pix)
+        self._target_target_array[target_idx] += tmp_n_points
         return None
 
     def random_loop(self, min_scale, max_scale, random_tree):
@@ -295,6 +321,9 @@ class RawPairFinder(object):
                                         self._bin_resolution[target_idx])
             tmp_target_grp.attrs.create('area', self._area_array[target_idx])
             tmp_target_grp.attrs.create('region', self._region_ids[target_idx])
+            tmp_target_grp.attrs.create('target_density', 
+                                        self._target_target_array[target_idx] /
+                                        self._area_array[target_idx])
             try:
                 tmp_target_grp.attrs.create(
                     'rand', self._n_random_per_target[target_idx])

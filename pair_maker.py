@@ -38,7 +38,7 @@ if __name__ == "__main__":
     print("Created %i Regions at resolution %i..." %
           (stomp_map.NRegion(), stomp_map.RegionResolution()))
     # Load the sample with known redshifts.
-    target_vector, target_ids = _stomp_utils.load_target_sample(
+    target_vector, target_ids, target_tree_map = _stomp_utils.load_target_sample(
         args.target_sample_file, stomp_map, args)
     # Load the unknown sample from disc. Assumed data type is fits.
     unknown_itree = _stomp_utils.load_unknown_sample(args.unknown_sample_file,
@@ -52,7 +52,8 @@ if __name__ == "__main__":
     # Now that we have everything set up we can send our data off to the pair
     # finder.
     pair_finder = _pair_maker_utils.RawPairFinder(unknown_itree, target_vector,
-                                                  target_ids, stomp_map)
+                                                  target_ids, target_tree_map,
+                                                  stomp_map)
     # We need to tell the pair finder what scale we would like to run over
     # before we begin.
     min_scale_list = args.min_scale.split(',')

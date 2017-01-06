@@ -104,9 +104,9 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         None
     """
     print("\tpre-loading unknown data...")
-    # First we load the the ids from the input fits data using the columns names
-    # the user has provided and scale the randoms to the correct ammount. Object
-    # ids are also sorted in increasing id for later binary search.
+    # First we load the the ids from the input fits data using the columns
+    # names the user has provided and scale the randoms to the correct ammount.
+    # Object ids are also sorted in increasing id for later binary search.
     if args.unknown_weight_name is not None:
         unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
     id_array = unknown_data[args.unknown_index_name]
@@ -357,6 +357,8 @@ class PDFMaker(object):
                                               dtype=np.float32)
         self.target_area_array = np.empty(len(hdf5_pair_group),
                                           dtype=np.float32)
+        self.target_density_array = np.empty(len(hdf5_pair_group),
+                                             dtype=np.float32)
         self.target_unknown_array = np.empty(len(hdf5_pair_group),
                                              dtype=np.float32)
         self.target_hold_rand_array = np.empty(len(hdf5_pair_group),
@@ -366,6 +368,7 @@ class PDFMaker(object):
         self.target_resolution_array = np.empty(len(hdf5_pair_group),
                                                 dtype=np.uint32)
         self._load_data_from_hdf5(hdf5_pair_group, args)
+        self._use_target_densities = args.use_reference_cleaning
         self._target_unknown_array_set = False
         self._computed_region_densities = False
         self._computed_pdf = False
@@ -397,6 +400,8 @@ class PDFMaker(object):
             self.target_redshift_array[target_idx] = (
                 target_grp.attrs['redshift'])
             self.target_area_array[target_idx] = target_grp.attrs['area']
+            self.target_density_array[target_idx] = target_grp.attrs[
+                'target_density']
             self.target_region_array[target_idx] = target_grp.attrs['region']
             self.target_resolution_array[target_idx] = (
                 target_grp.attrs['bin_resolution'])
@@ -406,6 +411,14 @@ class PDFMaker(object):
             else:
                 self.target_hold_rand_array[target_idx] = (
                     target_grp.attrs['rand'])
+
+        has_density_mask = np.logical_and(
+            self.target_density_array > 0,
+            np.isfinite(self.target_density_array))
+        min_target_density = self.target_density_array[has_density_mask].min()
+        self.target_density_array[
+            np.logical_not(has_density_mask)] = min_target_density
+
         max_n_regions = self.target_region_array.max() + 1
         region_list = []
         for region_idx in xrange(max_n_regions):
@@ -491,6 +504,8 @@ class PDFMaker(object):
         Returns:
             None
         """
+        # TODO:
+        #     Finish target over-density weighting.
         if not self._target_unknown_array_set:
             print("PDFMaker.set_target_unknown_array not set. Exiting method.")
             return None
@@ -525,10 +540,18 @@ class PDFMaker(object):
             # Store object properties.
             self._redshift_reg_array[bin_idx, region_idx] += redshift
             self._n_target_reg_array[bin_idx, region_idx] += 1
-            self._unknown_reg_array[bin_idx, region_idx] += (
-                self.target_unknown_array[target_idx])
-            self._rand_reg_array[bin_idx, region_idx] += (
-                self.target_rand_array[target_idx])
+            if self._use_target_densities:
+                self._unknown_reg_array[bin_idx, region_idx] += (
+                    self.target_unknown_array[target_idx] /
+                    self.target_density_array[target_idx])
+                self._rand_reg_array[bin_idx, region_idx] += (
+                    self.target_rand_array[target_idx] /
+                    self.target_density_array[target_idx])
+            else:
+                self._unknown_reg_array[bin_idx, region_idx] += (
+                    self.target_unknown_array[target_idx])
+                self._rand_reg_array[bin_idx, region_idx] += (
+                    self.target_rand_array[target_idx])
             self._area_reg_array[bin_idx, region_idx] += (
                 self.target_area_array[target_idx])
             self._resolution_reg_array[bin_idx, region_idx] += (
