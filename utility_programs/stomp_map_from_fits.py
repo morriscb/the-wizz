@@ -1,3 +1,4 @@
+#! /usr/bin/python
 
 import argparse
 from astropy import wcs
