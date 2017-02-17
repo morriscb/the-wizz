@@ -3,21 +3,17 @@ FROM zachdeibert/autotools
 MAINTAINER Christopher Morrison "morrison.chrisb@gmail.com"
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && apt-get install git -y && apt-get install zlib1g-dev -y
-RUN apt-get install python-dev -y && apt-get install swig -y
-RUN apt-get install python-pip -y
-RUN python -m pip install --upgrade pip
-RUN pip install --user numpy scipy h5py astropy
+RUN apt-get update && apt-get install git -y && \
+    apt-get install zlib1g-dev -y && apt-get install python-dev -y && \
+    apt-get install swig -y && apt-get install python-pip -y &&\
+    python -m pip install --upgrade pip && \
+    pip install --user numpy scipy h5py astropy
 
 # Install the libraries and build astro-stomp
 WORKDIR /home
 RUN git clone https://github.com/morriscb/astro-stomp.git
 WORKDIR /home/astro-stomp
-RUN ./autogen.sh
-ENV LD_LIBRARY_PATH /usr/local/lib
-ENV C_INCLUDE_PATH /usr/local/include
-ENV CPLUS_INCLUDE_PATH /usr/local/include
-RUN ./configure
+RUN ./autogen.sh && ./configure
 RUN make; exit 0
 RUN make install; exit 0
 
