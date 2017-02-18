@@ -40,7 +40,7 @@ pdf_maker.py requirements:
     h5py (http://www.h5py.org/)
     numpy (http://www.numpy.org/)
     scipy (http://www.scipy.org/)
-    
+
 pair_maker.py requirements:
 
     (as above)
@@ -49,7 +49,17 @@ pair_maker.py requirements:
 INSTALLATION
 ------------
 
-Currently The-wiZZ can be installed from git using the command
+The-wiZZ is available as a [docker](https://www.docker.com/) image for easy
+deployment. [This image](https://hub.docker.com/r/morriscb/the-wizz/) can be
+deployed with the following docker command
+
+    docker pull morriscb/the-wizz
+
+Tutorials using the docker image of The-wiZZ will be available soon.
+
+------------------------------------------------------------------------------
+
+The-wiZZ can also be installed from git using the command
 
     git clone https://github.com/morriscb/The-wiZZ.git <dir_name>
 

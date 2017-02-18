@@ -13,9 +13,7 @@ RUN apt-get update && apt-get install git -y && \
 WORKDIR /home
 RUN git clone https://github.com/morriscb/astro-stomp.git
 WORKDIR /home/astro-stomp
-RUN ./autogen.sh && ./configure
-RUN make; exit 0
-RUN make install; exit 0
+RUN ./autogen.sh && ./configure && make; exit 0 && make install; exit 0
 
 # Build the python wrappers for astro-stomp
 WORKDIR /home/astro-stomp/python
@@ -26,6 +24,7 @@ WORKDIR /home
 RUN git clone https://github.com/morriscb/The-wiZZ.git
 WORKDIR /home/The-wiZZ
 RUN chmod u+x pair_maker.py pdf_maker.py \
-    utility_programs/stomp_adapt_map.py utility_programs/stomp_map_from_fits.py \
+    utility_programs/stomp_adapt_map.py \
+    utility_programs/stomp_map_from_fits.py \
     utility_programs/stomp_mask_catalog.py
 ENV PATH /home/The-wiZZ:/home/The-wiZZ/utility_programs:$PATH
