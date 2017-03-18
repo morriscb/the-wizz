@@ -10,7 +10,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import stomp
 
-import _core_utils
+from the_wizz import core_utils
 
 
 def load_unknown_sample(sample_file_name, stomp_map, args):
@@ -34,9 +34,9 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
     #     masking, and creating the quadtree much faster. This may require
     #     creating a python wrapped C++ function for loading and creating
     #     a STOMP iTreeMap.
-    sample_data = _core_utils.file_checker_loader(sample_file_name)
-    unknown_itree_map = stomp.IndexedTreeMap(
-        np.max((128, stomp_map.RegionResolution())), 200)
+    sample_data = core_utils.file_checker_loader(sample_file_name)
+    unknown_itree_map = stomp.IndexedTreeMap(stomp_map.RegionResolution(), 200)
+
     for idx, obj in enumerate(sample_data):
         tmp_iang = stomp.IndexedAngularCoordinate(
             np.double(obj[args.unknown_ra_name]),
@@ -68,7 +68,7 @@ def load_target_sample(sample_file_name, stomp_map, args):
         tuple: STOMP::CosmosVector, int array
     """
     print("Loading target sample...")
-    sample_data = _core_utils.file_checker_loader(sample_file_name)
+    sample_data = core_utils.file_checker_loader(sample_file_name)
     target_vect = stomp.CosmoVector()
     target_tree_map = stomp.TreeMap(stomp_map.RegionResolution(), 200)
     target_idx_array = np.ones(sample_data.shape[0])*-99

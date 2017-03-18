@@ -13,9 +13,9 @@ from __future__ import division, print_function, absolute_import
 
 import numpy as np
 
-import _core_utils
-import _pdf_maker_utils
-import input_flags
+from the_wizz import core_utils
+from the_wizz import pdf_maker_utils
+from the_wizz import input_flags
 
 
 if __name__ == "__main__":
@@ -28,12 +28,12 @@ if __name__ == "__main__":
     # Load the file containing all matched pairs of spectroscopic and
     # photometric objects.
     print("Loading files...")
-    hdf5_pair_file = _core_utils.file_checker_loader(args.input_pair_hdf5_file)
-    unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
+    hdf5_pair_file = core_utils.file_checker_loader(args.input_pair_hdf5_file)
+    unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
     # Load the spectroscopic data from the HDF5 data file.
     print("Preloading target data...")
-    pdf_maker = _pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
-                                          args)
+    pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
+                                         args)
     if pdf_maker.target_redshift_array.max() < args.z_max:
         print("WARNING: requested z_max is greater than available target "
               "redshifts.")
@@ -61,17 +61,17 @@ if __name__ == "__main__":
     # compared the usual simga/(1 + z) error.
     print("Creating bins...")
     if args.z_binning_type == 'linear':
-        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'adaptive':
-        z_bin_edge_array = _pdf_maker_utils._create_adaptive_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_adaptive_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins,
             pdf_maker.target_redshift_array)
     elif args.z_binning_type == 'comoving':
-        z_bin_edge_array = _pdf_maker_utils._create_comoving_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'logspace':
-        z_bin_edge_array = _pdf_maker_utils._create_logspace_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_logspace_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     else:
         print("Requested binning name invalid. Valid types are:")
@@ -79,7 +79,7 @@ if __name__ == "__main__":
         print("\tadaptive: constant target objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
         print("Retunning linear binning...")
-        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     # This is where the heavy lifting happens. We create our PDF maker object
     # which will hold the pair file for use, calculate the over density per
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # line below turns the array of indices in the hdf5 pair file, into a
     # single density estimate around the target object.
     print("Starting indices matcher...")
-    _pdf_maker_utils.collapse_ids_to_single_estimate(
+    pdf_maker_utils.collapse_ids_to_single_estimate(
         hdf5_pair_file[args.pair_scale_name], pdf_maker, unknown_data, args)
     # Before we calculated the pdfs, we want to know what the over densities
     # are in each of the regions calculated on the area we consider.
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # Now that we have the results. We just need to write them to file and we
     # are done.
     print("Writing...")
-    output_file = _core_utils.create_ascii_file(args.output_pdf_file_name,
+    output_file = core_utils.create_ascii_file(args.output_pdf_file_name,
                                                 args)
     pdf_maker.write_pdf_to_ascii(output_file)
     output_file.close()

@@ -9,7 +9,7 @@ from multiprocessing import Pool
 import numpy as np
 from scipy.spatial import cKDTree
 
-from _pdf_maker_utils import _collapse_multiplex
+from the_wizz.pdf_maker_utils import _collapse_multiplex
 
 # TODO:
 #     Add option to pickle and loaded pickled CatalogKDtree objects.

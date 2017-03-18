@@ -9,8 +9,9 @@ import pickle
 
 from multiprocessing import Pool
 import numpy as np
+from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
 
-import _core_utils
+from the_wizz import core_utils
 
 
 def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
@@ -26,7 +27,6 @@ def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
         edges. The n_bin + 1 edge is equal to z_max.
     """
     return np.linspace(z_min, z_max, n_bins + 1)[:-1]
-
 
 def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
     """Simple utility for computing redshift bins that delivers a consistent
@@ -48,7 +48,6 @@ def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
                                      useable_z_array.shape[0]/n_bins,
                                      dtype=np.int_)]
 
-
 def _create_logspace_redshift_bin_edges(z_min, z_max, n_bins):
     """Simple utility for computing redshift bins that are equally spaced in
     comoving, line of sight distance. This creates bins that have a smoother
@@ -66,7 +65,6 @@ def _create_logspace_redshift_bin_edges(z_min, z_max, n_bins):
     log_max = np.log(1 + z_max)
     return np.exp(np.linspace(log_min, log_max, n_bins + 1)[:-1]) - 1.0
 
-
 def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     """Simple utility for computing redshift bins that are equally spaced in
     comoving, line of sight distance. This creates bins that have a smoother
@@ -80,11 +78,23 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
         numpy.array of type float and shape (n_bins,) containing the lower bin
         edges. The n_bin + 1 edge is equal to z_max.
     """
-    comov_min = _core_utils.WMAP5.comoving_distance(z_min).value
-    comov_max = _core_utils.WMAP5.comoving_distance(z_max).value
-    return _core_utils.redshift(
+    comov_min = core_utils.WMAP5.comoving_distance(z_min).value
+    comov_max = core_utils.WMAP5.comoving_distance(z_max).value
+
+    comov_dist_to_redsihft_spline = _make_redshift_spline(z_min, z_max)
+    
+    return comov_dist_to_redsihft_spline(
         np.linspace(comov_min, comov_max, n_bins + 1)[:-1])
 
+def _make_redshift_spline(z_min, z_max):
+    """Utility function for creating a spline for comoving distance to
+    redshift.
+    """
+    redshift_array = np.linspace(
+        np.min(z_min - 1e-8, 0.0), z_max + 1e-8, 1000)
+    comov_array = core_utils.WMAP5.comoving_distance(redshift_array)
+    comov_dist_to_redshift_spline = iu_spline(comov_array, redshift_array)
+    return comov_dist_to_redshift_spline
 
 def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
                                     unknown_data, args):
@@ -210,7 +220,6 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
     return None
 
-
 def _collapse_multiplex(input_tuple):
     """Function for matching indices and calculating the over densities of a
     specific set of unknown objects around the target object. This specific
@@ -266,7 +275,6 @@ def _collapse_multiplex(input_tuple):
                     tmp_n_points += 1.0*weight
     return tmp_n_points
 
-
 def _load_pair_data(hdf5_group, key_start, n_load):
     """Functions for loading individual target objects from the HDF5 file.
     ----------------------------------------------------------------------------
@@ -286,7 +294,6 @@ def _load_pair_data(hdf5_group, key_start, n_load):
         output_list.append([hdf5_group[key_list[key_idx]]['ids'][...],
                             hdf5_group[key_list[key_idx]]['inv_dist'][...]])
     return output_list
-
 
 def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
     """Convience function for collapsing the full sample of ids into a single

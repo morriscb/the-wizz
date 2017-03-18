@@ -14,10 +14,10 @@ import sys
 import numpy as np
 import stomp
 
-import _core_utils
-import _stomp_utils
-import input_flags
-import _pair_maker_utils
+from the_wizz import core_utils
+from the_wizz import stomp_utils
+from the_wizz import input_flags
+from the_wizz import pair_maker_utils
 
 if __name__ == "__main__":
     print("")
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # Create the output hdf5 file where we will store the output for the
     # pair finding including raw pairs, area, unmasked fraction. We do this
     # first to soft fail rather than run through the code.
-    output_pair_hdf5_file = _core_utils.create_hdf5_file(
+    output_pair_hdf5_file = core_utils.create_hdf5_file(
         args.output_pair_hdf5_file, args)
     # Load the stomp geometry coving the area of spectroscopic overlap.
     stomp_map = stomp.Map(args.stomp_map)
@@ -39,22 +39,22 @@ if __name__ == "__main__":
     print("Created %i Regions at resolution %i..." %
           (stomp_map.NRegion(), stomp_map.RegionResolution()))
     # Load the sample with known redshifts.
-    target_vector, target_ids, target_tree_map = _stomp_utils.load_target_sample(
+    target_vector, target_ids, target_tree_map = stomp_utils.load_target_sample(
         args.target_sample_file, stomp_map, args)
     # Load the unknown sample from disc. Assumed data type is fits.
-    unknown_itree = _stomp_utils.load_unknown_sample(args.unknown_sample_file,
-                                                     stomp_map, args)
+    unknown_itree = stomp_utils.load_unknown_sample(args.unknown_sample_file,
+                                                    stomp_map, args)
     # We also wish to subtract a random sample from density estimate. This
     # function creates a set of uniform data points on the geometry of the
     # stomp map.
     if args.n_randoms > 0:
-        random_tree = _stomp_utils.create_random_data(
+        random_tree = stomp_utils.create_random_data(
             args.n_randoms*unknown_itree.NPoints(), stomp_map)
     # Now that we have everything set up we can send our data off to the pair
     # finder.
-    pair_finder = _pair_maker_utils.RawPairFinder(unknown_itree, target_vector,
-                                                  target_ids, target_tree_map,
-                                                  stomp_map)
+    pair_finder = pair_maker_utils.RawPairFinder(unknown_itree, target_vector,
+                                                 target_ids, target_tree_map,
+                                                 stomp_map)
     # We need to tell the pair finder what scale we would like to run over
     # before we begin.
     min_scale_list = args.min_scale.split(',')

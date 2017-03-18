@@ -1,7 +1,10 @@
 #! /usr/bin/python
 
+from __future__ import print_function
+
 import argparse
 from astropy.io import fits
+import numpy as np
 import stomp
 
 
@@ -45,7 +48,8 @@ if __name__ == '__main__':
     dec_max = data[args.dec_name].max()
 
     print("Creating bounding area...")
-    latlon_bound = stomp.LatLonBound(dec_min, dec_max, ra_min, ra_max,
+    latlon_bound = stomp.LatLonBound(np.double(dec_min), np.double(dec_max),
+                                     np.double(ra_min), np.double(ra_max),
                                      stomp.AngularCoordinate.Equatorial)
     print("\tMax possible Area: %.8f deg^2" % latlon_bound.Area())
 
@@ -57,7 +61,7 @@ if __name__ == '__main__':
             output_stomp_map.IngestMap(pix_vect)
             pix_vect = stomp.PixelVector()
         tmp_ang = stomp.AngularCoordinate(
-            obj[args.ra_name], obj[args.dec_name],
+            np.double(obj[args.ra_name]), np.double(obj[args.dec_name]),
             stomp.AngularCoordinate.Equatorial)
         pix_vect.push_back(stomp.Pixel(tmp_ang, args.resolution, 1.0))
     output_stomp_map.IngestMap(pix_vect)

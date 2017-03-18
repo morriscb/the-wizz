@@ -9,66 +9,6 @@ from astropy.cosmology import WMAP5
 from astropy.io import fits
 import h5py
 import numpy as np
-from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
-
-global verbose
-global _initialized_cosmology
-
-verbose = False
-_initialized_cosmology = False
-
-
-def set_verbose(v_bool):
-    """Set the internal verbosity of the library at the time of running.
-    ----------------------------------------------------------------------------
-    Args:
-        v_bool: boolean variable specifying if the code should be verbose or not
-    Returns:
-        None
-    """
-    global verbose
-    verbose = v_bool
-    return None
-
-
-def verbose_print_statement(statement_string):
-    if verbose:
-        print(statement_string)
-    return None
-
-
-def _initialize_cosmology():
-    """Initlized internal __core__ variables storing the trend of redshift vs
-    comoving distance. Default cosmology is from WMAP5.
-    ----------------------------------------------------------------------------
-    Args:
-        None
-    Returns:
-        None
-    """
-    # TODO:
-    #     Talk to someone about this. Are globals the best way to do this.
-    redshift_array = np.linspace(0.0, 10.0, 1000)
-    comov_array = WMAP5.comoving_distance(redshift_array)
-    global _comov_dist_to_redshift_spline
-    _comov_dist_to_redshift_spline = iu_spline(comov_array, redshift_array)
-    global _initilized_cosmology
-    _initilized_cosmology = True
-    return None
-
-
-def redshift(comov_dist):
-    """Spline wrapper for converting a comoving line of sight distance into a
-    redshift assuming the WMAP5 cosmology.
-    ----------------------------------------------------------------------------
-    Args:
-        comov_dist: float or float array cosmoving distance in Mpc
-    Returns:
-        float or float array redshift
-    """
-    if not _initialized_cosmology:
-        _initialize_cosmology()
-    return _comov_dist_to_redshift_spline(comov_dist)
 
 
 def file_checker_loader(input_file_name):
