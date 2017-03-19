@@ -60,13 +60,13 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--input_region_pickle_files', required = True,
-                        type = str, help = 'Comma separated list of pickle '
+    parser.add_argument('--input_region_pickle_files', required=True,
+                        type=str, help='Comma separated list of pickle '
                         'files containing the over-densities output by '
                         'pdf_maker.py. These files should contain the same '
                         'redshift binning.')
-    parser.add_argument('--input_special_region_pickle_files', default = None,
-                        type = str, help = 'Comma separated list of pickle '
+    parser.add_argument('--input_special_region_pickle_files', default=None,
+                        type=str, help='Comma separated list of pickle '
                         'files containing the over-densities output by '
                         'pdf_maker.py. These files are distinct from above '
                         'as they contain specific regions that one always '
@@ -74,17 +74,17 @@ if __name__ == "__main__":
                         'of higher redshift but smaller area that you want to '
                         'include in the recovery but cannot combine in the '
                         'maker.')
-    parser.add_argument('--output_pdf_file', required = True,
-                        type = str, help = 'Name of ascii file to write '
+    parser.add_argument('--output_pdf_file', required=True,
+                        type=str, help='Name of ascii file to write '
                         'resultant pdf to.')
-    parser.add_argument('--n_bootstrap', default = 1000, type = int,
-                        help = 'Argument specifying the number of bootstrap '
+    parser.add_argument('--n_bootstrap', default=1000, type=int,
+                        help='Argument specifying the number of bootstrap '
                         'resamlings of the recovery to compute errors.')
-    parser.add_argument('--output_bootstraps_file', default = None, type = str,
-                        help = 'This is an optional argument specifying an '
+    parser.add_argument('--output_bootstraps_file', default=None, type=str,
+                        help='This is an optional argument specifying an '
                         'ascii file to write the individual bootstrap pdfs to.')
-    parser.add_argument('--bootstrap_samples', default = None, type = str,
-                        help = 'This is an optional argument specifying an '
+    parser.add_argument('--bootstrap_samples', default=None, type=str,
+                        help='This is an optional argument specifying an '
                         'ascii file containing specified bootstrap samplings '
                         'to run. These should row-wise specifications of '
                         'regions from the input pair hdf5 file. Overrides '
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     ### Create the array of indices for the regions we will bootstrap over.
     if args.bootstrap_samples is None:
         bootstrap_samples = np.random.randint(region_dict['n_regions'],
-                                              size = (args.n_bootstrap,
+                                              size=(args.n_bootstrap,
                                                       region_dict['n_regions']))
         ### Create the bootstraps for the "special" sample and concatenate them
         ### to the end of the bootstrap samples.
@@ -115,27 +115,27 @@ if __name__ == "__main__":
                     (bootstrap_samples,
                      np.random.randint(
                          region_special_dict['n_regions'],
-                         size = (args.n_bootstrap,
+                         size=(args.n_bootstrap,
                                  region_special_dict['n_regions']))),
-                    axis = 1)
+                    axis=1)
     ### If requested, the code can load a set of fixed bootstraps from disc.
     ### If using a "special" sample make sure the bootstraps are formated as
     ### above with the region ids appended to the end of the "normal" regions.
     else:
         bootstrap_samples = np.loadtxt(args.bootstrap_samples,
-                                       dtype = np.int_)
+                                       dtype=np.int_)
         args.n_bootstrap = bootstrap_samples.shape[0]
     ### Create empty array for storage of the bootstraps.
     density_bootstrap_array = np.empty((region_dict['redshift'].shape[0],
                                         args.n_bootstrap))
     
     ### Computing mean redshift per bin.
-    redshift_array = np.sum(region_dict['redshift'], axis = 1)
-    n_target_array = np.sum(region_dict['n_target'], axis = 1)
+    redshift_array = np.sum(region_dict['redshift'], axis=1)
+    n_target_array = np.sum(region_dict['n_target'], axis=1)
     if args.input_special_region_pickle_files is not None:
         for region_special_dict in region_special_list:
-            redshift_array += np.sum(region_special_dict['redshift'], axis = 1)
-            n_target_array += np.sum(region_special_dict['n_target'], axis = 1)
+            redshift_array += np.sum(region_special_dict['redshift'], axis=1)
+            n_target_array += np.sum(region_special_dict['n_target'], axis=1)
     redshift_array /= n_target_array
     
     ### Start the actual bootstrap process.
@@ -143,9 +143,9 @@ if __name__ == "__main__":
         
         tmp_boot_reg_ids = boot_reg_ids[:region_dict['n_regions']]
         boot_unknown_array = np.sum(region_dict['unknown'][:,tmp_boot_reg_ids],
-                                    axis = 1)
+                                    axis=1)
         boot_rand_array = np.sum(region_dict['rand'][:,tmp_boot_reg_ids],
-                                 axis = 1)
+                                 axis=1)
         ### Compute the bootstrap average for the "special" samples.
         if args.input_special_region_pickle_files is not None:
             n_special_region = 0
@@ -157,17 +157,17 @@ if __name__ == "__main__":
                 n_special_region += region_special_dict['n_regions']
                 boot_unknown_array += np.sum(
                     region_special_dict['unknown'][:,tmp_boot_reg_ids],
-                    axis = 1)
+                    axis=1)
                 boot_rand_array += np.sum(
-                    region_special_dict['rand'][:,tmp_boot_reg_ids], axis = 1)
+                    region_special_dict['rand'][:,tmp_boot_reg_ids], axis=1)
         ### Compute the over density for the current bootstrap.
         density_bootstrap_array[:, boot_idx] = (boot_unknown_array /
                                                 boot_rand_array - 1.0)
     
     ### Compute the mean and standard deviation using nan safe means and
     ### variances.
-    density_array = np.nanmean(density_bootstrap_array, axis = 1)
-    density_err_array = np.nanstd(density_bootstrap_array, axis = 1)
+    density_array = np.nanmean(density_bootstrap_array, axis=1)
+    density_err_array = np.nanstd(density_bootstrap_array, axis=1)
     
     ### Create the output ascii header we will use to store the information on
     ### this run.
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     ### If requested output the individual bootstraps to a file.
     if args.output_bootstraps_file is not None:
         np.savetxt(args.output_bootstraps_file, density_bootstrap_array,
-                   header = output_header)
+                   header=output_header)
         
     ### Add the column names to the header.
     output_header += ("type1 = z_mean\n"
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     np.savetxt(args.output_pdf_file,
                np.array([redshift_array, density_array,
                          density_err_array]).transpose(),
-               header = output_header)
+               header=output_header)
     
         
         

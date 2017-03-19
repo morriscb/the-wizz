@@ -87,4 +87,7 @@ if __name__ == "__main__":
     out_tbhdu = fits.BinTableHDU.from_columns(col_list)
     out_tbhdu.writeto(args.output_fits_file, overwrite=True)
     hdu.close()
+<<<<<<< HEAD
     # Done!
+=======
+>>>>>>> 66cc224... Added COSMOS test data and pep8 cleanup.
