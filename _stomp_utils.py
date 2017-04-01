@@ -36,7 +36,7 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
     #     a STOMP iTreeMap.
     sample_data = _core_utils.file_checker_loader(sample_file_name)
     unknown_itree_map = stomp.IndexedTreeMap(
-        np.max((256, stomp_map.RegionResolution())), 200)
+        np.max((128, stomp_map.RegionResolution())), 200)
     for idx, obj in enumerate(sample_data):
         tmp_iang = stomp.IndexedAngularCoordinate(
             np.double(obj[args.unknown_ra_name]),
@@ -112,7 +112,7 @@ def create_random_data(n_randoms, stomp_map):
     random_vect = stomp.AngularVector()
     stomp_map.GenerateRandomPoints(random_vect, n_randoms)
     random_tree = stomp.TreeMap(
-        np.max((256, stomp_map.RegionResolution())), 200)
+        np.max((128, stomp_map.RegionResolution())), 200)
     print("\tLoading randoms into tree map...")
     for rand_ang in random_vect:
         random_tree.AddPoint(rand_ang, 1.0)
