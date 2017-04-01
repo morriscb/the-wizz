@@ -116,7 +116,7 @@ reference catalog used.
 
 The code uses the spatial pixelization library STOMP for all of it's pair
 finding. Those unfamiliar with this libary are recommened to have a look at the
-source code header files at https://github.com/ryanscranton/astro-stomp. 
+source code header files at https://github.com/ryanscranton/astro-stomp.
 
 To use pair finder, one much first create a file describing the usmasked area of
 the survey, in STOMP this is called a Map. Two utility functions are available

@@ -38,7 +38,9 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
     unknown_itree_map = stomp.IndexedTreeMap(stomp_map.RegionResolution(), 200)
     for idx, obj in enumerate(sample_data):
         tmp_iang = stomp.IndexedAngularCoordinate(
-            obj[args.unknown_ra_name], obj[args.unknown_dec_name], idx,
+            np.double(obj[args.unknown_ra_name]),
+            np.double(obj[args.unknown_dec_name]),
+            np.int32(idx),
             stomp.AngularCoordinate.Equatorial)
         if args.unknown_index_name is not None:
             tmp_iang.SetIndex(int(obj[args.unknown_index_name]))
