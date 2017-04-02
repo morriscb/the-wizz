@@ -41,8 +41,7 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
         tmp_iang = stomp.IndexedAngularCoordinate(
             np.double(obj[args.unknown_ra_name]),
             np.double(obj[args.unknown_dec_name]),
-            np.int32(idx),
-            stomp.AngularCoordinate.Equatorial)
+            idx, stomp.AngularCoordinate.Equatorial)
         if args.unknown_index_name is not None:
             tmp_iang.SetIndex(int(obj[args.unknown_index_name]))
         if stomp_map.Contains(tmp_iang):
