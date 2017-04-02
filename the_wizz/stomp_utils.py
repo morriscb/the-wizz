@@ -16,13 +16,13 @@ from the_wizz import core_utils
 def load_unknown_sample(sample_file_name, stomp_map, args):
     """ Method for loading a set of objects with unknown redshifts into
     The-wiZZ. This function maskes the data and returns a STOMP.iTreeMap object
-    which is a searchable quad tree where each object stored has a unique index.
-    If a name of an index column is not specified a simple counting index from
-    thestart of the file is stored.
+    which is a searchable quad tree where each object stored has a unique
+    index. If a name of an index column is not specified a simple counting
+    index from thestart of the file is stored.
     ----------------------------------------------------------------------------
     Args:
-        sample_file_name: string name specifying the file containing the unknown
-            sample. Assumed file type is FITS.
+        sample_file_name: string name specifying the file containing the
+            unknown sample. Assumed file type is FITS.
         stomp_map: STOMP.Map object specifying the geomometry of the area
             considered.
         args: ArgumentParser.parse_args object returned from input_flags.
@@ -70,11 +70,12 @@ def load_target_sample(sample_file_name, stomp_map, args):
     print("Loading target sample...")
     sample_data = core_utils.file_checker_loader(sample_file_name)
     target_vect = stomp.CosmoVector()
-    target_tree_map = stomp.TreeMap(stomp_map.RegionResolution(), 200)
+    target_tree_map = stomp.TreeMap(
+        np.max((128, stomp_map.RegionResolution())), 200)
     target_idx_array = np.ones(sample_data.shape[0])*-99
     for idx, obj in enumerate(sample_data):
-        if (obj[args.target_redshift_name] < args.z_min or
-            obj[args.target_redshift_name] >= args.z_max):
+        if obj[args.target_redshift_name] < args.z_min or \
+           obj[args.target_redshift_name] >= args.z_max:
             # Continue if the target object redshift is out of range.
             continue
         tmp_cang = stomp.CosmoCoordinate(

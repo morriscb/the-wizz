@@ -15,6 +15,7 @@ class DummyArgs(object):
         self.reference_dec_name = 'dec'
         self.reference_redshift_name = 'z'
         self.reference_index_name = None
+
         self.z_min = 0.01
         self.z_max = 10.0
 
@@ -28,6 +29,7 @@ class TestStompUtils(unittest.TestCase):
     def setUp(self):
         self.stomp_map = stomp.Map(
             'data/COSMOS_X_zCOSMOS_BRIGHT_excluded.map')
+
         self.stomp_map.InitializeRegions(8)
         self.reference_cat_name = (
             'data/zCOSMOS_BRIGHT_v3.5_spec_FLAG34_FLAG134.fits')

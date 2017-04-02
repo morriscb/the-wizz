@@ -1,6 +1,6 @@
 
-"""Utility functions for finding and storing close pairs between a target object
-with known redshifts and objects with unknown redshifts.
+"""Utility functions for finding and storing close pairs between a target
+object with known redshifts and objects with unknown redshifts.
 """
 
 from __future__ import division, print_function, absolute_import
