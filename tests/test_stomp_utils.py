@@ -29,7 +29,6 @@ class TestStompUtils(unittest.TestCase):
     def setUp(self):
         self.stomp_map = stomp.Map(
             'data/COSMOS_X_zCOSMOS_BRIGHT_excluded.map')
-
         self.stomp_map.InitializeRegions(8)
         self.reference_cat_name = (
             'data/zCOSMOS_BRIGHT_v3.5_spec_FLAG34_FLAG134.fits')

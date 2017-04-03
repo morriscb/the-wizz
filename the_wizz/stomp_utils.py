@@ -43,7 +43,7 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
             np.double(obj[args.unknown_dec_name]),
             idx, stomp.AngularCoordinate.Equatorial)
         if args.unknown_index_name is not None:
-            tmp_iang.SetIndex(int(obj[args.unknown_index_name]))
+            tmp_iang.SetIndex(np.uint32(obj[args.unknown_index_name]))
         if stomp_map.Contains(tmp_iang):
             unknown_itree_map.AddPoint(tmp_iang)
     print("\tLoaded %i / %i target galaxies..." %
@@ -72,7 +72,7 @@ def load_target_sample(sample_file_name, stomp_map, args):
     target_vect = stomp.CosmoVector()
     target_tree_map = stomp.TreeMap(
         np.max((128, stomp_map.RegionResolution())), 200)
-    target_idx_array = np.ones(sample_data.shape[0])*-99
+    target_idx_array = np.ones(sample_data.shape[0], dtype=np.uint32)*-99
     for idx, obj in enumerate(sample_data):
         if obj[args.target_redshift_name] < args.z_min or \
            obj[args.target_redshift_name] >= args.z_max:
