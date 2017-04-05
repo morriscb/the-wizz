@@ -35,31 +35,31 @@ def load_unknown_sample(sample_file_name, stomp_map, args):
     #     creating a python wrapped C++ function for loading and creating
     #     a STOMP iTreeMap.
     sample_data = core_utils.file_checker_loader(sample_file_name)
-    unknown_itree_map = stomp.IndexedTreeMap(stomp_map.RegionResolution(), 200)
-
+    unknown_itree_map = stomp.IndexedTreeMap(
+        stomp_map.RegionResolution(), 200)
     for idx, obj in enumerate(sample_data):
         tmp_iang = stomp.IndexedAngularCoordinate(
             np.double(obj[args.unknown_ra_name]),
             np.double(obj[args.unknown_dec_name]),
             idx, stomp.AngularCoordinate.Equatorial)
         if args.unknown_index_name is not None:
-            tmp_iang.SetIndex(np.uint32(obj[args.unknown_index_name]))
+            tmp_iang.SetIndex(int(obj[args.unknown_index_name]))
         if stomp_map.Contains(tmp_iang):
             unknown_itree_map.AddPoint(tmp_iang)
-    print("\tLoaded %i / %i target galaxies..." %
+    print("\tLoaded %i / %i unknown galaxies..." %
           (unknown_itree_map.NPoints(), sample_data.shape[0]))
     return unknown_itree_map
 
 
-def load_target_sample(sample_file_name, stomp_map, args):
+def load_reference_sample(sample_file_name, stomp_map, args):
     """Method for loading the targert object sample with known redshifts. The
     objects are masked against the requested geomometry and stored with their
     redshifts and into a STOMP.CosmoVector object. The code also returns an
-    array of the indices of the target objects from the columns requested in
+    array of the indices of the reference objects from the columns requested in
     input_flags or simply counts.
     ----------------------------------------------------------------------------
     Args:
-        sample_file_name: string name of the file containing the target, known
+        sample_file_name: string name of the file containing the reference, known
             redshift objects. Currently only FITS is supported.
         stomp_map: STOMP.Map object specifying the geomometry of the area
             considered.
@@ -67,33 +67,33 @@ def load_target_sample(sample_file_name, stomp_map, args):
     Returns:
         tuple: STOMP::CosmosVector, int array
     """
-    print("Loading target sample...")
+    print("Loading reference sample...")
     sample_data = core_utils.file_checker_loader(sample_file_name)
-    target_vect = stomp.CosmoVector()
-    target_tree_map = stomp.TreeMap(
-        np.max((128, stomp_map.RegionResolution())), 200)
-    target_idx_array = np.ones(sample_data.shape[0], dtype=np.uint32)*-99
+    reference_vect = stomp.CosmoVector()
+    reference_tree_map = stomp.TreeMap(
+        stomp_map.RegionResolution(), 200)
+    reference_idx_array = np.ones(sample_data.shape[0], dtype=np.uint32)*-99
     for idx, obj in enumerate(sample_data):
-        if obj[args.target_redshift_name] < args.z_min or \
-           obj[args.target_redshift_name] >= args.z_max:
-            # Continue if the target object redshift is out of range.
+        if obj[args.reference_redshift_name] < args.z_min or \
+           obj[args.reference_redshift_name] >= args.z_max:
+            # Continue if the reference object redshift is out of range.
             continue
         tmp_cang = stomp.CosmoCoordinate(
-            np.double(obj[args.target_ra_name]),
-            np.double(obj[args.target_dec_name]),
-            np.double(obj[args.target_redshift_name]), 1.0,
+            np.double(obj[args.reference_ra_name]),
+            np.double(obj[args.reference_dec_name]),
+            np.double(obj[args.reference_redshift_name]), 1.0,
             stomp.AngularCoordinate.Equatorial)
         if stomp_map.Contains(tmp_cang):
-            target_vect.push_back(tmp_cang)
-            target_tree_map.AddPoint(tmp_cang)
-            if args.target_index_name is None:
-                target_idx_array[idx] = idx
+            reference_vect.push_back(tmp_cang)
+            reference_tree_map.AddPoint(tmp_cang)
+            if args.reference_index_name is None:
+                reference_idx_array[idx] = idx
             else:
-                target_idx_array[idx] = obj[args.target_index_name]
-    print("\tLoaded %i / %i target galaxies..." %
-          (target_vect.size(), sample_data.shape[0]))
-    return (target_vect, target_idx_array[target_idx_array > -99],
-            target_tree_map)
+                reference_idx_array[idx] = obj[args.reference_index_name]
+    print("\tLoaded %i / %i reference galaxies..." %
+          (reference_vect.size(), sample_data.shape[0]))
+    return (reference_vect, reference_idx_array[reference_idx_array > -99],
+            reference_tree_map)
 
 
 def create_random_data(n_randoms, stomp_map):

@@ -1,22 +1,65 @@
 
-"""Utility functions for finding and storing close pairs between a target
+"""Utility functions for finding and storing close pairs between a reference
 object with known redshifts and objects with unknown redshifts.
 """
 
 from __future__ import division, print_function, absolute_import
 
+import h5py
+from multiprocessing import Pool
 import numpy as np
+
 import stomp
+
+from the_wizz.core_utils import create_hdf5_file
+
+
+def _multi_proc_write_reference_to_hdf5(input_tuple):
+
+    (hdf5_file_name, ref_id, scale_name, id_array,
+     dist_weight_array, bin_resolution, unmasked_frac, area,
+     ref_ref_n_points, n_random, rand_dist_weight) = input_tuple
+
+    open_hdf5_file = h5py.File(hdf5_file_name, 'a')
+    ref_scale_grp = open_hdf5_file.create_group(
+        'data/%i/%s' % (ref_id, scale_name))
+
+    ref_scale_grp.attrs.create('bin_resolution', bin_resolution)
+    ref_scale_grp.attrs.create('unmasked_frac', unmasked_frac)
+    ref_scale_grp.attrs.create('area', area)
+    ref_scale_grp.attrs.create('ref_ref_n_points', ref_ref_n_points)
+
+    if n_random is not None:
+        ref_scale_grp.attrs.create('n_random', n_random)
+        ref_scale_grp.attrs.create('rand_dist_weight', rand_dist_weight)
+
+    if id_array.shape[0] <= 0:
+       tmp_max_shape = (None,)
+    else:
+       tmp_max_shape = id_array.shape
+
+    sorted_args_array = id_array.argsort()
+    ref_scale_grp.create_dataset(
+        'ids', data=id_array[sorted_args_array],
+        maxshape=tmp_max_shape, compression='lzf', shuffle=True)
+    ref_scale_grp.create_dataset(
+        'dist_weights', data=dist_weight_array[sorted_args_array],
+        maxshape=tmp_max_shape, compression='lzf', shuffle=True)
+
+    open_hdf5_file.close()
+
+    return None
 
 
 class RawPairFinder(object):
     """Main class for calculating and storing the indexes of nearby pairs for
-    the target and unknown samples. It handles both the real data and random
+    the reference and unknown samples. It handles both the real data and random
     samples in slightly different pair loops since we don't need to store
     indices for random samples.
     """
-    def __init__(self, unknown_itree, target_vector, target_ids,
-                 target_tree_map, stomp_map):
+    def __init__(self, unknown_itree, reference_vector, reference_ids,
+                 reference_tree, stomp_map, hdf5_file_name,
+                 random_tree=None, create_hdf5_file=True, input_args=None):
         """Initialization for the pair finding software. Utilizes the STOMP
         sphereical pixelization library to find and store all close pairs into
         a HDF5 data file.
@@ -25,57 +68,241 @@ class RawPairFinder(object):
             unknown_itree: stomp IndexedTreeMap object containing the unknown
                 object sample. The data structure is that of a searchable
                 quad-tree
-            target_vector: stomp CosmoVector object containing the target
+            reference_vector: stomp CosmoVector object containing the reference
                 objects
-            target_ids: numpy.array containing the index number of the target
-                objects
+            reference_ids: numpy.array containing the index number of the
+                reference objects
             stomp_map: stomp Map object specifying the geometry of the survey
         """
         self._unknown_itree = unknown_itree
-        self._target_vect = target_vector
-        self._target_ids = target_ids
-        self._target_tree_map = target_tree_map
-        self._region_ids = np.empty_like(target_ids, dtype=np.uint16)
+        self._reference_vect = reference_vector
+        self._reference_ids = reference_ids
+        self._reference_tree = reference_tree
         self._stomp_map = stomp_map
-        self._region_area = np.empty(self._stomp_map.NRegion(),
-                                     dtype=np.float32)
+        self._hdf5_file_name = hdf5_file_name
+        self._random_tree = random_tree
+
+        region_area = np.empty(self._stomp_map.NRegion(), dtype=np.float32)
         for reg_idx in xrange(self._stomp_map.NRegion()):
-            self._region_area[reg_idx] = self._stomp_map.RegionArea(reg_idx)
+            region_area[reg_idx] = self._stomp_map.RegionArea(reg_idx)
 
-    def _reset_array_data(self):
-        """Utility function that creates/resets the interal data storage of the
-        class for the unknown sample.
+        if create_hdf5_file:
+            self._create_hdf5_file_and_store_reference_data(
+                input_args, region_area)
+
+    def _create_hdf5_file_and_store_reference_data(self, input_args,
+                                                   region_area):
+        """ Creates a initial HDF5 data file for use in The-wiZZ. This
+        is where all of the final pair data will be stored after find pairs
+        is run.
         """
-        self._area_array = np.zeros(self._target_vect.size(),
-                                    dtype=np.float32)
-        self._unmasked_array = np.zeros(self._target_vect.size(),
-                                        dtype=np.float32)
-        self._bin_resolution = np.empty(self._target_vect.size(),
-                                        dtype=np.uint32)
-        self._target_target_array = np.zeros(self._target_vect.size(),
-                                             dtype=np.uint32)
-        self._pair_list = []
-        self._pair_invdist_list = []
-        for idx in xrange(self._target_vect.size()):
-            self._pair_list.append([])
-            self._pair_invdist_list.append([])
+
+        # Create a new hdf5 file
+        hdf5_file = create_hdf5_file(self._hdf5_file_name, input_args)
+
+        # Create a group called data where the pair data will go.
+        data_grp = hdf5_file.create_group('data')
+
+        # Store global numbers for this stomp_map that are not dependent
+        # on the annulus we are measuring the clustering-zs in.
+        data_grp.attrs.create('area', self._stomp_map.Area())
+        data_grp.attrs.create('n_region', self._stomp_map.NRegion())
+        data_grp.attrs.create('region_area', region_area)
+        data_grp.attrs.create('n_unknown', self._unknown_itree.NPoints())
+        if input_args.n_randoms > 0:
+            data_grp.attrs.create('n_random',
+                                  self._unknown_itree.NPoints() *
+                                  input_args.n_randoms)
+
+        for reference_idx, reference_obj in enumerate(self._reference_vect):
+
+            # Create the group where for this individual reference object
+            # were we will store all the pair data.
+            ref_grp = data_grp.create_group(
+                '%s' % self._reference_ids[reference_idx])
+            # Store information that is unique to each reference object.
+            ref_grp.attrs.create('redshift', reference_obj.Redshift())
+            ref_grp.attrs.create(
+                'region', self._stomp_map.FindRegion(reference_obj))
+
+        # Close the hdf5 file after we are done.
+        hdf5_file.close()
+
         return None
 
-    def _reset_random_data(self):
+    def find_pairs(self, min_scale, max_scale):
+        """Main functionality of the RawPairFinder class. Given the input data,
+        we find all the close pairs between the reference, known redshift
+        objects and the unknown redshift oobjects. Stores the raw pair indices
+        and also the inverse distance weight.
+        ------------------------------------------------------------------------
+        Args:
+            min_scale: float value of the minimum scale to run the pair finder.
+                Units are physical kpc
+            max_scale: float value of the maximum scale to run the pair finder.
+                Units are physical kpc
+            random_tree:
+        Returns:
+           None
         """
-        Utility function that creates/resets the interal data storage of the
-        class for the random sample following the geometry of the unknown
-        sample.
-        """
-        self._n_random_per_target = np.zeros_like(self._target_ids,
-                                                  dtype=np.uint32)
-        self._n_random_invdist_per_target = np.zeros_like(self._target_ids,
-                                                          dtype=np.float32)
+
+        # Create a multiprocessing pool to allow writing to disk instead of
+        # storing everything in memory.
+        hdf5_writer_pool = Pool(1)
+        scale_name = 'kpc%it%i' % (min_scale, max_scale)
+
+        # Create radial bin object that will use to search the object trees.
+        radial_bin = stomp.RadialBin(min_scale/1000.0, max_scale/1000.0, 0.01)
+        print("Finding real and random pairs...")
+        for reference_idx, reference_obj in enumerate(self._reference_vect):
+
+            # Find the stomp region where this reference object resides.
+            region_id = self._stomp_map.FindRegion(
+                reference_obj)
+            # Scale radial bin to correct on sky size given the redshift.
+            radial_bin.SetRedshift(reference_obj.Redshift())
+            max_ang = stomp.Cosmology.ProjectedAngle(reference_obj.Redshift(),
+                                                     max_scale/1000.0)
+            # Find the most efficient stomp resolution for this annulus.
+            radial_bin.CalculateResolution(reference_obj.Lambda() - max_ang,
+                                           reference_obj.Lambda() + max_ang)
+            reference_pix = stomp.Pixel(reference_obj, radial_bin.Resolution())
+            # Find pixels that cover the annulus at a fixed resoulution
+            covering_pix_vect = stomp.PixelVector()
+            reference_pix.WithinAnnulus(
+                reference_obj, radial_bin.Resolution(), radial_bin,
+                covering_pix_vect)
+            bin_resolution = radial_bin.Resolution()
+
+            # Create the lists where we will put our id and dist_weight arrys.
+            output_id_list = []
+            output_dist_weight_list = []
+            unmasked_frac = 0.
+            area = 0.
+            ref_ref_n_points = 0
+            n_random = None
+            rand_dist_weight = None
+            if self._random_tree is not None:
+                n_random = 0
+                rand_dist_weight = 0.
+
+            # Start loop over the pixels that cover the annulus.
+            for pix in covering_pix_vect:
+
+                (pix_id_list, pix_dist_weight_list,
+                 pix_unmasked_frac, pix_area,
+                 pix_ref_ref_n_points, pix_n_random, pix_rand_dist_weight) = \
+                    self._find_pairs_in_pixel(pix, reference_obj, region_id)
+
+                output_id_list.extend(pix_id_list)
+                output_dist_weight_list.extend(pix_dist_weight_list)
+                unmasked_frac += pix_unmasked_frac
+                area += pix_area
+                ref_ref_n_points += pix_ref_ref_n_points
+                if pix_n_random is not None:
+                    n_random += pix_n_random
+                    rand_dist_weight += pix_rand_dist_weight
+
+            if len(output_id_list) > 0:
+                ref_pair_id_array = np.concatenate(output_id_list)
+                ref_dist_weight_array = np.concatenate(output_dist_weight_list)
+            else:
+                ref_pair_id_array = np.array([], dtype=np.uint32)
+                ref_dist_weight_array = np.array([], dtype=np.float32)
+
+            multi_proc_list = [
+                (self._hdf5_file_name, self._reference_ids[reference_idx],
+                 scale_name, ref_pair_id_array, ref_dist_weight_array,
+                 bin_resolution, unmasked_frac, area, ref_ref_n_points,
+                 n_random, rand_dist_weight)]
+
+            hdf5_writer_pool.map(
+                _multi_proc_write_reference_to_hdf5, multi_proc_list)
+
+        hdf5_writer_pool.close()
+        hdf5_writer_pool.join()
+
         return None
 
-    def _compute_unknown_weight(self, dist):
+    def _find_pairs_in_pixel(self, pix, reference_obj, region_id):
+        # Get the weight of the current pixel.
+        dist_weight = self._compute_dist_weight(
+            reference_obj.ProjectedRadius(pix.Ang()))
+        # Check to see if the resolution is not larger than the
+        # regionation resolution. If it is break the pixel into its
+        # children and loop over them.
+        unmasked_frac = 0.
+        area = 0.
+        n_random = None
+        rand_dist_weight = None
+        ref_ref_n_points = 0
+        if self._random_tree is not None:
+            n_random = 0
+            rand_dist_weight = 0.
+
+        if pix.Resolution() < self._stomp_map.RegionResolution():
+            pix_vect = stomp.PixelVector()
+            pix.SubPix(self._stomp_map.RegionResolution(),
+                       pix_vect)
+
+            pair_id_list = []
+            pair_dist_wieght_list = []
+
+            for sub_pix in pix_vect:
+                if self._stomp_map.FindRegion(sub_pix) != region_id:
+                    continue
+                # Store the current values of the pixel and find
+                # the unknown objects it contains.
+                tmp_unmasked_frac = self._stomp_map.FindUnmaskedFraction(
+                    sub_pix)
+                if tmp_unmasked_frac <= 0.0:
+                    continue
+                unmasked_frac += tmp_unmasked_frac
+                area += tmp_unmasked_frac * sub_pix.Area(sub_pix.Resolution())
+
+                (tmp_pair_array, tmp_pair_dist_weight_array) = \
+                    self._store_reference_unknown_pixel(
+                        sub_pix, dist_weight)
+                pair_id_list.append(tmp_pair_array)
+                pair_dist_wieght_list.append(tmp_pair_dist_weight_array)
+                ref_ref_n_points += self._store_reference_reference_pixel(
+                    sub_pix)
+                if self._random_tree is not None:
+                    tmp_n_random, tmp_rand_dist_weight = \
+                        self._store_reference_random_pixel(sub_pix,
+                                                           dist_weight)
+                    n_random += tmp_n_random
+                    rand_dist_weight += tmp_rand_dist_weight
+
+            return (pair_id_list, pair_dist_wieght_list, unmasked_frac, area,
+                    ref_ref_n_points, n_random, rand_dist_weight)
+        else:
+            # Store the current values of the pixel and find the
+            # unknown objects it contains.
+            if self._stomp_map.FindRegion(pix) != region_id:
+                return ([], [], 0., 0., 0, n_random, rand_dist_weight)
+            unmasked_frac = self._stomp_map.FindUnmaskedFraction(pix)
+            if unmasked_frac <= 0.0:
+                return ([], [], 0., 0., 0, n_random, rand_dist_weight)
+            area = unmasked_frac * pix.Area(pix.Resolution())
+
+            (pair_array, pair_dist_weight_array) = \
+                self._store_reference_unknown_pixel(
+                    pix, dist_weight)
+            ref_ref_n_points = self._store_reference_reference_pixel(pix)
+
+            n_random = None
+            rand_dist_weight = None
+            if self._random_tree is not None:
+                n_random, rand_dist_weight = \
+                    self._store_reference_random_pixel(pix, dist_weight)
+
+            return ([pair_array], [pair_dist_weight_array], unmasked_frac,
+                    area, ref_ref_n_points, n_random, rand_dist_weight)
+
+    def _compute_dist_weight(self, dist):
         """Convienence function for computing the weighting of an unknown object
-        as a function of projected physical Mpc from the target object. This
+        as a function of projected physical Mpc from the reference object. This
         function is declared here for easy modification by intersted users.
         The normal behavior is inverse distance.
         ------------------------------------------------------------------------
@@ -86,267 +313,49 @@ class RawPairFinder(object):
         """
         return np.where(dist > 1e-8, 1./dist, 1e8)
 
-    def find_pairs(self, min_scale, max_scale):
-        """Main functionality of the RawPairFinder class. Given the input data,
-        we find all the close pairs between the target, known redshift objects
-        and the unknown redshift oobjects. Stores the raw pair indices and also
-        the inverse distance weight.
-        ------------------------------------------------------------------------
-        Args:
-            min_scale: float value of the minimum scale to run the pair finder.
-                Units are physical kpc
-            max_scale: float value of the maximum scale to run the pair finder.
-                Units are physical kpc
-        Returns:
-           None
-        """
-        self._reset_array_data()
-        radial_bin = stomp.RadialBin(min_scale/1000.0, max_scale/1000.0, 0.01)
-        print("Finding real pairs...")
-        for target_idx, target_obj in enumerate(self._target_vect):
-            # Find the stomp region where this target object resides.
-            self._region_ids[target_idx] = self._stomp_map.FindRegion(
-                target_obj)
-            # Scale radial bin to correct on sky size given the redshift.
-            radial_bin.SetRedshift(target_obj.Redshift())
-            max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
-                                                     max_scale/1000.0)
-            # Find the most efficient stomp resolution for this annulus.
-            radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
-                                           target_obj.Lambda() + max_ang)
-            target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
-            # Find pixels that cover the annulus at a fixed resoulution
-            covering_pix_vect = stomp.PixelVector()
-            target_pix.WithinAnnulus(target_obj, radial_bin.Resolution(),
-                                     radial_bin, covering_pix_vect)
-            self._bin_resolution[target_idx] = radial_bin.Resolution()
-            # Start loop over the pixels that cover the annulus.
-            for pix in covering_pix_vect:
-                # Get the weight of the current pixel.
-                target_weight = self._compute_unknown_weight(
-                    target_obj.ProjectedRadius(pix.Ang()))
-                # Check to see if the resolution is not larger than the
-                # regionation resolution. If it is break the pixel into its
-                # children and loop over them.
-                if pix.Resolution() < self._stomp_map.RegionResolution():
-                    pix_vect = stomp.PixelVector()
-                    pix.SubPix(self._stomp_map.RegionResolution(),
-                               pix_vect)
-                    for sub_pix in pix_vect:
-                        if self._stomp_map.FindRegion(sub_pix) == \
-                           self._region_ids[target_idx]:
-                            # Store the current values of the pixel and find
-                            # the unknown objects it contains.
-                            self._store_target_unknown_pixel(
-                                target_idx, target_obj, target_weight, sub_pix)
-                            self._store_target_target_pixel(
-                                target_idx, target_obj, sub_pix)
-                else:
-                    if self._stomp_map.FindRegion(pix) == \
-                       self._region_ids[target_idx]:
-                        # Store the current values of the pixel and find the
-                        # unknown objects it contains.
-                        self._store_target_unknown_pixel(
-                            target_idx, target_obj, target_weight, pix)
-                        self._store_target_target_pixel(
-                                target_idx, target_obj, pix)
-        return None
-
-    def _store_target_unknown_pixel(self, target_idx, target_obj,
-                                    target_weight, pix):
+    def _store_reference_unknown_pixel(self, pix, dist_weight):
         """Internal class function for finding the number of unknown objects and
         their ids in a single stomp pixel.
         ------------------------------------------------------------------------
         Args:
-            target_idx: int array index of the target object
-            target_obj: stomp.CosmoCoordinate object containing the spatial and
-                redshift information of the considered target object.
             pix: stomp.Pixel object to compute the number of randoms in.
+            dist_weight: float value
         Returns:
             None
         """
-        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-        if tmp_unmasked <= 0.0:
-            return None
-        self._unmasked_array[target_idx] += tmp_unmasked
-        self._area_array[target_idx] += (
-            tmp_unmasked*pix.Area(pix.Resolution()))
         tmp_i_ang_vect = stomp.IAngularVector()
         self._unknown_itree.Points(tmp_i_ang_vect, pix)
-        for i_ang in tmp_i_ang_vect:
-            self._pair_list[target_idx].append(i_ang.Index())
-            self._pair_invdist_list[target_idx].append(
-                np.float32(target_weight))
-        return None
+        output_id_array = np.empty(tmp_i_ang_vect.size(), dtype=np.uint32)
+        output_dist_weight_array = np.empty(
+            tmp_i_ang_vect.size(), dtype=np.float32)
+        for ang_idx, i_ang in enumerate(tmp_i_ang_vect):
+            output_id_array[ang_idx] = i_ang.Index()
+            output_dist_weight_array[ang_idx] = dist_weight
+        return output_id_array, output_dist_weight_array
 
-    def _store_target_target_pixel(self, target_idx, target_obj, pix):
+    def _store_reference_reference_pixel(self, pix):
         """Internal class function for finding the number of randoms in a
         single stomp pixel.
         ------------------------------------------------------------------------
         Args:
-            target_idx: int array index of the target object
-            target_obj: stomp.CosmoCoordinate object containing the spatial and
-                redshift information of the considered target object.
             pix: stomp.Pixel object to compute the number of randoms in.
         Returns:
             None
         """
-        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-        if tmp_unmasked <= 0.0:
-            return None
-        tmp_n_points = self._target_tree_map.NPoints(pix)
-        self._target_target_array[target_idx] += tmp_n_points
-        return None
+        return self._reference_tree.NPoints(pix)
 
-    def random_loop(self, min_scale, max_scale, random_tree):
-        """Function for computing and storing the number of random objects,
-        created to follow the same geometry as the unknown sample, against of
-        the target sample. Stores the raw number counts and also an inverse
-        weighted number count.
-        ------------------------------------------------------------------------
-        args:
-            min_scale: float value of the minimum scale to run the pair finder.
-                Units are physical kpc
-            max_scale: float value of the maximum scale to run the pair finder.
-                Units are physical kpc
-            n_randoms: int value factor of randoms to run. The total number
-                randoms used will be n_randoms * (# unknown points)
-        Returns:
-            None
-        """
-        self._reset_random_data()
-        self._n_random_points = random_tree.NPoints()
-        radial_bin = stomp.RadialBin(min_scale/1000.0, max_scale/1000.0, 0.01)
-        print("Finding random pairs...")
-        for target_idx, target_obj in enumerate(self._target_vect):
-            # Same as the unknown loop. Find the annulus on the sky that
-            # represents the scales we are interested and pixelize it.
-            self._region_ids[target_idx] = self._stomp_map.FindRegion(
-                target_obj)
-            radial_bin.SetRedshift(target_obj.Redshift())
-            max_ang = stomp.Cosmology.ProjectedAngle(target_obj.Redshift(),
-                                                     max_scale/1000.0)
-            radial_bin.CalculateResolution(target_obj.Lambda() - max_ang,
-                                           target_obj.Lambda() + max_ang)
-            target_pix = stomp.Pixel(target_obj, radial_bin.Resolution())
-            covering_pix_vect = stomp.PixelVector()
-            target_pix.WithinAnnulus(target_obj, radial_bin.Resolution(),
-                                     radial_bin, covering_pix_vect)
-            # Loop over the pixels.
-            for pix in covering_pix_vect:
-                tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-                if tmp_unmasked <= 0.0:
-                    continue
-                target_weight = self._compute_unknown_weight(
-                    target_obj.ProjectedRadius(pix.Ang()))
-                if pix.Resolution() < self._stomp_map.RegionResolution():
-                    pix_vect = stomp.PixelVector()
-                    pix.SubPix(self._stomp_map.RegionResolution(),
-                               pix_vect)
-                    for sub_pix in pix_vect:
-                        if self._stomp_map.FindRegion(sub_pix) == \
-                           self._region_ids[target_idx]:
-                            # Store the current values of the pixel and find
-                            # the unknown objects it contains.
-                            self._store_target_random_pixel(
-                                target_idx, target_obj, target_weight, sub_pix,
-                                random_tree)
-                else:
-                    if self._stomp_map.FindRegion(pix) == \
-                       self._region_ids[target_idx]:
-                        # Store the current values of the pixel and find
-                        # the unknown objects it contains.
-                        self._store_target_random_pixel(
-                            target_idx, target_obj, target_weight, pix,
-                            random_tree)
-        return None
-
-    def _store_target_random_pixel(self, target_idx, target_obj, target_weight,
-                                   pix, random_tree):
+    def _store_reference_random_pixel(self, pix, dist_weight):
         """Internal class function for finding the number of randoms in a
         single stomp pixel.
         ------------------------------------------------------------------------
         Args:
-            target_idx: int array index of the target object
-            target_obj: stomp.CosmoCoordinate object containing the spatial and
-                redshift information of the considered target object.
+            reference_idx: int array index of the reference object
+            reference_obj: stomp.CosmoCoordinate object containing the spatial
+                and redshift information of the considered reference object.
             pix: stomp.Pixel object to compute the number of randoms in.
         Returns:
             None
         """
-        tmp_unmasked = self._stomp_map.FindUnmaskedFraction(pix)
-        if tmp_unmasked <= 0.0:
-            return None
-        tmp_n_points = random_tree.NPoints(pix)
-        self._n_random_per_target[target_idx] += tmp_n_points
-        self._n_random_invdist_per_target[target_idx] += np.float32(
-            tmp_n_points * target_weight)
-        return None
-
-    def write_to_hdf5(self, hdf5_file, scale_name):
-        """Method to write the raw pairs to an HDF5 file. These "pair files" are
-        the heart of The-wiZZ and allow for quick computation and recomputation
-        of clustering redshift recovery PDFs.
-        ------------------------------------------------------------------------
-        Args:
-            hdf5_file: Open HDF5 file object from h5py
-            scale_name: Name of the specific scale that was run. This will end
-                up being the name of the HDF5 group for the stored data.
-        Returns:
-            None
-        """
-        # Create the hdf5 group for this scale.
-        tmp_grp = hdf5_file.create_group('%s' % (scale_name))
-        # Store metadata for the area and regions.
-        tmp_grp.attrs.create('area', self._stomp_map.Area())
-        tmp_grp.attrs.create('n_region', self._stomp_map.NRegion())
-        tmp_grp.attrs.create('region_area', self._region_area)
-        tmp_grp.attrs.create('n_unknown', self._unknown_itree.NPoints())
-        # If we created random points store those.
-        try:
-            tmp_grp.attrs.create('n_random_points', self._n_random_points)
-        except AttributeError:
-            pass
-        # Start looping over each target object for storage.
-        for target_idx, target in enumerate(self._target_vect):
-            # Create hdf5 group representing this single target object.
-            tmp_target_grp = tmp_grp.create_group(
-                '%i' % self._target_ids[target_idx])
-            # Store metadata assoiated with this target object.
-            tmp_target_grp.attrs.create('redshift',
-                                        target.Redshift())
-            tmp_target_grp.attrs.create('unmasked_frac',
-                                        self._unmasked_array[target_idx])
-            tmp_target_grp.attrs.create('bin_resolution',
-                                        self._bin_resolution[target_idx])
-            tmp_target_grp.attrs.create('area', self._area_array[target_idx])
-            tmp_target_grp.attrs.create('region', self._region_ids[target_idx])
-            tmp_target_grp.attrs.create('target_density',
-                                        self._target_target_array[target_idx] /
-                                        self._area_array[target_idx])
-            try:
-                tmp_target_grp.attrs.create(
-                    'rand', self._n_random_per_target[target_idx])
-                tmp_target_grp.attrs.create(
-                    'rand_inv_dist',
-                    self._n_random_invdist_per_target[target_idx])
-            except AttributeError:
-                pass
-            # For faster computation later we sort the indicies of the unkonwn
-            # objects found and all arrays associated with them.
-            sort_args = np.argsort(self._pair_list[target_idx])
-            # Check to see if the pair_list for this target is empty or not.
-            if self._pair_list[target_idx]:
-                tmp_max_shape = (len(self._pair_list[target_idx]),)
-            else:
-                tmp_max_shape = (None,)
-            # Store the sorted ids and weights. Default is inverse distances.
-            tmp_target_grp.create_dataset(
-                'ids', data=np.array(self._pair_list[target_idx],
-                                     dtype=np.uint32)[sort_args],
-                maxshape=tmp_max_shape, compression='lzf', shuffle=True)
-            tmp_target_grp.create_dataset(
-                'inv_dist', data=np.array(self._pair_invdist_list[target_idx],
-                                          dtype=np.float32)[sort_args],
-                maxshape=tmp_max_shape, compression='lzf', shuffle=True)
-        return None
+        rand_n_points = self._random_tree.NPoints(pix)
+        rand_dist_weight = rand_n_points * dist_weight
+        return rand_n_points, rand_dist_weight

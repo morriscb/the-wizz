@@ -59,12 +59,13 @@ def create_hdf5_file(hdf5_file_name, args):
         open HDF5 file object
     """
     hdf5_file = h5py.File(hdf5_file_name, 'w-', libver='latest')
-    flag_grp = hdf5_file.create_group('input_flags')
-    for arg in vars(args):
-        if getattr(args, arg) is None:
-            flag_grp.attrs.create(arg, 'None')
-        else:
-            flag_grp.attrs.create(arg, getattr(args, arg))
+    if args is not None:
+        flag_grp = hdf5_file.create_group('input_flags')
+        for arg in vars(args):
+            if getattr(args, arg) is None:
+                flag_grp.attrs.create(arg, 'None')
+            else:
+                flag_grp.attrs.create(arg, getattr(args, arg))
     return hdf5_file
 
 

@@ -34,14 +34,14 @@ if __name__ == "__main__":
     unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
     match_data = core_utils.file_checker_loader(args.match_sample_file)
     # Load the spectroscopic data from the HDF5 data file.
-    print("Preloading target data...")
+    print("Preloading reference data...")
     pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
                                           args)
-    target_pair_data = pdf_maker_utils._load_pair_data(
+    reference_pair_data = pdf_maker_utils._load_pair_data(
         hdf5_pair_file[args.pair_scale_name], 0,
-        pdf_maker.target_redshift_array.shape[0])
-    if pdf_maker.target_redshift_array.max() < args.z_max:
-        print("WARNING: requested z_max is greater than available target "
+        pdf_maker.reference_redshift_array.shape[0])
+    if pdf_maker.reference_redshift_array.max() < args.z_max:
+        print("WARNING: requested z_max is greater than available reference "
               "redshifts.")
     # Now we figure out what kind of redshift binning we would like to have.
     # This will be one of the largest impacts on the signal to noise of the
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     elif args.z_binning_type == 'adaptive':
         z_bin_edge_array = pdf_maker_utils._create_adaptive_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins,
-            pdf_maker.target_redshift_array)
+            pdf_maker.reference_redshift_array)
     elif args.z_binning_type == 'comoving':
         z_bin_edge_array = pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     else:
         print("Requested binning name invalid. Valid types are:")
         print("\tlinear: linear binning in redshift")
-        print("\tadaptive: constant target objects per redshift bin")
+        print("\tadaptive: constant reference objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
         print("Retunning linear binning...")
         z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         # Match the ids.
         id_array, quartile_dists = kdtree(match_obj, args.n_kdtree_matched)
         kdtree_utils.collapse_ids_to_single_estimate(
-            hdf5_pair_file[args.pair_scale_name], target_pair_data, pdf_maker,
+            hdf5_pair_file[args.pair_scale_name], reference_pair_data, pdf_maker,
             unknown_data[id_array], args)
         # Get the region densities.
         pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)

@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 """This is the main program for running the pair finder and creating the data
-file that contains the raw pair information between the target and unknown
+file that contains the raw pair information between the reference and unknown
 sample. It should be run with the complete photometric, unknown catalog of
 interest to allow users to later subselect samples from this catalog. See
 input_flags.py for a list of options or use --help from the command line.
@@ -28,8 +28,6 @@ if __name__ == "__main__":
     # Create the output hdf5 file where we will store the output for the
     # pair finding including raw pairs, area, unmasked fraction. We do this
     # first to soft fail rather than run through the code.
-    output_pair_hdf5_file = core_utils.create_hdf5_file(
-        args.output_pair_hdf5_file, args)
     # Load the stomp geometry coving the area of spectroscopic overlap.
     stomp_map = stomp.Map(args.stomp_map)
     # We request regionation for use with spatial bootstrapping. The
@@ -39,22 +37,25 @@ if __name__ == "__main__":
     print("Created %i Regions at resolution %i..." %
           (stomp_map.NRegion(), stomp_map.RegionResolution()))
     # Load the sample with known redshifts.
-    target_vector, target_ids, target_tree_map = stomp_utils.load_target_sample(
-        args.target_sample_file, stomp_map, args)
+    (reference_vector, reference_ids, reference_tree_map) = \
+        stomp_utils.load_reference_sample(args.reference_sample_file, stomp_map,
+                                          args)
     # Load the unknown sample from disc. Assumed data type is fits.
     unknown_itree = stomp_utils.load_unknown_sample(args.unknown_sample_file,
                                                     stomp_map, args)
     # We also wish to subtract a random sample from density estimate. This
     # function creates a set of uniform data points on the geometry of the
     # stomp map.
+    random_tree = None
     if args.n_randoms > 0:
         random_tree = stomp_utils.create_random_data(
             args.n_randoms*unknown_itree.NPoints(), stomp_map)
     # Now that we have everything set up we can send our data off to the pair
     # finder.
-    pair_finder = pair_maker_utils.RawPairFinder(unknown_itree, target_vector,
-                                                 target_ids, target_tree_map,
-                                                 stomp_map)
+    pair_finder = pair_maker_utils.RawPairFinder(
+        unknown_itree, reference_vector, reference_ids, reference_tree_map,
+        stomp_map, args.output_pair_hdf5_file, random_tree,
+        create_hdf5_file=True, input_args=args)
     # We need to tell the pair finder what scale we would like to run over
     # before we begin.
     min_scale_list = args.min_scale.split(',')
@@ -70,7 +71,7 @@ if __name__ == "__main__":
     for min_scale, max_scale in zip(min_scale_list, max_scale_list):
         print("Running scale: %s to %s" % (min_scale, max_scale))
         # Pair finder does what it says. It also computes the areas, unmasked
-        # fractions for target object.
+        # fractions for reference object.
         pair_finder.find_pairs(np.float_(min_scale), np.float_(max_scale))
         # This is an optional part of the pair finder. It takes as an argument
         # the a stomp tree map containing uniform random points as generated

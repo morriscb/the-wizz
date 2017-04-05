@@ -1,6 +1,8 @@
 
 from __future__ import division, print_function, absolute_import
 
+import numpy as np
+import h5py
 import subprocess
 import unittest
 
@@ -13,10 +15,10 @@ from the_wizz import stomp_utils
 class DummyArgs(object):
 
     def __init__(self):
-        self.target_ra_name = 'ra'
-        self.target_dec_name = 'dec'
-        self.target_redshift_name = 'z'
-        self.target_index_name = None
+        self.reference_ra_name = 'ra'
+        self.reference_dec_name = 'dec'
+        self.reference_redshift_name = 'z'
+        self.reference_index_name = None
 
         self.unknown_ra_name = 'ra'
         self.unknown_dec_name = 'dec'
@@ -36,109 +38,100 @@ class TestPairMakerUtils(unittest.TestCase):
         self.stomp_map = stomp.Map(
             'data/COSMOS_X_zCOSMOS_BRIGHT_excluded.map')
         self.stomp_map.InitializeRegions(8)
-        (self.target_vect, self.target_id_array,
-         self.target_tree) = stomp_utils.load_target_sample(
+        (self.reference_vect, self.reference_id_array,
+         self.reference_tree) = stomp_utils.load_reference_sample(
             'data/zCOSMOS_BRIGHT_v3.5_spec_FLAG34_FLAG134.fits',
             self.stomp_map, self.dummy_args)
-
-    def tearDown(self):
-        pass
-
-    def test_raw_pair_finder_creation(self):
-        pair_finder = pair_maker_utils.RawPairFinder(
-            None, self.target_vect, self.target_id_array, self.target_tree,
-            self.stomp_map)
-        pair_finder._reset_array_data()
-        pair_finder._reset_random_data()
-
-        self.assertEqual(pair_finder._area_array.shape[0],
-                         self.target_vect.size())
-        self.assertEqual(pair_finder._unmasked_array.shape[0],
-                         self.target_vect.size())
-        self.assertEqual(pair_finder._bin_resolution.shape[0],
-                         self.target_vect.size())
-        self.assertEqual(pair_finder._target_target_array.shape[0],
-                         self.target_vect.size())
-
-        self.assertEqual(len(pair_finder._pair_list), self.target_vect.size())
-        self.assertEqual(len(pair_finder._pair_invdist_list),
-                         self.target_vect.size())
-
-    def test_pair_maker_output(self):
-        unknown_tree = stomp_utils.load_unknown_sample(
+        self.unknown_tree = stomp_utils.load_unknown_sample(
             'data/COSMOS_iband_2009_radecidstomp_regionzp_best.fits',
             self.stomp_map,self.dummy_args)
 
+    def tearDown(self):
+        subprocess.Popen('rm unittest_output.hdf5', shell=True)
+
+    def test_raw_pair_finder_and_hdf5_creation(self):
         pair_finder = pair_maker_utils.RawPairFinder(
-            unknown_tree, self.target_vect, self.target_id_array,
-            self.target_tree, self.stomp_map)
+            self.unknown_tree, self.reference_vect,
+            self.reference_id_array, self.reference_tree,
+            self.stomp_map, self.dummpy_args.output_hdf5_file, None,
+            create_hdf5_file=True, input_args=self.dummy_args)
+
+    def test_pair_maker_output(self):
+
+        pair_finder = pair_maker_utils.RawPairFinder(
+            self.unknown_tree, self.reference_vect, self.reference_id_array,
+            self.reference_tree, self.stomp_map,
+            self.dummy_args.output_hdf5_file, None, create_hdf5_file=True,
+            input_args=self.dummy_args)
         pair_finder.find_pairs(100, 300)
 
-        print("Found Pairs")
+        output_hdf5_file = h5py.File(self.dummy_args.output_hdf5_file, 'r')
+        test_hdf5_file = h5py.File('data/test_COSMOS_pair_data.hdf5')
 
-        output_pair_file = open('saved_pairs.ascii', 'w')
-        output_dist_weight_file = open('saved_dist_weights.ascii', 'w')
-        output_data = open('saved_data.ascii', 'w')
-        for target_idx, target_obj  in enumerate(self.target_vect):
-            print("Writing target:", target_idx)
-            pair_ids = ''
-            pair_dists = ''
-            print("\twriting pairs")
-            for pair_id, pair_dist_weight in \
-              zip(pair_finder._pair_list[target_idx],
-                  pair_finder._pair_invdist_list[target_idx]):
-                pair_ids += '%i ' % pair_id
-                pair_dists += '%.8e ' % pair_dist_weight
-            output_pair_file.writelines('%s\n' % pair_ids)
-            output_dist_weight_file.writelines('%s\n' % pair_dists)
-            print("\twriting data")
-            output_data.writelines(
-                '%.8e %.8e %i %.8e %i %.8e %.8e\n' %
-                (target_obj.Redshift(),
-                 pair_finder._unmasked_array[target_idx],
-                 pair_finder._bin_resolution[target_idx],
-                 pair_finder._area_array[target_idx],
-                 pair_finder._region_ids[target_idx],
-                 pair_finder._target_target_array[target_idx] /
-                 pair_finder._area_array[target_idx],
-                 pair_finder._target_target_array[target_idx] /
-                 pair_finder._area_array[target_idx]))
-        output_pair_file.close()
-        output_dist_weight_file.close()
-        output_data.close()
+        for reference_idx, reference_obj in enumerate(self.reference_vect):
+            ref_grp = output_hdf5_file[
+                'data/%i' %
+                self.reference_id_array[reference_idx]]
+            scale_grp = output_hdf5_file[
+                'data/%i/kpc100t300' %
+                self.reference_id_array[reference_idx]]
+            ref_pair_id_array = scale_grp['ids'][...]
+            ref_dist_weight_array = scale_grp['dist_weights'][...]
 
-        test_pair_data = open('data/saved_pairs.ascii')
-        test_data = open('data/saved_data.ascii')
-        for target_idx, target_obj, data_compare, pair_data in \
-          data_compare_list = data_compare.split('')
-          zip(self.target_vect, test_data, test_pair_data):
-            pair_ids = ''
-            pair_dists = ''
-            print("\twriting pairs")
-            for pair_id, pair_dist_weight in \
-              zip(pair_finder._pair_list[target_idx],
-                  pair_finder._pair_invdist_list[target_idx]):
-                pair_ids += '%i ' % pair_id
-                pair_dists += '%.8e ' % pair_dist_weight
-            self.assertEqual(pair_ids, pair_data_list[:-2])
-            self.assertEqual(target_obj.Redshift(),
-                             float(data_compare_list[0]))
-            self.assertEqual(pair_finder._unmasked_array[target_idx],
-                             float(data_compare_list[1]))
-            self.assertEqual(pair_finder._bin_resolution[target_idx],
-                             int(data_compare_list[2]))
-            self.assertEqual(pair_finder._area_array[target_idx],
-                             float(data_compare_list[3]))
-            self.assertEqual(pair_finder._region_ids[target_idx],
-                             int(data_compare_list[4]))
+            test_grp = test_hdf5_file['kpc100t300/%i' %
+                                      self.reference_id_array[reference_idx]]
+            test_pair_id_array = test_grp['ids'][...]
+            test_dist_weight_array = test_grp['inv_dist'][...]
+            if len(ref_pair_id_array) != len(test_pair_id_array):
+                print('Failed for reference id:',
+                      self.reference_id_array[reference_idx])
+            self.assertEqual(len(ref_pair_id_array), len(test_pair_id_array))
+            for ref_pair_id, test_pair_id, \
+              ref_dist_weight, test_dist_weight in \
+              zip(ref_pair_id_array, test_pair_id_array,
+                  ref_dist_weight_array, test_dist_weight_array):
+                self.assertEqual(ref_pair_id, test_pair_id)
+                self.assertAlmostEqual(ref_dist_weight, test_dist_weight)
+            self.assertAlmostEqual(
+                ref_grp.attrs['redshift'],
+                test_grp.attrs['redshift'])
+            self.assertAlmostEqual(
+                scale_grp.attrs['unmasked_frac'],
+                test_grp.attrs['unmasked_frac'])
             self.assertEqual(
-                pair_finder._target_target_array[target_idx] /
-                pair_finder._area_array[target_idx],
-                float(data_compare_list[5]))
-            self.assertEqual(
-                pair_finder._target_target_array[target_idx] /
-                pair_finder._area_array[target_idx],
-                float(data_compare_list[4]))
+                scale_grp.attrs['bin_resolution'],
+                test_grp.attrs['bin_resolution'])
+            self.assertAlmostEqual(
+                scale_grp.attrs['area'],
+                test_grp.attrs['area'])
 
-    def test_write_to_hdf5(self):
-        pass
+    def test_pair_maker_with_randoms(self):
+
+        random_tree = stomp_utils.create_random_data(
+            self.dummy_args.n_randoms * self.unknown_tree.NPoints(),
+            self.stomp_map)
+
+        pair_finder = pair_maker_utils.RawPairFinder(
+            self.unknown_tree, self.reference_vect, self.reference_id_array,
+            self.reference_tree, self.stomp_map,
+            self.dummy_args.output_hdf5_file, random_tree,
+            create_hdf5_file=True, input_args=self.dummy_args)
+        pair_finder.find_pairs(100, 300)
+
+        output_hdf5_file = h5py.File(self.dummy_args.output_hdf5_file, 'r')
+        data_grp = output_hdf5_file['data']
+        n_random = data_grp.attrs['n_random']
+        tot_area = data_grp.attrs['area']
+
+        ref_random_sum = 0
+        ref_area_sum = 0.
+        for reference_idx, reference_obj in enumerate(self.reference_vect):
+            scale_grp = output_hdf5_file[
+                'data/%i/kpc100t300' %
+                self.reference_id_array[reference_idx]]
+            ref_random_sum += scale_grp.attrs['n_random']
+            ref_area_sum += scale_grp.attrs['area']
+        self.assertAlmostEqual(
+            (n_random / tot_area) /
+            (ref_random_sum / ref_area_sum) - 1,
+            0.00, places=2)

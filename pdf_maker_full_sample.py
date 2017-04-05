@@ -39,11 +39,11 @@ if __name__ == "__main__":
     hdf5_pair_file = core_utils.file_checker_loader(args.input_pair_hdf5_file)
     unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
     # Load the spectroscopic data from the HDF5 data file.
-    print("Preloading target data...")
+    print("Preloading reference data...")
     pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
                                           args)
-    if pdf_maker.target_redshift_array.max() < args.z_max:
-        print("WARNING: requested z_max is greater than available target "
+    if pdf_maker.reference_redshift_array.max() < args.z_max:
+        print("WARNING: requested z_max is greater than available reference "
               "redshifts.")
     # Now we figure out what kind of redshift binning we would like to have.
     # This will be one of the largest impacts on the signal to noise of the
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     elif args.z_binning_type == 'adaptive':
         z_bin_edge_array = pdf_maker_utils._create_adaptive_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins,
-            pdf_maker.target_redshift_array)
+            pdf_maker.reference_redshift_array)
     elif args.z_binning_type == 'comoving':
         z_bin_edge_array = pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     else:
         print("Requested binning name invalid. Valid types are:")
         print("\tlinear: linear binning in redshift")
-        print("\tadaptive: constant target objects per redshift bin")
+        print("\tadaptive: constant reference objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
         print("Retunning linear binning...")
         z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     # to estimate the redshit of. These objects can be color selected,
     # photo-z selected, or any other object selection you would like. The code
     # line below turns the array of indices in the hdf5 pair file, into a
-    # single density estimate around the target object.
+    # single density estimate around the reference object.
     print("Collapsing indices...")
     pdf_maker_utils._collapse_full_sample(
         hdf5_pair_file[args.pair_scale_name], pdf_maker, unknown_data, args)
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
     if args.output_region_pickle_file is not None:
         pdf_maker.write_region_densities(args.output_region_pickle_file, args)
-    # Now that we've "collapsed" the estimate around the target object we need
+    # Now that we've "collapsed" the estimate around the reference object we need
     # to bin up the results in redshift and create our final PDF.
     print("Calculating pdf...")
     if args.bootstrap_samples is None:

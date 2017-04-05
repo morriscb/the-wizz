@@ -20,7 +20,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
     """This is the heart of The-wiZZ. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic
     objects. The result of this calculation is a intermediary data product
-    containing the density of unknown objects around each target object stored
+    containing the density of unknown objects around each reference object stored
     in the PDFMaker data structure class. This specific version is for when
     all the spectra have been pre-loaded in anticipation of running a large
     number of sub-samples as is the case with kdtree recovery.
@@ -69,15 +69,15 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
             [weight_array[reg_idx].mean()
              for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
             dtype=np.float_)
-    n_target = len(hdf5_pairs_group)
-    target_unknown_array = np.empty(n_target, dtype=np.float32)
+    n_reference = len(hdf5_pairs_group)
+    reference_unknown_array = np.empty(n_reference, dtype=np.float32)
     pool = Pool(args.n_processes)
     if args.unknown_stomp_region_name is not None:
         pool_iter = pool.imap(
             _collapse_multiplex,
             [(data_set,
-              id_array[pdf_maker_obj.target_region_array[pair_idx]],
-              weight_array[pdf_maker_obj.target_region_array[pair_idx]],
+              id_array[pdf_maker_obj.reference_region_array[pair_idx]],
+              weight_array[pdf_maker_obj.reference_region_array[pair_idx]],
               args.use_inverse_weighting)
              for pair_idx, data_set in enumerate(pair_data)],
             chunksize=np.int(np.where(args.n_processes > 1,
@@ -90,11 +90,11 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
             chunksize=np.int(np.where(args.n_processes > 1,
                                       np.log(len(pair_data)), 1)))
     print("\t\tcomputing/storing pair count...")
-    for pair_idx, target_value in enumerate(pool_iter):
-        target_unknown_array[pair_idx] = target_value
+    for pair_idx, reference_value in enumerate(pool_iter):
+        reference_unknown_array[pair_idx] = reference_value
     pool.close()
     pool.join()
-    pdf_maker_obj.set_target_unknown_array(target_unknown_array)
+    pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
     return None
 

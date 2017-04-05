@@ -83,8 +83,8 @@ def parse_input_pdf_args():
                         help='Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
                         'used(~4).')
-    parser.add_argument('--n_target_load_size', default=100000, type=int,
-                        help='Number of target pairs to load from the hdf5 '
+    parser.add_argument('--n_reference_load_size', default=100000, type=int,
+                        help='Number of reference pairs to load from the hdf5 '
                         'file at once. The chunk size should be set such that '
                         'the code has time to load the new data while it is '
                         'processing the current set.')
@@ -132,9 +132,9 @@ def parse_input_pdf_single_galaxy_args():
     parser.add_argument('--unknown_sample_file', required=True,
                         type=str, help='Name of unknown redshift, '
                         'photometric fits catalog containing the indices to '
-                        'match to the target data and columns to match in the '
+                        'match to the reference data and columns to match in the '
                         'kdtree. This should be the fits file created that '
-                        'covers the target redshift area.')
+                        'covers the reference redshift area.')
     parser.add_argument('--unknown_index_name', required=True,
                         type=str, help='Name of unique object index for '
                         'the unknown objects. Indexes must be of type uint32')
@@ -176,7 +176,7 @@ def parse_input_pdf_single_galaxy_args():
                         type=str, help='Name of the fits file you would '
                         'to know the redshift distribution of each object. '
                         'It should have the same columns as the unknown sample '
-                        'but need not cover the same area of the target '
+                        'but need not cover the same area of the reference '
                         'objects. Each galaxy in this file will be matched to '
                         'a sample of galaxies in the unknown sample usuing a '
                         'kdtree. The return redshift distribution is then the '
@@ -235,8 +235,8 @@ def parse_input_pdf_single_galaxy_args():
                         help='Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
                         'used(~4).')
-    parser.add_argument('--n_target_load_size', default=10000, type=int,
-                        help='Number of target pairs to load from the hdf5 '
+    parser.add_argument('--n_reference_load_size', default=10000, type=int,
+                        help='Number of reference pairs to load from the hdf5 '
                         'file at once. The chunk size should be set such that '
                         'the code has time to load the new data while it is '
                         'processing the current set.')
@@ -258,28 +258,28 @@ def parse_input_pair_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stomp_map', required=True,
                         type=str, help='Name of the STOMP map defining the '
-                        'geometry on the sky for the target and unknown '
+                        'geometry on the sky for the reference and unknown '
                         'samples.')
     parser.add_argument('--n_regions', default=16,
                         type=int, help='Number of sub resgions to break up '
                         'the stomp map into for bootstrap/jackknifing. It is '
                         'recommended that the region size be no smaller than '
                         'the max scale requested in degrees.')
-    parser.add_argument('--target_sample_file', required=True,
+    parser.add_argument('--reference_sample_file', required=True,
                         type=str, help='Name of spectroscopic redshift '
                         'fits catalog.')
-    parser.add_argument('--target_ra_name', default='ALPHA_J2000',
+    parser.add_argument('--reference_ra_name', default='ALPHA_J2000',
                         type=str, help='Name of ra column in spectroscopic '
                         'fits file')
-    parser.add_argument('--target_dec_name', default='DELTA_J2000',
+    parser.add_argument('--reference_dec_name', default='DELTA_J2000',
                         type=str, help='Name of dec column in '
                         'spectroscopic fits file')
-    parser.add_argument('--target_redshift_name', default='z_spec',
+    parser.add_argument('--reference_redshift_name', default='z_spec',
                         type=str, help='Name of redshift column in '
                         'spectroscopic fits file')
-    parser.add_argument('--target_index_name', default=None,
+    parser.add_argument('--reference_index_name', default=None,
                         type=str, help='Name of unique object index for '
-                        'the target objects. Indexes must be of type uint32')
+                        'the reference objects. Indexes must be of type uint32')
     parser.add_argument('--unknown_sample_file', required=True,
                         type=str, help='Name of unknown redshift '
                         'Photometric fits catalog.')

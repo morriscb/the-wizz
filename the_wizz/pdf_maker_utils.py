@@ -82,7 +82,7 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     comov_max = core_utils.WMAP5.comoving_distance(z_max).value
 
     comov_dist_to_redsihft_spline = _make_redshift_spline(z_min, z_max)
-    
+
     return comov_dist_to_redsihft_spline(
         np.linspace(comov_min, comov_max, n_bins + 1)[:-1])
 
@@ -101,7 +101,7 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
     """This is the heart of The-wiZZ. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic objects. The
     result of this calculation is a intermediary data product containing the
-    density of unknown objects around each target object stored in the PDFMaker
+    density of unknown objects around each reference object stored in the PDFMaker
     data structure class.
     ----------------------------------------------------------------------------
     Args:
@@ -156,31 +156,31 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
              for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
             dtype=np.float_)
     # Prime our output array.
-    n_target = len(hdf5_pairs_group)
-    target_unknown_array = np.empty(n_target, dtype=np.float32)
-    # Set some interation variables and start the loop over the target objects.
+    n_reference = len(hdf5_pairs_group)
+    reference_unknown_array = np.empty(n_reference, dtype=np.float32)
+    # Set some interation variables and start the loop over the reference objects.
     pair_start = 0
     hold_pair_start = 0
     pair_data = []
     # Initialize the workers.
     pool = Pool(args.n_processes)
-    while hold_pair_start < n_target:
+    while hold_pair_start < n_reference:
         # This is where the heavy lifting of pair matching happens. There are
         # two options for if we use regions or not. If we use regions, the
         # code runs significantly quicker.
         if pair_data:
-            print("\t\tmatching pairs: starting targets %i-%i..." %
-                  (hold_pair_start, hold_pair_start + args.n_target_load_size))
+            print("\t\tmatching pairs: starting references %i-%i..." %
+                  (hold_pair_start, hold_pair_start + args.n_reference_load_size))
             # If we are using regions.
             if args.unknown_stomp_region_name is not None:
                 pool_iter = pool.imap(
                     _collapse_multiplex,
                     [(data_set,
                       id_array[
-                          pdf_maker_obj.target_region_array[hold_pair_start +
+                          pdf_maker_obj.reference_region_array[hold_pair_start +
                                                             pair_idx]],
                       weight_array[
-                          pdf_maker_obj.target_region_array[hold_pair_start +
+                          pdf_maker_obj.reference_region_array[hold_pair_start +
                                                             pair_idx]],
                       args.use_inverse_weighting)
                      for pair_idx, data_set in enumerate(pair_data)],
@@ -199,35 +199,35 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         # batch of data.
         print("\t\tloading next pairs...")
         pair_data = _load_pair_data(hdf5_pairs_group, pair_start,
-                                    args.n_target_load_size)
+                                    args.n_reference_load_size)
         # This is a cludgy way of testing to see that pool_iter exists and we
         # can then iterate and store our results from the workers.
         try:
             type(pool_iter)
             print("\t\tcomputing/storing pair count...")
-            for pair_idx, target_value in enumerate(pool_iter):
-                target_unknown_array[hold_pair_start + pair_idx] = target_value
+            for pair_idx, reference_value in enumerate(pool_iter):
+                reference_unknown_array[hold_pair_start + pair_idx] = reference_value
         except UnboundLocalError:
             pass
         # Increase the load and store variables.
         hold_pair_start = pair_start
-        pair_start += args.n_target_load_size
+        pair_start += args.n_reference_load_size
     # Close the workers.
     pool.close()
     pool.join()
     # Store the results in our PDFMaker class object.
-    pdf_maker_obj.set_target_unknown_array(target_unknown_array)
+    pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
     return None
 
 def _collapse_multiplex(input_tuple):
     """Function for matching indices and calculating the over densities of a
-    specific set of unknown objects around the target object. This specific
+    specific set of unknown objects around the reference object. This specific
     function is meant to be used within the context of python multiprocessing.
     ----------------------------------------------------------------------------
     Args:
         input_tuple: tuple of arrays and values specifying the current data to
-            consider for the target object.
+            consider for the reference object.
     Returns:
         float n_points
     """
@@ -236,7 +236,7 @@ def _collapse_multiplex(input_tuple):
     id_data_set, inv_data_set = data_set
     if id_data_set.shape[0] == 0 or id_array.shape[0] == 0:
         return 0.0
-    # Since the ids around the target are partially localized spatially a cut
+    # Since the ids around the reference are partially localized spatially a cut
     # in id is also a cut spatially. Here we take advantage of this.
     start_idx = np.searchsorted(id_array, id_data_set[0])
     end_idx = np.searchsorted(id_array, id_data_set[-1], side='right')
@@ -276,7 +276,7 @@ def _collapse_multiplex(input_tuple):
     return tmp_n_points
 
 def _load_pair_data(hdf5_group, key_start, n_load):
-    """Functions for loading individual target objects from the HDF5 file.
+    """Functions for loading individual reference objects from the HDF5 file.
     ----------------------------------------------------------------------------
     Args:
         hdf5_group: an h5py group object
@@ -326,18 +326,18 @@ def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
-    n_target = len(hdf5_pairs_group)
-    target_unknown_array = np.empty(n_target, dtype=np.float32)
+    n_reference = len(hdf5_pairs_group)
+    reference_unknown_array = np.empty(n_reference, dtype=np.float32)
     print("\t\tcomputing/storing pair count...")
-    for target_idx, key_name in enumerate(hdf5_pairs_group.keys()):
-        target_grp = hdf5_pairs_group[key_name]
+    for reference_idx, key_name in enumerate(hdf5_pairs_group.keys()):
+        reference_grp = hdf5_pairs_group[key_name]
         if args.use_inverse_weighting:
-            target_unknown_array[target_idx] = np.sum(
-                target_grp['inv_dist'][...])
+            reference_unknown_array[reference_idx] = np.sum(
+                reference_grp['inv_dist'][...])
         else:
-            target_unknown_array[target_idx] = (
-                1.*target_grp['ids'][...]).shape[0]
-    pdf_maker_obj.set_target_unknown_array(target_unknown_array)
+            reference_unknown_array[reference_idx] = (
+                1.*reference_grp['ids'][...]).shape[0]
+    pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, 1.0)
     return None
 
@@ -350,41 +350,41 @@ class PDFMaker(object):
     """
     def __init__(self, hdf5_pair_group, args):
         """Init function for the PDF maker. The init class is a container for
-        arrays of single point estimaties around target, known redshift objects.
+        arrays of single point estimaties around reference, known redshift objects.
         The class also computes the estimates of clustering redshift recovery
         in spatial regions and the collapsed single PDF.
         ------------------------------------------------------------------------
         Args:
-            hdf5_pair_group: HDF5 group object containing the target object
+            hdf5_pair_group: HDF5 group object containing the reference object
                 pairs
             args: ArgumentParser.parse_args object from
                 input_flags.parse_input_pdf_args
         """
-        self.target_redshift_array = np.empty(len(hdf5_pair_group),
+        self.reference_redshift_array = np.empty(len(hdf5_pair_group),
                                               dtype=np.float32)
-        self.target_area_array = np.empty(len(hdf5_pair_group),
+        self.reference_area_array = np.empty(len(hdf5_pair_group),
                                           dtype=np.float32)
-        self.target_density_array = np.empty(len(hdf5_pair_group),
+        self.reference_density_array = np.empty(len(hdf5_pair_group),
                                              dtype=np.float32)
-        self.target_unknown_array = np.empty(len(hdf5_pair_group),
+        self.reference_unknown_array = np.empty(len(hdf5_pair_group),
                                              dtype=np.float32)
-        self.target_hold_rand_array = np.empty(len(hdf5_pair_group),
+        self.reference_hold_rand_array = np.empty(len(hdf5_pair_group),
                                                dtype=np.float32)
-        self.target_region_array = np.empty(len(hdf5_pair_group),
+        self.reference_region_array = np.empty(len(hdf5_pair_group),
                                             dtype=np.uint32)
-        self.target_resolution_array = np.empty(len(hdf5_pair_group),
+        self.reference_resolution_array = np.empty(len(hdf5_pair_group),
                                                 dtype=np.uint32)
         self._load_data_from_hdf5(hdf5_pair_group, args)
-        self._use_target_densities = args.use_reference_cleaning
-        self._target_unknown_array_set = False
+        self._use_reference_densities = args.use_reference_cleaning
+        self._reference_unknown_array_set = False
         self._computed_region_densities = False
         self._computed_pdf = False
         self._computed_bootstraps = False
 
     def reset_pairs(self):
-        self.target_unknown_array = np.zeros_like(self.target_redshift_array)
-        self.target_rand_array = np.zeros_like(self.target_redshift_array)
-        self._target_unknown_array_set = False
+        self.reference_unknown_array = np.zeros_like(self.reference_redshift_array)
+        self.reference_rand_array = np.zeros_like(self.reference_redshift_array)
+        self._reference_unknown_array_set = False
         self._computed_region_densities = False
         self._computed_pdf = False
         self._computed_bootstraps = False
@@ -392,44 +392,44 @@ class PDFMaker(object):
 
     def _load_data_from_hdf5(self, hdf5_pair_group, args):
         """Internal function for loading in non-pair search variables such as
-        the target redshift, area, region, etc.
+        the reference redshift, area, region, etc.
         ------------------------------------------------------------------------
         Args:
-            hdf5_pair_group: HDF5 group object containing the target object
+            hdf5_pair_group: HDF5 group object containing the reference object
                 pairs
             args: ArgumentParser.parse_args object from
                 input_flags.parse_input_pdf_args
         Returns:
             None
         """
-        for target_idx, key_name in enumerate(hdf5_pair_group.keys()):
-            target_grp = hdf5_pair_group[key_name]
-            self.target_redshift_array[target_idx] = (
-                target_grp.attrs['redshift'])
-            self.target_area_array[target_idx] = target_grp.attrs['area']
-            self.target_density_array[target_idx] = target_grp.attrs[
-                'target_density']
-            self.target_region_array[target_idx] = target_grp.attrs['region']
-            self.target_resolution_array[target_idx] = (
-                target_grp.attrs['bin_resolution'])
+        for reference_idx, key_name in enumerate(hdf5_pair_group.keys()):
+            reference_grp = hdf5_pair_group[key_name]
+            self.reference_redshift_array[reference_idx] = (
+                reference_grp.attrs['redshift'])
+            self.reference_area_array[reference_idx] = reference_grp.attrs['area']
+            self.reference_density_array[reference_idx] = reference_grp.attrs[
+                'reference_density']
+            self.reference_region_array[reference_idx] = reference_grp.attrs['region']
+            self.reference_resolution_array[reference_idx] = (
+                reference_grp.attrs['bin_resolution'])
             if args.use_inverse_weighting:
-                self.target_hold_rand_array[target_idx] = (
-                    target_grp.attrs['rand_inv_dist'])
+                self.reference_hold_rand_array[reference_idx] = (
+                    reference_grp.attrs['rand_inv_dist'])
             else:
-                self.target_hold_rand_array[target_idx] = (
-                    target_grp.attrs['rand'])
+                self.reference_hold_rand_array[reference_idx] = (
+                    reference_grp.attrs['rand'])
 
         has_density_mask = np.logical_and(
-            self.target_density_array > 0,
-            np.isfinite(self.target_density_array))
-        min_target_density = self.target_density_array[has_density_mask].min()
-        self.target_density_array[
-            np.logical_not(has_density_mask)] = min_target_density
+            self.reference_density_array > 0,
+            np.isfinite(self.reference_density_array))
+        min_reference_density = self.reference_density_array[has_density_mask].min()
+        self.reference_density_array[
+            np.logical_not(has_density_mask)] = min_reference_density
 
-        max_n_regions = self.target_region_array.max() + 1
+        max_n_regions = self.reference_region_array.max() + 1
         region_list = []
         for region_idx in xrange(max_n_regions):
-            if np.any(region_idx == self.target_region_array):
+            if np.any(region_idx == self.reference_region_array):
                 region_list.append(region_idx)
         self.region_array = np.array(region_list, dtype=np.uint32)
         self.region_dict = {}
@@ -437,19 +437,19 @@ class PDFMaker(object):
             self.region_dict[region_idx] = array_idx
         return None
 
-    def set_target_unknown_array(self, unknown_array):
+    def set_reference_unknown_array(self, unknown_array):
         """Function for setting the values of the unknown object density. This
         is done externally rather than internally as Python classes don't play
         to well with the multiprocessing or numba modules.
         ------------------------------------------------------------------------
         Args:
             unknown_array: float array of values defining the number of
-                (un)weighted points around a target objet.
+                (un)weighted points around a reference objet.
         Returns:
             None
         """
-        self.target_unknown_array = unknown_array
-        self._target_unknown_array_set = True
+        self.reference_unknown_array = unknown_array
+        self._reference_unknown_array_set = True
         return None
 
     def scale_random_points(self, rand_ratio, ave_weight):
@@ -466,24 +466,24 @@ class PDFMaker(object):
         # TODO:
         #     Figure out a way to make this more stable.
         try:
-            tmp_rand_ratio = rand_ratio[self.target_region_array]
+            tmp_rand_ratio = rand_ratio[self.reference_region_array]
         except IndexError:
             tmp_rand_ratio = rand_ratio
         except TypeError:
             tmp_rand_ratio = rand_ratio
         try:
-            tmp_ave_weight = ave_weight[self.target_region_array]
+            tmp_ave_weight = ave_weight[self.reference_region_array]
         except IndexError:
             tmp_ave_weight = ave_weight
         except TypeError:
             tmp_ave_weight = ave_weight
-        self.target_rand_array = (self.target_hold_rand_array*tmp_rand_ratio *
+        self.reference_rand_array = (self.reference_hold_rand_array*tmp_rand_ratio *
                                   tmp_ave_weight)
         return None
 
-    def write_target_n_points(self, hdf5_file):
+    def write_reference_n_points(self, hdf5_file):
         """Method for writing the intermediate products of the over-density of
-        the requested sample per known, target object. This must be run after a
+        the requested sample per known, reference object. This must be run after a
         call to self.colapse_ids_to_single_estimate.
         ------------------------------------------------------------------------
         Args:
@@ -491,18 +491,18 @@ class PDFMaker(object):
         Returns:
             None
         """
-        if not self._target_unknown_array_set:
-            print("PDFMaker.set_target_unknown_array not set. Exiting method.")
+        if not self._reference_unknown_array_set:
+            print("PDFMaker.set_reference_unknown_array not set. Exiting method.")
             return None
         # TODO
         pass
 
     def compute_region_densities(self, z_bin_edge_array, z_max):
         """Method for computing the over-density of the unknown sample against
-        the target sample binned in target redshift in each of the spatial
+        the reference sample binned in reference redshift in each of the spatial
         regions of the considered geometry. This allows for spatial
         bootstrapping of the final, resultant PDF. Will not run if
-        set_target_unknown_array was not set first.
+        set_reference_unknown_array was not set first.
         ------------------------------------------------------------------------
         Args:
             z_bin_edge_array: float array of the lower bin edge of the redshift
@@ -512,15 +512,15 @@ class PDFMaker(object):
             None
         """
         # TODO:
-        #     Finish target over-density weighting.
-        if not self._target_unknown_array_set:
-            print("PDFMaker.set_target_unknown_array not set. Exiting method.")
+        #     Finish reference over-density weighting.
+        if not self._reference_unknown_array_set:
+            print("PDFMaker.set_reference_unknown_array not set. Exiting method.")
             return None
         # Initilize arrays.
         self._redshift_reg_array = np.zeros(
             (z_bin_edge_array.shape[0], self.region_array.shape[0]),
             dtype=np.float32)
-        self._n_target_reg_array = np.zeros(
+        self._n_reference_reg_array = np.zeros(
             (z_bin_edge_array.shape[0], self.region_array.shape[0]),
             dtype=np.uint32)
         self._unknown_reg_array = np.zeros(
@@ -535,34 +535,34 @@ class PDFMaker(object):
         self._resolution_reg_array = np.zeros(
             (z_bin_edge_array.shape[0], self.region_array.shape[0]),
             dtype=np.uint)
-        # Loop over target objects
-        for target_idx, redshift in enumerate(self.target_redshift_array):
-            # If the target object is out of the redshift range continue.
+        # Loop over reference objects
+        for reference_idx, redshift in enumerate(self.reference_redshift_array):
+            # If the reference object is out of the redshift range continue.
             if redshift < z_bin_edge_array[0] or redshift >= z_max:
                 continue
-            # Grap the target object region.
-            region_idx = self.region_dict[self.target_region_array[target_idx]]
+            # Grap the reference object region.
+            region_idx = self.region_dict[self.reference_region_array[reference_idx]]
             # Find the redshift bin this object belongs to.
             bin_idx = np.searchsorted(z_bin_edge_array, redshift, 'right') - 1
             # Store object properties.
             self._redshift_reg_array[bin_idx, region_idx] += redshift
-            self._n_target_reg_array[bin_idx, region_idx] += 1
-            if self._use_target_densities:
+            self._n_reference_reg_array[bin_idx, region_idx] += 1
+            if self._use_reference_densities:
                 self._unknown_reg_array[bin_idx, region_idx] += (
-                    self.target_unknown_array[target_idx] /
-                    self.target_density_array[target_idx])
+                    self.reference_unknown_array[reference_idx] /
+                    self.reference_density_array[reference_idx])
                 self._rand_reg_array[bin_idx, region_idx] += (
-                    self.target_rand_array[target_idx] /
-                    self.target_density_array[target_idx])
+                    self.reference_rand_array[reference_idx] /
+                    self.reference_density_array[reference_idx])
             else:
                 self._unknown_reg_array[bin_idx, region_idx] += (
-                    self.target_unknown_array[target_idx])
+                    self.reference_unknown_array[reference_idx])
                 self._rand_reg_array[bin_idx, region_idx] += (
-                    self.target_rand_array[target_idx])
+                    self.reference_rand_array[reference_idx])
             self._area_reg_array[bin_idx, region_idx] += (
-                self.target_area_array[target_idx])
+                self.reference_area_array[reference_idx])
             self._resolution_reg_array[bin_idx, region_idx] += (
-                self.target_resolution_array[target_idx])
+                self.reference_resolution_array[reference_idx])
         self._computed_region_densities = True
         return None
 
@@ -584,7 +584,7 @@ class PDFMaker(object):
         output_dict = {"input_flags": args,
                        "n_regions": self.region_array.shape[0],
                        "redshift": self._redshift_reg_array,
-                       "n_target": self._n_target_reg_array,
+                       "n_reference": self._n_reference_reg_array,
                        "unknown": self._unknown_reg_array,
                        "rand": self._rand_reg_array,
                        "area": self._area_reg_array,
@@ -608,17 +608,17 @@ class PDFMaker(object):
             print("PDFMaker.compute_region_densities not run. Exiting method.")
             return None
         self.redshift_array = (self._redshift_reg_array.sum(axis=1) /
-                               self._n_target_reg_array.sum(axis=1))
+                               self._n_reference_reg_array.sum(axis=1))
         self.density_array = (self._unknown_reg_array.sum(axis=1) /
                               self._rand_reg_array.sum(axis=1) - 1.0)
         self.density_err_array = (np.sqrt(self._unknown_reg_array.sum(axis=1)) /
                                   self._rand_reg_array.sum(axis=1))
-        self.n_target_array = self._n_target_reg_array.sum(axis=1)
+        self.n_reference_array = self._n_reference_reg_array.sum(axis=1)
         self.unknown_array = self._unknown_reg_array.sum(axis=1)
         self.rand_array = self._rand_reg_array.sum(axis=1)
         self.area_array = self._area_reg_array.sum(axis=1)
         self.resolution_array = (self._resolution_reg_array.sum(axis=1) /
-                                 self._n_target_reg_array.sum(axis=1))
+                                 self._n_reference_reg_array.sum(axis=1))
         self._computed_pdf = True
         return None
 
@@ -664,15 +664,15 @@ class PDFMaker(object):
                 self._rand_reg_array[:, boot_regions].sum(axis=1) - 1.0,
                 0.0)
         self.redshift_array = (self._redshift_reg_array.sum(axis=1) /
-                               self._n_target_reg_array.sum(axis=1))
+                               self._n_reference_reg_array.sum(axis=1))
         self.density_array = np.nanmean(self.bootstrap_array, axis=1)
         self.density_err_array = np.nanstd(self.bootstrap_array, axis=1)
-        self.n_target_array = self._n_target_reg_array.sum(axis=1)
+        self.n_reference_array = self._n_reference_reg_array.sum(axis=1)
         self.unknown_array = self._unknown_reg_array.sum(axis=1)
         self.rand_array = self._rand_reg_array.sum(axis=1)
         self.area_array = self._area_reg_array.sum(axis=1)
         self.resolution_array = (self._resolution_reg_array.sum(axis=1) /
-                                 self._n_target_reg_array.sum(axis=1))
+                                 self._n_reference_reg_array.sum(axis=1))
         self._computed_pdf = True
         self._computed_bootstraps = True
         return None
