@@ -53,7 +53,7 @@ class TestPairMakerUtils(unittest.TestCase):
         pair_finder = pair_maker_utils.RawPairFinder(
             self.unknown_tree, self.reference_vect,
             self.reference_id_array, self.reference_tree,
-            self.stomp_map, self.dummpy_args.output_hdf5_file, None,
+            self.stomp_map, self.dummy_args.output_hdf5_file, None,
             create_hdf5_file=True, input_args=self.dummy_args)
 
     def test_pair_maker_output(self):
