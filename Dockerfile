@@ -1,11 +1,13 @@
-FROM zachdeibert/autotools
+FROM python:2.7
 
 MAINTAINER Christopher Morrison "morrison.chrisb@gmail.com"
 
-ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && apt-get install git -y && \
-    apt-get install zlib1g-dev -y && apt-get install python-dev -y && \
-    apt-get install swig -y && apt-get install python-pip -y &&\
+RUN apt-get update && \
+    apt-get install auto-tools -y && \
+    apt-get install zlib1g-dev -y && \
+    apt-get install python-dev -y && \
+    apt-get install swig -y && \
+    apt-get install python-pip -y && \
     python -m pip install --upgrade pip && \
     pip install --user numpy scipy h5py astropy
 
@@ -28,3 +30,5 @@ RUN chmod u+x pair_maker.py pdf_maker.py \
     utility_programs/stomp_map_from_fits.py \
     utility_programs/stomp_mask_catalog.py
 ENV PATH /home/The-wiZZ:/home/The-wiZZ/utility_programs:$PATH
+
+WORKDIR /home

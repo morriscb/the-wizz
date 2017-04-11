@@ -116,4 +116,5 @@ def create_random_data(n_randoms, stomp_map):
     print("\tLoading randoms into tree map...")
     for rand_ang in random_vect:
         random_tree.AddPoint(rand_ang, 1.0)
+
     return random_tree

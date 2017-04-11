@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # Load the spectroscopic data from the HDF5 data file.
     print("Preloading reference data...")
     pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
-                                          args)
+                                         args)
     reference_pair_data = pdf_maker_utils._load_pair_data(
         hdf5_pair_file[args.pair_scale_name], 0,
         pdf_maker.reference_redshift_array.shape[0])

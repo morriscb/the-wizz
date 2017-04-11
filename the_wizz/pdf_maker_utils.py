@@ -7,6 +7,7 @@ from __future__ import division, print_function, absolute_import
 
 import pickle
 
+import h5py
 from multiprocessing import Pool
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as iu_spline
@@ -28,6 +29,7 @@ def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
     """
     return np.linspace(z_min, z_max, n_bins + 1)[:-1]
 
+
 def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
     """Simple utility for computing redshift bins that delivers a consistent
     number of spectroscopic objects per bin.
@@ -48,6 +50,7 @@ def _create_adaptive_redshift_bin_edges(z_min, z_max, n_bins, redshift_array):
                                      useable_z_array.shape[0]/n_bins,
                                      dtype=np.int_)]
 
+
 def _create_logspace_redshift_bin_edges(z_min, z_max, n_bins):
     """Simple utility for computing redshift bins that are equally spaced in
     comoving, line of sight distance. This creates bins that have a smoother
@@ -64,6 +67,7 @@ def _create_logspace_redshift_bin_edges(z_min, z_max, n_bins):
     log_min = np.log(1 + z_min)
     log_max = np.log(1 + z_max)
     return np.exp(np.linspace(log_min, log_max, n_bins + 1)[:-1]) - 1.0
+
 
 def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     """Simple utility for computing redshift bins that are equally spaced in
@@ -86,6 +90,7 @@ def _create_comoving_redshift_bin_edges(z_min, z_max, n_bins):
     return comov_dist_to_redsihft_spline(
         np.linspace(comov_min, comov_max, n_bins + 1)[:-1])
 
+
 def _make_redshift_spline(z_min, z_max):
     """Utility function for creating a spline for comoving distance to
     redshift.
@@ -96,7 +101,8 @@ def _make_redshift_spline(z_min, z_max):
     comov_dist_to_redshift_spline = iu_spline(comov_array, redshift_array)
     return comov_dist_to_redshift_spline
 
-def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
+
+def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
                                     unknown_data, args):
     """This is the heart of The-wiZZ. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic objects. The
@@ -111,34 +117,45 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         args: ArgumentParser.parse_args object returned from
             input_flags.parse_input_pdf_args
     Returns:
-        None
+        a pdf_maker class object
     """
-    print("\tpre-loading unknown data...")
     # First we load the the ids from the input fits data using the columns
     # names the user has provided and scale the randoms to the correct ammount.
     # Object ids are also sorted in increasing id for later binary search.
+
+    print("Preloading reference data...")
+    create_pdf_maker_pool = Pool(1)
+    # pdf_maker_obj = _create_pdf_maker_object(hdf5_data_file_name, args)
+    pdf_maker_async_result = create_pdf_maker_pool.apply_async(
+        _create_pdf_maker_object,
+        (hdf5_data_file_name, args))
+
+    # TODO: Move this load into its own function.
+    print("\tpre-loading unknown data...")
+    open_hdf5_file = core_utils.file_checker_loader(hdf5_data_file_name)
+    hdf5_data_grp = open_hdf5_file['data']
     if args.unknown_weight_name is not None:
         unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
     rand_ratio = (unknown_data.shape[0] /
-                  hdf5_pairs_group.attrs['n_random_points'])
+                  hdf5_data_grp.attrs['n_random_points'])
     # If the user specifies the name of a STOMP region column, break up the data
     # into the individual regions.
     if args.unknown_stomp_region_name is not None:
         id_array = [id_array[
             unknown_data[args.unknown_stomp_region_name][id_args_array] ==
             reg_idx]
-            for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
+            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
         tmp_n_region = np.array(
             [id_array[reg_idx].shape[0]
-             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+             for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
             dtype=np.int_)
         rand_ratio = (
-            (tmp_n_region/hdf5_pairs_group.attrs['n_random_points']) *
-            (hdf5_pairs_group.attrs['area'] /
-             hdf5_pairs_group.attrs['region_area']))
+            (tmp_n_region / hdf5_data_grp.attrs['n_random_points']) *
+            (hdf5_data_grp.attrs['area'] /
+             hdf5_data_grp.attrs['region_area']))
     # Now that we loaded the ids we can load unknown object weights in the same
     # way.
     ave_weight = 1.0
@@ -150,75 +167,113 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pdf_maker_obj,
         weight_array = [weight_array[
             unknown_data[args.unknown_stomp_region_name][id_args_array] ==
             reg_idx]
-            for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])]
+            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
         ave_weight = np.array(
             [weight_array[reg_idx].mean()
-             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+             for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
             dtype=np.float_)
     # Prime our output array.
-    n_reference = len(hdf5_pairs_group)
+    n_reference = len(hdf5_data_grp)
     reference_unknown_array = np.empty(n_reference, dtype=np.float32)
     # Set some interation variables and start the loop over the reference objects.
     pair_start = 0
     hold_pair_start = 0
     pair_data = []
     # Initialize the workers.
-    pool = Pool(args.n_processes)
-    while hold_pair_start < n_reference:
-        # This is where the heavy lifting of pair matching happens. There are
-        # two options for if we use regions or not. If we use regions, the
-        # code runs significantly quicker.
-        if pair_data:
-            print("\t\tmatching pairs: starting references %i-%i..." %
-                  (hold_pair_start, hold_pair_start + args.n_reference_load_size))
-            # If we are using regions.
-            if args.unknown_stomp_region_name is not None:
-                pool_iter = pool.imap(
-                    _collapse_multiplex,
-                    [(data_set,
-                      id_array[
-                          pdf_maker_obj.reference_region_array[hold_pair_start +
-                                                            pair_idx]],
-                      weight_array[
-                          pdf_maker_obj.reference_region_array[hold_pair_start +
-                                                            pair_idx]],
-                      args.use_inverse_weighting)
-                     for pair_idx, data_set in enumerate(pair_data)],
-                    chunksize=np.int(np.where(
-                        args.n_processes > 1, np.log(len(pair_data)), 1)))
-            # Not using regions.
-            else:
-                pool_iter = pool.imap(
-                    _collapse_multiplex,
-                    [(data_set, id_array, weight_array,
-                      args.use_inverse_weighting)
-                     for pair_idx, data_set in enumerate(pair_data)],
-                    chunksize=np.int(np.where(
-                        args.n_processes > 1, np.log(len(pair_data)), 1)))
-        # Now that we've submitted the jobs to the workers we load the next
-        # batch of data.
-        print("\t\tloading next pairs...")
-        pair_data = _load_pair_data(hdf5_pairs_group, pair_start,
-                                    args.n_reference_load_size)
-        # This is a cludgy way of testing to see that pool_iter exists and we
-        # can then iterate and store our results from the workers.
-        try:
-            type(pool_iter)
-            print("\t\tcomputing/storing pair count...")
-            for pair_idx, reference_value in enumerate(pool_iter):
-                reference_unknown_array[hold_pair_start + pair_idx] = reference_value
-        except UnboundLocalError:
-            pass
-        # Increase the load and store variables.
-        hold_pair_start = pair_start
-        pair_start += args.n_reference_load_size
+    loader_pool = Pool(1)
+    matcher_pool = Pool(np.min((args.n_processes - 1, 1)))
+
+    key_array = hdf5_data_grp.keys()
+    loader_result = loader_pool.imap(_load_pair_data,
+        [(args.input_pair_hdf5_file, scale_name,
+         key_array[start_idx:start_idx + args.n_reference_load_size])
+         for start_idx in xrange(0, len(key_array),
+                                 args.n_reference_load_size)])
+
+    pdf_maker_obj = pdf_maker_async_result.get()
+    create_pdf_maker_pool.close()
+    create_pdf_maker_pool.join()
+
+    for loader_idx, pair_data in enumerate(loader_result):
+
+        start_idx = loader_idx * args.n_reference_load_size
+        end_idx = np.min(((loader_idx + 1) * args.n_reference_load_size,
+                          len(key_array)))
+
+        print("\t\tmatching pairs: starting references %i-%i..." %
+              (start_idx, end_idx))
+
+        if args.unknown_stomp_region_name is not None:
+            matcher_pool_iter = matcher_pool.imap(
+                _collapse_multiplex,
+                [(data_set,
+                  id_array[pdf_maker_obj.reference_region_array[
+                      start_idx + pair_idx]],
+                  weight_array[pdf_maker_obj.reference_region_array[
+                      start_idx + pair_idx]],
+                  args.use_inverse_weighting)
+                 for pair_idx, data_set in enumerate(pair_data)],
+                chunksize=np.int(np.where(args.n_processes > 1,
+                                          np.sqrt(len(pair_data)), 1)))
+        else:
+            matcher_pool_iter = matcher_pool.imap(
+                _collapse_multiplex,
+                [(data_set, id_array, weight_array,
+                  args.use_inverse_weighting)
+                 for pair_idx, data_set in enumerate(pair_data)],
+                chunksize=np.int(np.where(args.n_processes > 1,
+                                          np.sqrt(len(pair_data)), 1)))
+
+        print("\t\tcomputing/storing pair count...")
+        for pair_idx, reference_value in enumerate(matcher_pool_iter):
+            reference_unknown_array[start_idx + pair_idx] = reference_value
+
     # Close the workers.
-    pool.close()
-    pool.join()
+    loader_pool.close()
+    loader_pool.join()
+    matcher_pool.close()
+    matcher_pool.join()
     # Store the results in our PDFMaker class object.
     pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
-    return None
+
+    # Close the hdf5 file
+    open_hdf5_file.close()
+
+    return pdf_maker_obj
+
+
+def _get_id_and_weight_array()
+
+
+def _create_pdf_maker_object(hdf5_data_file_name, args):
+
+    pdf_maker_obj = PDFMaker(hdf5_data_file_name, args)
+
+    return pdf_maker_obj
+
+
+def _load_pair_data(input_tuple):
+    """Functions for loading individual reference objects from the HDF5 file.
+    ----------------------------------------------------------------------------
+    Args:
+        hdf5_group: an h5py group object
+        key_start: int index of starting object to load
+        n_load: int number of objects to load
+    Returns:
+        list of numpy arrays
+    """
+    (hdf5_file_name, scale_name, key_list) = input_tuple
+    hdf5_file = h5py.File(hdf5_file_name)
+    output_list = []
+    for key in key_list:
+        output_list.append(
+            [hdf5_file['data/%s/%s/ids' % (key, scale_name)][...],
+             hdf5_file['data/%s/%s/dist_weights' % (key, scale_name)][...]])
+    hdf5_file.close()
+
+    return output_list
+
 
 def _collapse_multiplex(input_tuple):
     """Function for matching indices and calculating the over densities of a
@@ -275,26 +330,6 @@ def _collapse_multiplex(input_tuple):
                     tmp_n_points += 1.0*weight
     return tmp_n_points
 
-def _load_pair_data(hdf5_group, key_start, n_load):
-    """Functions for loading individual reference objects from the HDF5 file.
-    ----------------------------------------------------------------------------
-    Args:
-        hdf5_group: an h5py group object
-        key_start: int index of starting object to load
-        n_load: int number of objects to load
-    Returns:
-        list of numpy arrays
-    """
-    output_list = []
-    key_list = hdf5_group.keys()
-    key_end = key_start + n_load
-    if key_end > len(key_list):
-        key_end = len(key_list)
-    for key_idx in xrange(key_start, key_end):
-        output_list.append([hdf5_group[key_list[key_idx]]['ids'][...],
-                            hdf5_group[key_list[key_idx]]['inv_dist'][...]])
-    return output_list
-
 def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
     """Convience function for collapsing the full sample of ids into a single
     estimate.
@@ -333,7 +368,7 @@ def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
         reference_grp = hdf5_pairs_group[key_name]
         if args.use_inverse_weighting:
             reference_unknown_array[reference_idx] = np.sum(
-                reference_grp['inv_dist'][...])
+                reference_grp['dist_weight'][...])
         else:
             reference_unknown_array[reference_idx] = (
                 1.*reference_grp['ids'][...]).shape[0]
@@ -348,7 +383,7 @@ class PDFMaker(object):
     data into the spec-z bins, and outputting the posterier redshift
     distribution.
     """
-    def __init__(self, hdf5_pair_group, args):
+    def __init__(self, hdf5_data_file_name, args):
         """Init function for the PDF maker. The init class is a container for
         arrays of single point estimaties around reference, known redshift objects.
         The class also computes the estimates of clustering redshift recovery
@@ -360,26 +395,31 @@ class PDFMaker(object):
             args: ArgumentParser.parse_args object from
                 input_flags.parse_input_pdf_args
         """
-        self.reference_redshift_array = np.empty(len(hdf5_pair_group),
-                                              dtype=np.float32)
-        self.reference_area_array = np.empty(len(hdf5_pair_group),
-                                          dtype=np.float32)
-        self.reference_density_array = np.empty(len(hdf5_pair_group),
+        open_hdf5_file = core_utils.file_checker_loader(hdf5_data_file_name)
+        hdf5_data_grp = open_hdf5_file['data']
+        self.reference_redshift_array = np.empty(len(hdf5_data_grp),
+                                                 dtype=np.float32)
+        self.reference_region_array = np.empty(len(hdf5_data_grp),
+                                               dtype=np.uint32)
+        self.reference_area_array = np.empty(len(hdf5_data_grp),
                                              dtype=np.float32)
-        self.reference_unknown_array = np.empty(len(hdf5_pair_group),
-                                             dtype=np.float32)
-        self.reference_hold_rand_array = np.empty(len(hdf5_pair_group),
-                                               dtype=np.float32)
-        self.reference_region_array = np.empty(len(hdf5_pair_group),
-                                            dtype=np.uint32)
-        self.reference_resolution_array = np.empty(len(hdf5_pair_group),
-                                                dtype=np.uint32)
-        self._load_data_from_hdf5(hdf5_pair_group, args)
+
+        self.reference_density_array = np.empty(len(hdf5_data_grp),
+                                                dtype=np.float32)
+        self.reference_unknown_array = np.empty(len(hdf5_data_grp),
+                                                 dtype=np.float32)
+        self.reference_hold_rand_array = np.empty(len(hdf5_data_grp),
+                                                  dtype=np.float32)
+        self.reference_resolution_array = np.empty(len(hdf5_data_grp),
+                                                   dtype=np.uint32)
+        self._load_data_from_hdf5(hdf5_data_grp, args)
         self._use_reference_densities = args.use_reference_cleaning
         self._reference_unknown_array_set = False
         self._computed_region_densities = False
         self._computed_pdf = False
         self._computed_bootstraps = False
+
+        open_hdf5_file.close()
 
     def reset_pairs(self):
         self.reference_unknown_array = np.zeros_like(self.reference_redshift_array)
@@ -388,9 +428,10 @@ class PDFMaker(object):
         self._computed_region_densities = False
         self._computed_pdf = False
         self._computed_bootstraps = False
+
         return None
 
-    def _load_data_from_hdf5(self, hdf5_pair_group, args):
+    def _load_data_from_hdf5(self, hdf5_data_grp, args):
         """Internal function for loading in non-pair search variables such as
         the reference redshift, area, region, etc.
         ------------------------------------------------------------------------
@@ -402,22 +443,26 @@ class PDFMaker(object):
         Returns:
             None
         """
-        for reference_idx, key_name in enumerate(hdf5_pair_group.keys()):
-            reference_grp = hdf5_pair_group[key_name]
+        for reference_idx, key_name in enumerate(hdf5_data_grp.keys()):
+            reference_grp = hdf5_data_grp[key_name]
+            scale_grp = reference_grp[args.pair_scale_name]
+
             self.reference_redshift_array[reference_idx] = (
                 reference_grp.attrs['redshift'])
-            self.reference_area_array[reference_idx] = reference_grp.attrs['area']
-            self.reference_density_array[reference_idx] = reference_grp.attrs[
-                'reference_density']
             self.reference_region_array[reference_idx] = reference_grp.attrs['region']
+
+            self.reference_area_array[reference_idx] = scale_grp.attrs['area']
+            self.reference_density_array[reference_idx] = (
+                scale_grp.attrs['ref_ref_n_points'] /
+                self.reference_area_array[reference_idx])
             self.reference_resolution_array[reference_idx] = (
-                reference_grp.attrs['bin_resolution'])
+                scale_grp.attrs['bin_resolution'])
             if args.use_inverse_weighting:
                 self.reference_hold_rand_array[reference_idx] = (
-                    reference_grp.attrs['rand_inv_dist'])
+                    scale_grp.attrs['rand_dist_weight'])
             else:
                 self.reference_hold_rand_array[reference_idx] = (
-                    reference_grp.attrs['rand'])
+                    scale_grp.attrs['n_random'])
 
         has_density_mask = np.logical_and(
             self.reference_density_array > 0,
@@ -435,6 +480,7 @@ class PDFMaker(object):
         self.region_dict = {}
         for array_idx, region_idx in enumerate(self.region_array):
             self.region_dict[region_idx] = array_idx
+
         return None
 
     def set_reference_unknown_array(self, unknown_array):
@@ -477,8 +523,8 @@ class PDFMaker(object):
             tmp_ave_weight = ave_weight
         except TypeError:
             tmp_ave_weight = ave_weight
-        self.reference_rand_array = (self.reference_hold_rand_array*tmp_rand_ratio *
-                                  tmp_ave_weight)
+        self.reference_rand_array = (
+            self.reference_hold_rand_array * tmp_rand_ratio * tmp_ave_weight)
         return None
 
     def write_reference_n_points(self, hdf5_file):
@@ -511,8 +557,6 @@ class PDFMaker(object):
         Returns:
             None
         """
-        # TODO:
-        #     Finish reference over-density weighting.
         if not self._reference_unknown_array_set:
             print("PDFMaker.set_reference_unknown_array not set. Exiting method.")
             return None

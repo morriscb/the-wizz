@@ -79,11 +79,11 @@ def parse_input_pdf_args():
     parser.add_argument('--n_bootstrap', default=1000, type=int,
                         help='Argument specifying the number of bootstrap '
                         'resamplings of the recovery to compute errors.')
-    parser.add_argument('--n_processes', default=1, type=int,
+    parser.add_argument('--n_processes', default=2, type=int,
                         help='Number of process to run. When computing large '
                         'angles it is recommended that several cores be '
                         'used(~4).')
-    parser.add_argument('--n_reference_load_size', default=100000, type=int,
+    parser.add_argument('--n_reference_load_size', default=10000, type=int,
                         help='Number of reference pairs to load from the hdf5 '
                         'file at once. The chunk size should be set such that '
                         'the code has time to load the new data while it is '

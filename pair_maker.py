@@ -49,7 +49,7 @@ if __name__ == "__main__":
     random_tree = None
     if args.n_randoms > 0:
         random_tree = stomp_utils.create_random_data(
-            args.n_randoms*unknown_itree.NPoints(), stomp_map)
+            args.n_randoms * unknown_itree.NPoints(), stomp_map)
     # Now that we have everything set up we can send our data off to the pair
     # finder.
     pair_finder = pair_maker_utils.RawPairFinder(
@@ -60,29 +60,21 @@ if __name__ == "__main__":
     # before we begin.
     min_scale_list = args.min_scale.split(',')
     max_scale_list = args.max_scale.split(',')
-    print("Running scales...")
-    print(min_scale_list)
-    print(max_scale_list)
     if len(min_scale_list) != len(max_scale_list):
         print("Number of min scales requested does not match number of max"
               "sales. Exitting.")
         sys.exit()
+    print("Running", len(min_scale_list), "scales...")
     # Loop over the min/max scales requested.
     for min_scale, max_scale in zip(min_scale_list, max_scale_list):
         print("Running scale: %s to %s" % (min_scale, max_scale))
         # Pair finder does what it says. It also computes the areas, unmasked
-        # fractions for reference object.
+        # fractions for each reference object.
         pair_finder.find_pairs(np.float_(min_scale), np.float_(max_scale))
-        # This is an optional part of the pair finder. It takes as an argument
-        # the a stomp tree map containing uniform random points as generated
-        # by the stomp. For non-uniform randoms it is recommened that the
-        # user run this software with said randoms as the unknown sample.
-        if args.n_randoms > 0:
-            pair_finder.random_loop(np.float_(min_scale), np.float_(max_scale),
-                                    random_tree)
-        # Now that we have all of our pairs found and in memory, we want to
-        # write them to something more permanent.
-        pair_finder.write_to_hdf5(output_pair_hdf5_file,
-                                  'kpc%st%s' % (min_scale, max_scale))
-    output_pair_hdf5_file.close()
+    # Clean up the large items before we exit.
+    del random_tree
+    del unknown_itree
+    del reference_vector, reference_ids, reference_tree_map
+    del pair_finder
+    print("Done!")
     # And that's it. We are done.

@@ -120,7 +120,7 @@ class TestPairMakerUtils(unittest.TestCase):
 
         output_hdf5_file = h5py.File(self.dummy_args.output_hdf5_file, 'r')
         data_grp = output_hdf5_file['data']
-        n_random = data_grp.attrs['n_random']
+        n_random = data_grp.attrs['n_random_points']
         tot_area = data_grp.attrs['area']
 
         ref_random_sum = 0

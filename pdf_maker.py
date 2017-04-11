@@ -27,16 +27,8 @@ if __name__ == "__main__":
     input_flags.print_args(args)
     # Load the file containing all matched pairs of spectroscopic and
     # photometric objects.
-    print("Loading files...")
-    hdf5_pair_file = core_utils.file_checker_loader(args.input_pair_hdf5_file)
+    print("Loading unknown data...")
     unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
-    # Load the spectroscopic data from the HDF5 data file.
-    print("Preloading reference data...")
-    pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
-                                         args)
-    if pdf_maker.reference_redshift_array.max() < args.z_max:
-        print("WARNING: requested z_max is greater than available reference "
-              "redshifts.")
     # Now we figure out what kind of redshift binning we would like to have.
     # This will be one of the largest impacts on the signal to noise of the
     # measurement. Some rules of thumb are:
@@ -90,8 +82,8 @@ if __name__ == "__main__":
     # line below turns the array of indices in the hdf5 pair file, into a
     # single density estimate around the reference object.
     print("Starting indices matcher...")
-    pdf_maker_utils.collapse_ids_to_single_estimate(
-        hdf5_pair_file[args.pair_scale_name], pdf_maker, unknown_data, args)
+    pdf_maker = pdf_maker_utils.collapse_ids_to_single_estimate(
+        args.input_pair_hdf5_file, args.pair_scale_name, unknown_data, args)
     # Before we calculated the pdfs, we want to know what the over densities
     # are in each of the regions calculated on the area we consider.
     print("Calculating region densities...")
