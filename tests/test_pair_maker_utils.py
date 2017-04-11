@@ -66,7 +66,7 @@ class TestPairMakerUtils(unittest.TestCase):
         pair_finder.find_pairs(100, 300)
 
         output_hdf5_file = h5py.File(self.dummy_args.output_hdf5_file, 'r')
-        test_hdf5_file = h5py.File('data/test_COSMOS_pair_data.hdf5')
+        test_hdf5_file = h5py.File('data/unittest_output.hdf5')
 
         for reference_idx, reference_obj in enumerate(self.reference_vect):
             ref_grp = output_hdf5_file[
@@ -78,10 +78,11 @@ class TestPairMakerUtils(unittest.TestCase):
             ref_pair_id_array = scale_grp['ids'][...]
             ref_dist_weight_array = scale_grp['dist_weights'][...]
 
-            test_grp = test_hdf5_file['kpc100t300/%i' %
-                                      self.reference_id_array[reference_idx]]
-            test_pair_id_array = test_grp['ids'][...]
-            test_dist_weight_array = test_grp['inv_dist'][...]
+            test_grp = test_hdf5_file[
+                'data/%s' %
+                self.reference_id_array[reference_idx]]
+            test_pair_id_array = test_grp['kpc100t300/ids'][...]
+            test_dist_weight_array = test_grp['kpc100t300/dist_weights'][...]
             if len(ref_pair_id_array) != len(test_pair_id_array):
                 print('Failed for reference id:',
                       self.reference_id_array[reference_idx])
@@ -97,13 +98,13 @@ class TestPairMakerUtils(unittest.TestCase):
                 test_grp.attrs['redshift'])
             self.assertAlmostEqual(
                 scale_grp.attrs['unmasked_frac'],
-                test_grp.attrs['unmasked_frac'])
+                test_grp['kpc100t300'].attrs['unmasked_frac'])
             self.assertEqual(
                 scale_grp.attrs['bin_resolution'],
-                test_grp.attrs['bin_resolution'])
+                test_grp['kpc100t300'].attrs['bin_resolution'])
             self.assertAlmostEqual(
                 scale_grp.attrs['area'],
-                test_grp.attrs['area'])
+                test_grp['kpc100t300'].attrs['area'])
 
     def test_pair_maker_with_randoms(self):
 
@@ -134,4 +135,9 @@ class TestPairMakerUtils(unittest.TestCase):
         self.assertAlmostEqual(
             (n_random / tot_area) /
             (ref_random_sum / ref_area_sum) - 1,
-            0.00, places=2)
+            0.0, places=2)
+
+if __name__ == "__main__":
+
+    unittest.main()
+

@@ -243,9 +243,6 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
     return pdf_maker_obj
 
 
-def _get_id_and_weight_array()
-
-
 def _create_pdf_maker_object(hdf5_data_file_name, args):
 
     pdf_maker_obj = PDFMaker(hdf5_data_file_name, args)
@@ -374,6 +371,7 @@ def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
                 1.*reference_grp['ids'][...]).shape[0]
     pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, 1.0)
+
     return None
 
 
@@ -404,10 +402,10 @@ class PDFMaker(object):
         self.reference_area_array = np.empty(len(hdf5_data_grp),
                                              dtype=np.float32)
 
-        self.reference_density_array = np.empty(len(hdf5_data_grp),
-                                                dtype=np.float32)
         self.reference_unknown_array = np.empty(len(hdf5_data_grp),
                                                  dtype=np.float32)
+        self.reference_density_array = np.empty(len(hdf5_data_grp),
+                                                dtype=np.float32)
         self.reference_hold_rand_array = np.empty(len(hdf5_data_grp),
                                                   dtype=np.float32)
         self.reference_resolution_array = np.empty(len(hdf5_data_grp),
