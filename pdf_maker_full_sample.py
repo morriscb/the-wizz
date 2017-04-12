@@ -14,14 +14,14 @@ from __future__ import division, print_function, absolute_import
 
 import numpy as np
 
-import _core_utils
-import input_flags
-import _pdf_maker_utils
+from the_wizz import core_utils
+from the_wizz import input_flags
+from the_wizz import pdf_maker_utils
 
 
 if __name__ == "__main__":
     print("")
-    print("The-wiZZ has begun conjuring: running pair maker...")
+    print("The-wiZZ has begun conjuring: running pdf maker full sample...")
     # First we parse the command line for arguments as usual. See
     # input_flags.py for a full list of input arguments.
     args = input_flags.parse_input_pdf_args()
@@ -36,14 +36,14 @@ if __name__ == "__main__":
     # Load the file containing all matched pairs of spectroscopic and
     # photometric objects.
     print("Loading files...")
-    hdf5_pair_file = _core_utils.file_checker_loader(args.input_pair_hdf5_file)
-    unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
+    hdf5_pair_file = core_utils.file_checker_loader(args.input_pair_hdf5_file)
+    unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
     # Load the spectroscopic data from the HDF5 data file.
-    print("Preloading target data...")
-    pdf_maker = _pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
-                                          args)
-    if pdf_maker.target_redshift_array.max() < args.z_max:
-        print("WARNING: requested z_max is greater than available target "
+    print("Preloading reference data...")
+    pdf_maker = pdf_maker_utils.PDFMaker(
+        hdf5_pair_file, args)
+    if pdf_maker.reference_redshift_array.max() < args.z_max:
+        print("WARNING: requested z_max is greater than available reference "
               "redshifts.")
     # Now we figure out what kind of redshift binning we would like to have.
     # This will be one of the largest impacts on the signal to noise of the
@@ -69,25 +69,25 @@ if __name__ == "__main__":
     # compared the usual simga/(1 + z) error.
     print("Creating bins...")
     if args.z_binning_type == 'linear':
-        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'adaptive':
-        z_bin_edge_array = _pdf_maker_utils._create_adaptive_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_adaptive_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins,
-            pdf_maker.target_redshift_array)
+            pdf_maker.reference_redshift_array)
     elif args.z_binning_type == 'comoving':
-        z_bin_edge_array = _pdf_maker_utils._create_comoving_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'logspace':
-        z_bin_edge_array = _pdf_maker_utils._create_logspace_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_logspace_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     else:
         print("Requested binning name invalid. Valid types are:")
         print("\tlinear: linear binning in redshift")
-        print("\tadaptive: constant target objects per redshift bin")
+        print("\tadaptive: constant reference objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
         print("Retunning linear binning...")
-        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     # This is where the heavy lifting happens. We create our PDF maker object
     # which will hold the pair file for use, calculate the over density per
@@ -96,18 +96,18 @@ if __name__ == "__main__":
     # to estimate the redshit of. These objects can be color selected,
     # photo-z selected, or any other object selection you would like. The code
     # line below turns the array of indices in the hdf5 pair file, into a
-    # single density estimate around the target object.
+    # single density estimate around the reference object.
     print("Collapsing indices...")
-    _pdf_maker_utils._collapse_full_sample(
-        hdf5_pair_file[args.pair_scale_name], pdf_maker, unknown_data, args)
+    pdf_maker_utils.collapse_full_sample(
+        hdf5_pair_file['data'], pdf_maker, unknown_data, args)
     # Before we calculated the pdfs, we want to know what the over densities
     # are in each of the regions calculated on the area we consider.
     print("Calculating region densities...")
     pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
     if args.output_region_pickle_file is not None:
         pdf_maker.write_region_densities(args.output_region_pickle_file, args)
-    # Now that we've "collapsed" the estimate around the target object we need
-    # to bin up the results in redshift and create our final PDF.
+    # Now that we've "collapsed" the estimate around the reference object we
+    # need to bin up the results in redshift and create our final PDF.
     print("Calculating pdf...")
     if args.bootstrap_samples is None:
         pdf_maker.compute_pdf_bootstrap(args.n_bootstrap)
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # Now that we have the results. We just need to write them to file and we
     # are done.
     print("Writing...")
-    output_file = _core_utils.create_ascii_file(args.output_pdf_file_name, args)
+    output_file = core_utils.create_ascii_file(args.output_pdf_file_name, args)
     pdf_maker.write_pdf_to_ascii(output_file)
     output_file.close()
     print("Done!")

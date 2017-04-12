@@ -11,10 +11,10 @@ from __future__ import division, print_function, absolute_import
 
 import numpy as np
 
-import _core_utils
-import _kdtree_utils
-import _pdf_maker_utils
-import input_flags
+from the_wizz import core_utils
+from the_wizz import kdtree_utils
+from the_wizz import pdf_maker_utils
+from the_wizz import input_flags
 
 if __name__ == "__main__":
     print("")
@@ -25,23 +25,23 @@ if __name__ == "__main__":
     args = input_flags.parse_input_pdf_single_galaxy_args()
     input_flags.print_args(args)
     # Create the HDF5 file we will write out to store the PDFs.
-    output_pdf_hdf5_file = _core_utils.create_hdf5_file(
+    output_pdf_hdf5_file = core_utils.create_hdf5_file(
         args.output_pdf_hdf5_file, args)
     # Load the file containing all matched pairs of spectroscopic and
     # photometric objects.
     print("Loading files...")
-    hdf5_pair_file = _core_utils.file_checker_loader(args.input_pair_hdf5_file)
-    unknown_data = _core_utils.file_checker_loader(args.unknown_sample_file)
-    match_data = _core_utils.file_checker_loader(args.match_sample_file)
+    hdf5_pair_file = core_utils.file_checker_loader(args.input_pair_hdf5_file)
+    unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
+    match_data = core_utils.file_checker_loader(args.match_sample_file)
     # Load the spectroscopic data from the HDF5 data file.
-    print("Preloading target data...")
-    pdf_maker = _pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
-                                          args)
-    target_pair_data = _pdf_maker_utils._load_pair_data(
+    print("Preloading reference data...")
+    pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
+                                         args)
+    reference_pair_data = pdf_maker_utils._load_pair_data(
         hdf5_pair_file[args.pair_scale_name], 0,
-        pdf_maker.target_redshift_array.shape[0])
-    if pdf_maker.target_redshift_array.max() < args.z_max:
-        print("WARNING: requested z_max is greater than available target "
+        pdf_maker.reference_redshift_array.shape[0])
+    if pdf_maker.reference_redshift_array.max() < args.z_max:
+        print("WARNING: requested z_max is greater than available reference "
               "redshifts.")
     # Now we figure out what kind of redshift binning we would like to have.
     # This will be one of the largest impacts on the signal to noise of the
@@ -63,25 +63,25 @@ if __name__ == "__main__":
     # bins that are of equal comoving distance from the line of sight.
     print("Creating bins...")
     if args.z_binning_type == 'linear':
-        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'adaptive':
-        z_bin_edge_array = _pdf_maker_utils._create_adaptive_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_adaptive_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins,
-            pdf_maker.target_redshift_array)
+            pdf_maker.reference_redshift_array)
     elif args.z_binning_type == 'comoving':
-        z_bin_edge_array = _pdf_maker_utils._create_comoving_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_comoving_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     elif args.z_binning_type == 'logspace':
-        z_bin_edge_array = _pdf_maker_utils._create_logspace_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_logspace_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     else:
         print("Requested binning name invalid. Valid types are:")
         print("\tlinear: linear binning in redshift")
-        print("\tadaptive: constant target objects per redshift bin")
+        print("\tadaptive: constant reference objects per redshift bin")
         print("\tcomoving: linear binning in comoving distance")
         print("Retunning linear binning...")
-        z_bin_edge_array = _pdf_maker_utils._create_linear_redshift_bin_edges(
+        z_bin_edge_array = pdf_maker_utils._create_linear_redshift_bin_edges(
             args.z_min, args.z_max, args.z_n_bins)
     # Now that we know the redshift array, we create the group where we will
     # store the output pdfs.
@@ -96,14 +96,14 @@ if __name__ == "__main__":
     except AttributeError:
         other_name_list = []
     print(mag_name_list, other_name_list)
-    unknown_value_array = _kdtree_utils.create_match_data(
+    unknown_value_array = kdtree_utils.create_match_data(
         unknown_data, mag_name_list, other_name_list, args.use_as_colors)
     print(unknown_value_array.shape, unknown_data.shape)
-    kdtree = _kdtree_utils.CatalogKDTree(unknown_value_array)
+    kdtree = kdtree_utils.CatalogKDTree(unknown_value_array)
     # Now we create the same array as the unknown sample for our match
     # sample.
     print("Creating matching data array...")
-    match_data_array = _kdtree_utils.create_match_data(
+    match_data_array = kdtree_utils.create_match_data(
         match_data, mag_name_list, other_name_list, args.use_as_colors)
     # Now we loop over each match objects data array, match it to the unknown
     # sample's kdtree and submit those galaxies to pdf_maker to create an
@@ -115,9 +115,9 @@ if __name__ == "__main__":
         pdf_maker.reset_pairs()
         # Match the ids.
         id_array, quartile_dists = kdtree(match_obj, args.n_kdtree_matched)
-        _kdtree_utils.collapse_ids_to_single_estimate(
-            hdf5_pair_file[args.pair_scale_name], target_pair_data, pdf_maker,
-            unknown_data[id_array], args)
+        kdtree_utils.collapse_ids_to_single_estimate(
+            hdf5_pair_file[args.pair_scale_name], reference_pair_data,
+            pdf_maker, unknown_data[id_array], args)
         # Get the region densities.
         pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
         # Collapse the region densities and estimate the error.

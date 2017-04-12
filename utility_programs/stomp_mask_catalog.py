@@ -62,8 +62,10 @@ if __name__ == "__main__":
     for idx, obj in enumerate(data):
         if idx % (data.shape[0] / 10) == 0:
             print("\tObject #%i..." % idx)
-        tmp_ang = stomp.AngularCoordinate(obj[args.ra_name], obj[args.dec_name],
-                                          stomp.AngularCoordinate.Equatorial)
+
+        tmp_ang = stomp.AngularCoordinate(
+            np.double(obj[args.ra_name]), np.double(obj[args.dec_name]),
+            stomp.AngularCoordinate.Equatorial)
         # Test the current catalog object and see if it is contained in the
         # stomp map geometry. Store the result.
         mask[idx] = stomp_map.Contains(tmp_ang)
@@ -87,4 +89,4 @@ if __name__ == "__main__":
     out_tbhdu = fits.BinTableHDU.from_columns(col_list)
     out_tbhdu.writeto(args.output_fits_file, overwrite=True)
     hdu.close()
-    # Done!
+    # Done

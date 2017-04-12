@@ -210,58 +210,58 @@ def create_excluded_map(input_mask, ext_map, output_name, resolution,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_fits_mask', required = True,
-                        type = str, help='Input fits mask file. Masked data is '
+    parser.add_argument('--input_fits_mask', required=True,
+                        type=str, help='Input fits mask file. Masked data is '
                         'assumed to have a value of value > mask_value.')
-    parser.add_argument('--mask_value', default = 0.0,
-                        type = np.float_, help = 'Value above which to mask. '
+    parser.add_argument('--mask_value', default=0.0,
+                        type=np.float_, help='Value above which to mask. '
                         'The excluded area is thus area with a value of '
                         'value > mask_value')
-    parser.add_argument('--mask_is_less_than', action = 'store_true',
-                        help = 'Instead of the default '
+    parser.add_argument('--mask_is_less_than', action='store_true',
+                        help='Instead of the default '
                         'behavior, we also allow for masks that are less than '
                         'the mask value to be masked.')
-    parser.add_argument('--output_map_name', required = True,
-                        type = str, help = 'Name of output, masked STOMP map '
+    parser.add_argument('--output_map_name', required=True,
+                        type=str, help='Name of output, masked STOMP map '
                         'file.')
-    parser.add_argument('--input_exclusion_name', default = None,
-                        type = str, help = 'Name of input exclusion map. If '
+    parser.add_argument('--input_exclusion_name', default=None,
+                        type=str, help='Name of input exclusion map. If '
                         'None the code creates the exclusion from the '
                         'input_fits_mask. ')
-    parser.add_argument('--output_exclusion_name', default = None,
-                        type = str, help = 'Name of output STOMP map to exclude '
+    parser.add_argument('--output_exclusion_name', default=None,
+                        type=str, help='Name of output STOMP map to exclude '
                         'from the area. If the value is none, the intermediate '
                         'exclusion map is not written.')
     parser.add_argument('--resolution', default=2048,
-                        type = int, help = 'Resolution at which to '
+                        type=int, help='Resolution at which to '
                         'pixelate the input mask file. Maximum allowed '
                         'resolution is 32768. For reference a resolution 1 '
                         'pixel has an area of 88.1474 deg^2 and each '
                         'resolution decreases the area by a factor of '
                         'resolution^2')
-    parser.add_argument('--offset', default = 1,
-                        type = int, help = 'Value to offset from the '
+    parser.add_argument('--offset', default=1,
+                        type=int, help='Value to offset from the '
                         'edge of the image if image coordiantes.')
-    parser.add_argument('--n_points', default = 1,
-                        type = int, help = 'Number of points to sample along. '
+    parser.add_argument('--n_points', default=1,
+                        type=int, help='Number of points to sample along. '
                         'The edge of the survey boundry. This is helpful for '
                         'High laditude fields. A warning may occur stating the '
                         'area of the polygon created is negative. As long as '
                         'the map returns successful creation in a reasonable '
                         'time, the created stomp map will still be correct.')
-    parser.add_argument('--counter_clockwise_pixels', action = 'store_true',
-                        help = 'Specify which direction the code '
+    parser.add_argument('--counter_clockwise_pixels', action='store_true',
+                        help='Specify which direction the code '
                         'moves around the edge of the image to create the '
                         'map. By default, the code will work if increasing '
                         'x and increasing y are in the direction of increasing '
                         'RA and DEC respectivily.')
-    parser.add_argument('--max_load', default = 1000000,
-                        type = int, help = 'Number of image pixels to load '
+    parser.add_argument('--max_load', default=1000000,
+                        type=int, help='Number of image pixels to load '
                         'before dumping them into the map. This is a trick to '
                         'reduce the ammount of memory needed for creating the '
                         'exclusion map. It also makes the map creation faster.')
     parser.add_argument('-v', '--verbose', action="store_true",
-                        help = 'Output full verbosity for stomp')
+                        help='Output full verbosity for stomp')
     args = parser.parse_args()
     
     if args.input_exclusion_name is None:
