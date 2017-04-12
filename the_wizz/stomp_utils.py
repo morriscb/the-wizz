@@ -15,7 +15,7 @@ from the_wizz import core_utils
 
 def load_unknown_sample(sample_file_name, stomp_map, args):
     """ Method for loading a set of objects with unknown redshifts into
-    The-wiZZ. This function maskes the data and returns a STOMP.iTreeMap object
+    the-wizz. This function maskes the data and returns a STOMP.iTreeMap object
     which is a searchable quad tree where each object stored has a unique
     index. If a name of an index column is not specified a simple counting
     index from thestart of the file is stored.
@@ -108,7 +108,7 @@ def create_random_data(n_randoms, stomp_map):
     Returns:
         STOMP::TreeMap object
     """
-    print("Creating %i n_randoms..." % n_randoms)
+    print("Creating %i randoms..." % n_randoms)
     random_vect = stomp.AngularVector()
     stomp_map.GenerateRandomPoints(random_vect, n_randoms)
     random_tree = stomp.TreeMap(

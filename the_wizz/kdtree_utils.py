@@ -17,7 +17,7 @@ from the_wizz.pdf_maker_utils import _collapse_multiplex
 
 def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
                                     unknown_data, args):
-    """This is the heart of The-wiZZ. It enables the matching of a set of
+    """This is the heart of the-wizz. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic
     objects. The result of this calculation is a intermediary data product
     containing the density of unknown objects around each reference object

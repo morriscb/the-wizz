@@ -32,3 +32,4 @@ RUN chmod u+x pair_maker.py pdf_maker.py \
 ENV PATH /home/The-wiZZ:/home/The-wiZZ/utility_programs:$PATH
 
 WORKDIR /home
+ENV PYTHONPATH /home/the-wizz

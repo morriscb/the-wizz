@@ -8,16 +8,16 @@ import stomp
 
 """
 This program allows for the creation of STOMP map from a fits mask assuming that
-the masked pixels have positive values greater than the specified cut. It is 
-recommended when specifying a resolution that is be roughly twice the area of 
+the masked pixels have positive values greater than the specified cut. It is
+recommended when specifying a resolution that is be roughly twice the area of
 the pixels in the fits file. If the user would like to use a resolution that is
-roughly the size of the input image pixels it is recommended that they first 
+roughly the size of the input image pixels it is recommended that they first
 oversample the fits image pixels before using the software. For reference a
 resolution "1" pixel has an area of 88.1474 deg^2 and each resolution decreases
 the area by a factor of resolution^2'
 """
 
-def create_exclusion(input_mask, output_map_name, 
+def create_exclusion(input_mask, output_map_name,
                      max_resolution, max_load, mask_value,
                      mask_is_less_than, verbose):
     """
@@ -46,7 +46,7 @@ def create_exclusion(input_mask, output_map_name,
         return None
     hdulist = fits.open(input_mask)
     w = wcs.WCS(hdulist[0].header)
-    
+
     if mask_is_less_than:
         max_pix = len(mask[mask < mask_value])
     else:
@@ -54,7 +54,7 @@ def create_exclusion(input_mask, output_map_name,
     # print "Total:", max_pix
     print "Max Pix:", max_pix
     pix_vect = stomp.PixelVector()
-    
+
     tot_pix = 0
     output_map = stomp.Map()
     for idx1 in xrange(mask.shape[0]):
@@ -86,11 +86,11 @@ def create_exclusion(input_mask, output_map_name,
     tot_pix += pix_vect.size()
     pix_vect.clear()
     del tmp_map
-            
+
     print "Final Map:", output_map.Area(), output_map.Size()
     if output_map_name is not None:
         output_map.Write(output_map_name)
-    
+
     return output_map
 
 
@@ -111,13 +111,13 @@ def create_excluded_map(input_mask, ext_map, output_name, resolution,
     """
     hdu = fits.open(input_mask)
     w = wcs.WCS(hdu[0].header)
-    
-    
+
+
     naxis1_edge_step = ((hdu[0].header['NAXIS1'] - 1 - 2 * offset) /
                         (1. * n_points))
     naxis2_edge_step = ((hdu[0].header['NAXIS2'] - 1 - 2 * offset) /
                         (1. * n_points))
-    
+
     if counter_clockwise_pixels:
         ang_vect = stomp.AngularVector()
         ### South edge:
@@ -205,7 +205,7 @@ def create_excluded_map(input_mask, ext_map, output_name, resolution,
     output_stomp_map.ExcludeMap(ext_map)
     print("Final Map Area: %.8f" % output_stomp_map.Area())
     output_stomp_map.Write(output_name)
-    
+
     return None
 
 if __name__ == '__main__':
@@ -263,7 +263,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action="store_true",
                         help='Output full verbosity for stomp')
     args = parser.parse_args()
-    
+
     if args.input_exclusion_name is None:
         ext_map = create_exclusion(args.input_fits_mask,
                                    args.output_exclusion_name,
@@ -275,4 +275,3 @@ if __name__ == '__main__':
     create_excluded_map(args.input_fits_mask, ext_map, args.output_map_name,
                         args.resolution, args.offset, args.n_points,
                         args.counter_clockwise_pixels, args.verbose)
-    

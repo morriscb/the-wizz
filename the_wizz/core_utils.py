@@ -1,5 +1,5 @@
 
-"""Utilities for The-wiZZ library. Contains file loading/closing, cosmology,
+"""Utilities for the-wizz library. Contains file loading/closing, cosmology,
 and setting the verbosity of the outputs.
 """
 
@@ -24,7 +24,7 @@ def file_checker_loader(input_file_name):
         file_handle = open(input_file_name)
         file_handle.close()
     except IOError:
-        print("IOError: File %s not found. The-wiZZ is exiting." %
+        print("IOError: File %s not found. the-wizz is exiting." %
               input_file_name)
         raise IOError("File not found.")
     if input_file_name.endswith('fit') or input_file_name.endswith('fits') or \
@@ -37,7 +37,7 @@ def file_checker_loader(input_file_name):
         return hdf5_file
     else:
         print("File type not currently supported. Try again later. "
-              "The-wiZZ is exiting.")
+              "the-wizz is exiting.")
         raise IOError
     return None
 

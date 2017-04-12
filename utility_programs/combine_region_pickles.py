@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 """
-This program allows for the combination of different The-wiZZ, pdf_maker runs
+This program allows for the combination of different the-wizz, pdf_maker runs
 after the fact using the region pickle files output from the code. This can be
 useful for combining different recoveries from different spectroscoic pointings
 in a way that is internally consistent.

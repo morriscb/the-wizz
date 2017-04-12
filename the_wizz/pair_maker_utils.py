@@ -113,7 +113,7 @@ class RawPairFinder(object):
                 input_args)
 
     def _create_hdf5_file_and_store_reference_data(self, input_args):
-        """ Creates a initial HDF5 data file for use in The-wiZZ. This
+        """ Creates a initial HDF5 data file for use in the-wizz. This
         is where all of the final pair data will be stored after find pairs
         is run.
         """

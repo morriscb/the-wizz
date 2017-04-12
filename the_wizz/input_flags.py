@@ -9,8 +9,8 @@ import argparse
 
 
 def parse_input_pdf_args():
-    """Command line argument parser for The-wiZZ PDF creator. If you have a
-    given survey file pair HDF5 file from The-wiZZ, you can set these arguments
+    """Command line argument parser for the-wizz PDF creator. If you have a
+    given survey file pair HDF5 file from the-wizz, you can set these arguments
     for the PDF maker portion of the library and get a robust estimate of the
     redshift distribution for your specific subsample of the survey catalog.
     ----------------------------------------------------------------------------
@@ -111,8 +111,8 @@ def parse_input_pdf_args():
 
 
 def parse_input_pdf_single_galaxy_args():
-    """Command line argument parser for The-wiZZ PDF creator. If you have a
-    given survey file pair HDF5 file from The-wiZZ, you can set these arguments
+    """Command line argument parser for the-wizz PDF creator. If you have a
+    given survey file pair HDF5 file from the-wizz, you can set these arguments
     for the PDF maker portion of the library and get a robust estimate of the
     redshift distribution for your specific subsample of the survey catalog.
     ----------------------------------------------------------------------------
@@ -248,7 +248,7 @@ def parse_input_pdf_single_galaxy_args():
 
 
 def parse_input_pair_args():
-    """Command line argument parser for The-wiZZ pair finder portion of the
+    """Command line argument parser for the-wizz pair finder portion of the
     library. If you already know how to use the STOMP library this should be
     relatively straight forward, easy to use, and safe for you. If you do not
     know anything about STOMP you will ikely be using the pdf creater methods

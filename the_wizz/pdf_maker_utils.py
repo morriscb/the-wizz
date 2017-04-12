@@ -105,7 +105,7 @@ def _make_redshift_spline(z_min, z_max):
 
 def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
                                     unknown_data, args):
-    """This is the heart of The-wiZZ. It enables the matching of a set of
+    """This is the heart of the-wizz. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic objects. The
     result of this calculation is a intermediary data product containing the
     density of unknown objects around each reference object stored in the
