@@ -21,7 +21,7 @@ from the_wizz import pdf_maker_utils
 
 if __name__ == "__main__":
     print("")
-    print("The-wiZZ has begun conjuring: running pair maker...")
+    print("The-wiZZ has begun conjuring: running pdf maker full sample...")
     # First we parse the command line for arguments as usual. See
     # input_flags.py for a full list of input arguments.
     args = input_flags.parse_input_pdf_args()
@@ -40,8 +40,8 @@ if __name__ == "__main__":
     unknown_data = core_utils.file_checker_loader(args.unknown_sample_file)
     # Load the spectroscopic data from the HDF5 data file.
     print("Preloading reference data...")
-    pdf_maker = pdf_maker_utils.PDFMaker(hdf5_pair_file[args.pair_scale_name],
-                                          args)
+    pdf_maker = pdf_maker_utils.PDFMaker(
+        hdf5_pair_file, args)
     if pdf_maker.reference_redshift_array.max() < args.z_max:
         print("WARNING: requested z_max is greater than available reference "
               "redshifts.")
@@ -98,8 +98,8 @@ if __name__ == "__main__":
     # line below turns the array of indices in the hdf5 pair file, into a
     # single density estimate around the reference object.
     print("Collapsing indices...")
-    pdf_maker_utils._collapse_full_sample(
-        hdf5_pair_file[args.pair_scale_name], pdf_maker, unknown_data, args)
+    pdf_maker_utils.collapse_full_sample(
+        hdf5_pair_file['data'], pdf_maker, unknown_data, args)
     # Before we calculated the pdfs, we want to know what the over densities
     # are in each of the regions calculated on the area we consider.
     print("Calculating region densities...")

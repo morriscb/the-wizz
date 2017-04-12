@@ -3,7 +3,7 @@ FROM python:2.7
 MAINTAINER Christopher Morrison "morrison.chrisb@gmail.com"
 
 RUN apt-get update && \
-    apt-get install auto-tools -y && \
+    apt-get install autotools-dev -y && \
     apt-get install zlib1g-dev -y && \
     apt-get install python-dev -y && \
     apt-get install swig -y && \
@@ -21,10 +21,10 @@ RUN ./autogen.sh && ./configure && make; exit 0 && make install; exit 0
 WORKDIR /home/astro-stomp/python
 RUN python runswig.py && python setup.py install
 
-# Clone and install The-wiZZ
+# Clone and install the-wizz
 WORKDIR /home
-RUN git clone https://github.com/morriscb/The-wiZZ.git
-WORKDIR /home/The-wiZZ
+RUN git clone https://github.com/morriscb/the-wizz.git
+WORKDIR /home/the-wizz
 RUN chmod u+x pair_maker.py pdf_maker.py \
     utility_programs/stomp_adapt_map.py \
     utility_programs/stomp_map_from_fits.py \

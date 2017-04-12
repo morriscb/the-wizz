@@ -96,7 +96,7 @@ def _make_redshift_spline(z_min, z_max):
     redshift.
     """
     redshift_array = np.linspace(
-        np.min(z_min - 1e-8, 0.0), z_max + 1e-8, 1000)
+        np.min((z_min - 1e-8, 0.0)), z_max + 1e-8, 1000)
     comov_array = core_utils.WMAP5.comoving_distance(redshift_array)
     comov_dist_to_redshift_spline = iu_spline(comov_array, redshift_array)
     return comov_dist_to_redshift_spline
@@ -134,51 +134,15 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
     print("\tpre-loading unknown data...")
     open_hdf5_file = core_utils.file_checker_loader(hdf5_data_file_name)
     hdf5_data_grp = open_hdf5_file['data']
-    if args.unknown_weight_name is not None:
-        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
-    id_array = unknown_data[args.unknown_index_name]
-    id_args_array = id_array.argsort()
-    id_array = id_array[id_args_array]
-    rand_ratio = (unknown_data.shape[0] /
-                  hdf5_data_grp.attrs['n_random_points'])
-    # If the user specifies the name of a STOMP region column, break up the data
-    # into the individual regions.
-    if args.unknown_stomp_region_name is not None:
-        id_array = [id_array[
-            unknown_data[args.unknown_stomp_region_name][id_args_array] ==
-            reg_idx]
-            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
-        tmp_n_region = np.array(
-            [id_array[reg_idx].shape[0]
-             for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
-            dtype=np.int_)
-        rand_ratio = (
-            (tmp_n_region / hdf5_data_grp.attrs['n_random_points']) *
-            (hdf5_data_grp.attrs['area'] /
-             hdf5_data_grp.attrs['region_area']))
-    # Now that we loaded the ids we can load unknown object weights in the same
-    # way.
-    ave_weight = 1.0
-    weight_array = np.ones(unknown_data.shape[0], dtype=np.float32)
-    if args.unknown_weight_name is not None:
-        weight_array = unknown_data[args.unknown_weight_name][id_args_array]
-        ave_weight = np.mean(weight_array)
-    if args.unknown_stomp_region_name is not None:
-        weight_array = [weight_array[
-            unknown_data[args.unknown_stomp_region_name][id_args_array] ==
-            reg_idx]
-            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
-        ave_weight = np.array(
-            [weight_array[reg_idx].mean()
-             for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
-            dtype=np.float_)
+
+    id_array, rand_ratio, weight_array, ave_weight = \
+        _compute_region_densities_and_weights(
+            unknown_data, hdf5_data_grp, args)
+
     # Prime our output array.
     n_reference = len(hdf5_data_grp)
     reference_unknown_array = np.empty(n_reference, dtype=np.float32)
-    # Set some interation variables and start the loop over the reference objects.
-    pair_start = 0
-    hold_pair_start = 0
-    pair_data = []
+
     # Initialize the workers.
     loader_pool = Pool(1)
     matcher_pool = Pool(np.min((args.n_processes - 1, 1)))
@@ -248,6 +212,54 @@ def _create_pdf_maker_object(hdf5_data_file_name, args):
     pdf_maker_obj = PDFMaker(hdf5_data_file_name, args)
 
     return pdf_maker_obj
+
+
+def _compute_region_densities_and_weights(unknown_data, hdf5_data_grp, args):
+    """ Function for grabbing the ids and catalog weights from the unknown data
+    and putting them into a format for use in pdf_maker. Also computes the
+    scaling for the random points per region.
+    """
+
+    if args.unknown_weight_name is not None:
+        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+    id_array = unknown_data[args.unknown_index_name]
+    id_args_array = id_array.argsort()
+    id_array = id_array[id_args_array]
+    rand_ratio = (unknown_data.shape[0] /
+                  hdf5_data_grp.attrs['n_random_points'])
+    # If the user specifies the name of a STOMP region column, break up the data
+    # into the individual regions.
+    if args.unknown_stomp_region_name is not None:
+        id_array = [id_array[
+            unknown_data[args.unknown_stomp_region_name][id_args_array] ==
+            reg_idx]
+            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
+        tmp_n_region = np.array(
+            [id_array[reg_idx].shape[0]
+             for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
+            dtype=np.int_)
+        rand_ratio = (
+            (tmp_n_region / hdf5_data_grp.attrs['n_random_points']) *
+            (hdf5_data_grp.attrs['area'] /
+             hdf5_data_grp.attrs['region_area']))
+    # Now that we loaded the ids we can load unknown object weights in the same
+    # way.
+    ave_weight = 1.0
+    weight_array = np.ones(unknown_data.shape[0], dtype=np.float32)
+    if args.unknown_weight_name is not None:
+        weight_array = unknown_data[args.unknown_weight_name][id_args_array]
+        ave_weight = np.mean(weight_array)
+    if args.unknown_stomp_region_name is not None:
+        weight_array = [weight_array[
+            unknown_data[args.unknown_stomp_region_name][id_args_array] ==
+            reg_idx]
+            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
+        ave_weight = np.array(
+            [weight_array[reg_idx].mean()
+             for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
+            dtype=np.float_)
+
+    return id_array, rand_ratio, weight_array, ave_weight
 
 
 def _load_pair_data(input_tuple):
@@ -327,7 +339,7 @@ def _collapse_multiplex(input_tuple):
                     tmp_n_points += 1.0*weight
     return tmp_n_points
 
-def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
+def collapse_full_sample(hdf5_pairs_grp, pdf_maker_obj, unknown_data, args):
     """Convience function for collapsing the full sample of ids into a single
     estimate.
     ----------------------------------------------------------------------------
@@ -344,24 +356,24 @@ def _collapse_full_sample(hdf5_pairs_group, pdf_maker_obj, unknown_data, args):
     if args.unknown_weight_name is not None:
         unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
     rand_ratio = (unknown_data.shape[0] /
-                  hdf5_pairs_group.attrs['n_random_points'])
+                  hdf5_pairs_grp.attrs['n_random_points'])
     if args.unknown_stomp_region_name is not None:
         tmp_n_region = np.array(
             [unknown_data[unknown_data[args.unknown_stomp_region_name] ==
                           reg_idx].shape[0]
-             for reg_idx in xrange(hdf5_pairs_group.attrs['n_region'])],
+             for reg_idx in xrange(hdf5_pairs_grp.attrs['n_region'])],
             dtype=np.int_)
         rand_ratio = ((tmp_n_region /
-                       hdf5_pairs_group.attrs['n_random_points']) *
-                      (hdf5_pairs_group.attrs['area'] /
-                       hdf5_pairs_group.attrs['region_area']))
+                       hdf5_pairs_grp.attrs['n_random_points']) *
+                      (hdf5_pairs_grp.attrs['area'] /
+                       hdf5_pairs_grp.attrs['region_area']))
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
-    n_reference = len(hdf5_pairs_group)
+    n_reference = len(hdf5_pairs_grp)
     reference_unknown_array = np.empty(n_reference, dtype=np.float32)
     print("\t\tcomputing/storing pair count...")
-    for reference_idx, key_name in enumerate(hdf5_pairs_group.keys()):
+    for reference_idx, key_name in enumerate(hdf5_pairs_grp.keys()):
         reference_grp = hdf5_pairs_group[key_name]
         if args.use_inverse_weighting:
             reference_unknown_array[reference_idx] = np.sum(
