@@ -46,9 +46,9 @@ def _multi_proc_write_reference_to_hdf5(input_tuple):
     # Test of the array is empty so we can write an unbound shape in HDF5,
     # else set the correct size for the arrays.
     if id_array.shape[0] <= 0:
-       tmp_max_shape = (None,)
+        tmp_max_shape = (None,)
     else:
-       tmp_max_shape = id_array.shape
+        tmp_max_shape = id_array.shape
 
     # Sort the arrays on id and write to disk.
     sorted_args_array = id_array.argsort()
@@ -224,7 +224,7 @@ class RawPairFinder(object):
 
                 # Get the weight of the current pixel.
                 dist_weight = self._compute_dist_weight(
-                reference_obj.ProjectedRadius(pix.Ang()))
+                    reference_obj.ProjectedRadius(pix.Ang()))
 
                 # Check this pixel against all of our tree maps.
                 (pix_id_list, pix_dist_weight_list,

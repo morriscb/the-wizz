@@ -21,7 +21,7 @@ from the_wizz import pair_maker_utils
 
 if __name__ == "__main__":
     print("")
-    print("The-wiZZ has begun conjuring: running pair maker...")
+    print("the-wizz has begun conjuring: running pair maker...")
     # Load the command line arguments.
     args = input_flags.parse_input_pair_args()
     input_flags.print_args(args)
@@ -38,8 +38,8 @@ if __name__ == "__main__":
           (stomp_map.NRegion(), stomp_map.RegionResolution()))
     # Load the sample with known redshifts.
     (reference_vector, reference_ids, reference_tree_map) = \
-        stomp_utils.load_reference_sample(args.reference_sample_file, stomp_map,
-                                          args)
+        stomp_utils.load_reference_sample(
+            args.reference_sample_file, stomp_map, args)
     # Load the unknown sample from disc. Assumed data type is fits.
     unknown_itree = stomp_utils.load_unknown_sample(args.unknown_sample_file,
                                                     stomp_map, args)

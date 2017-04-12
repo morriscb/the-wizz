@@ -22,8 +22,8 @@ def parse_input_pdf_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_pair_hdf5_file', required=True,
                         type=str, help='Name of input HDF5 file to read '
-                        'the pair counts between the spectroscopic and unknown '
-                        'photometric data from.')
+                        'the pair counts between the spectroscopic and '
+                        'unknown photometric data from.')
     parser.add_argument('--pair_scale_name', default='kpc30t300',
                         type=str, help='Name of the pair data scale to '
                         'load. This should be the name of the HDF5 group '
@@ -96,15 +96,17 @@ def parse_input_pdf_args():
                         'the number set in n_bootstrap.')
     parser.add_argument('--output_bootstraps_file', default=None, type=str,
                         help='This is an optional argument specifying an '
-                        'ascii file to write the individual bootstrap pdfs to.')
+                        'ascii file to write the individual bootstrap pdfs '
+                        'to.')
     parser.add_argument('--output_region_pickle_file', default=None,
                         type=str, help='This is an optional argument '
                         'specifying an output file to write a pickle of the '
                         'densities in each region. This can be used later to '
                         'combine with other surveys / pointings to create a '
-                        'combined recovery. To see how the data is stored/used '
-                        'look to the methods write_region_densities and '
-                        'compute_pdf_bootstrap methods in _pdf_maker_utils.py.')
+                        'combined recovery. To see how the data is '
+                        'stored/used look to the methods '
+                        'write_region_densities and compute_pdf_bootstrap '
+                        'methods in _pdf_maker_utils.py.')
     return _verify_none_type(parser.parse_args())
 
 
@@ -122,8 +124,8 @@ def parse_input_pdf_single_galaxy_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_pair_hdf5_file', required=True,
                         type=str, help='Name of input HDF5 file to read '
-                        'the pair counts between the spectroscopic and unknown '
-                        'photometric data from.')
+                        'the pair counts between the spectroscopic and '
+                        'unknown photometric data from.')
     parser.add_argument('--pair_scale_name', default='kpc30t300',
                         type=str, help='Name of the pair data scale to '
                         'load. This should be the name of the HDF5 group '
@@ -132,9 +134,9 @@ def parse_input_pdf_single_galaxy_args():
     parser.add_argument('--unknown_sample_file', required=True,
                         type=str, help='Name of unknown redshift, '
                         'photometric fits catalog containing the indices to '
-                        'match to the reference data and columns to match in the '
-                        'kdtree. This should be the fits file created that '
-                        'covers the reference redshift area.')
+                        'match to the reference data and columns to match in '
+                        'the kdtree. This should be the fits file created '
+                        'that covers the reference redshift area.')
     parser.add_argument('--unknown_index_name', required=True,
                         type=str, help='Name of unique object index for '
                         'the unknown objects. Indexes must be of type uint32')
@@ -155,8 +157,8 @@ def parse_input_pdf_single_galaxy_args():
     parser.add_argument('--unknown_magnitude_names', required=True,
                         type=str, help='Comma separated list of fits '
                         'columns specifying the magnitudes to use in the '
-                        'kdtree. This catalog is read as is. Any selections or '
-                        'removal of flagged values (eg -99, 99) must be '
+                        'kdtree. This catalog is read as is. Any selections '
+                        'or removal of flagged values (eg -99, 99) must be '
                         'beforehand or they will corrupt the results.')
     parser.add_argument('--use_as_colors', action='store_true',
                         help='Instead of using the raw '
@@ -165,35 +167,36 @@ def parse_input_pdf_single_galaxy_args():
                         'different in the order specifed. i.e. 0-1, 1-2, etc.')
     parser.add_argument('--unknown_other_names', default=None,
                         type=str, help='For any other catalog variable one '
-                        'would like to use (eg type, size, fixed apature flux) '
-                        'can be specified here in addition to the '
-                        '"magnitudes" above. It is recommended to have no more '
-                        'than around 10 columns in total. This catalog is read '
-                        'as is. Any selections or removal of flagged values '
-                        '(eg -99, 99) must be beforehand or they will corrupt '
-                        'the results.')
+                        'would like to use (eg type, size, fixed apature '
+                        'flux) can be specified here in addition to the '
+                        '"magnitudes" above. It is recommended to have no '
+                        'more than around 10 columns in total. This catalog '
+                        'is read as is. Any selections or removal of flagged '
+                        'values (eg -99, 99) must be beforehand or they '
+                        'will corrupt the results.')
     parser.add_argument('--match_sample_file', required=True,
                         type=str, help='Name of the fits file you would '
                         'to know the redshift distribution of each object. '
-                        'It should have the same columns as the unknown sample '
-                        'but need not cover the same area of the reference '
-                        'objects. Each galaxy in this file will be matched to '
-                        'a sample of galaxies in the unknown sample usuing a '
-                        'kdtree. The return redshift distribution is then the '
-                        'distribution for objects in the unknown sample with '
-                        'similar properties to the input object matched.')
+                        'It should have the same columns as the unknown '
+                        'sample but need not cover the same area of the '
+                        'reference objects. Each galaxy in this file will '
+                        'be matched to a sample of galaxies in the unknown '
+                        'sample usuing a kdtree. The return redshift '
+                        'distribution is then the distribution for objects '
+                        'in the unknown sample with similar properties to '
+                        'the input object matched.')
     parser.add_argument('--n_kdtree_matched', default=1024,
                         type=int, help='The number of nearest neighbor '
                         'objects to match from the unknown sample kdtree to '
                         'the requested match objects. It is recommended to '
-                        'attempt to have a least on average 100 unknown sample '
-                        'objects per region.')
+                        'attempt to have a least on average 100 unknown '
+                        'sample objects per region.')
     parser.add_argument('--output_pdf_hdf5_file', required=True,
                         type=str, help='Name of the output hdf5_ file to '
                         'write the resultant PDFs to. The file structure is '
                         'similar to the output of pair_maker in that a PDF is '
                         'is stored as a HDF5 group named after the index of '
-                        'each object and they are stored in a group named for .'
+                        'each object and they are stored in a group named for '
                         'the scale run.')
     parser.add_argument('--z_min', default=0.01,
                         type=float, help='Minimum redshift for both the '
@@ -208,9 +211,10 @@ def parse_input_pdf_single_galaxy_args():
                         type=str, help='Specify which type of binning to '
                         'use for the redshift bins. Choices are: '
                         '    linear: linear binning in redshift'
-                        '    adaptive: chose bins so that each has equal number '
-                        'tarets.'
-                        '    comoving: linear binning in comoving distance')
+                        '    adaptive: chose bins so that each has equal '
+                        'number tarets.'
+                        '    comoving: bins equal in comving distance '
+                        '    logspace: bins equal in ln(1 + z)')
     parser.add_argument('--use_inverse_weighting', action='store_true',
                         help='Use the inverse distance weighted columns from '
                         'the pair file instead of just a straight sum of '
@@ -279,7 +283,8 @@ def parse_input_pair_args():
                         'spectroscopic fits file')
     parser.add_argument('--reference_index_name', default=None,
                         type=str, help='Name of unique object index for '
-                        'the reference objects. Indexes must be of type uint32')
+                        'the reference objects. Indexes must be of type '
+                        'uint32')
     parser.add_argument('--unknown_sample_file', required=True,
                         type=str, help='Name of unknown redshift '
                         'Photometric fits catalog.')
@@ -299,13 +304,13 @@ def parse_input_pair_args():
                         type=float, help='Maximum redshift for both the '
                         'pair_maker and pdf_maker.')
     parser.add_argument('--min_scale', default='30',
-                        type=str, help='Coma seperated list of minimum '
+                        type=str, help='Comma seperated list of minimum '
                         'physical scales to measure the redshift recovery. '
                         'Expected units are physical kpc. Number of min '
                         'scales used should be equal to number of max scales '
                         'requested.')
     parser.add_argument('--max_scale', default='300',
-                        type=str, help='Coma seperated list of maximum '
+                        type=str, help='Comma seperated list of maximum '
                         'physical scales to measure the redshift recovery. '
                         'Expected units are physical kpc. Number of max '
                         'scales used should be equal to number of min scales '
@@ -313,12 +318,12 @@ def parse_input_pair_args():
     parser.add_argument('--n_randoms', default=1,
                         type=int, help='Number of random iterations to '
                         'run for the natural estimator of 2-point '
-                        'correlations. Number of uniform random points will be '
-                        'n_randoms * # unknown objects.')
+                        'correlations. Number of uniform random points will '
+                        'be n_randoms * # unknown objects.')
     parser.add_argument('--output_pair_hdf5_file', required=True,
                         type=str, help='Name of output HDF5 file to write '
-                        'the pair counts between the spectroscopic and unknown '
-                        'photometric data to.')
+                        'the pair counts between the spectroscopic and '
+                        'unknown photometric data to.')
     return _verify_none_type(parser.parse_args())
 
 
@@ -347,8 +352,8 @@ def _verify_none_type(args):
         argparse object returned by ArgumentParser.parse_args()
     """
     for arg in vars(args):
-        if (getattr(args, arg) == 'None' or getattr(args, arg) == 'none' or
-            getattr(args, arg) == 'NONE'):
+        if getattr(args, arg) == 'None' or getattr(args, arg) == 'none' or \
+           getattr(args, arg) == 'NONE':
             # Set argument value to None.
             setattr(args, arg, None)
     return args

@@ -40,6 +40,7 @@ class DummyArgs(object):
         self.n_reference_load_size = 10000
         self.use_reference_cleaning = False
 
+
 class TestPDFMakerUtils(unittest.TestCase):
 
     def setUp(self):
@@ -65,7 +66,6 @@ class TestPDFMakerUtils(unittest.TestCase):
             self.dummy_args.n_z_bins, np.arange(0.015, 9.95, 0.1))
         for bin_edge, test_bin_edge in zip(z_array, bin_edges):
             self.assertAlmostEqual(bin_edge, test_bin_edge)
-
 
     def test_create_logspace_redshift_bin_edges(self):
         bin_edges = [0.01, 0.28241475, 0.62830455, 1.0674869, 1.62512446,
@@ -117,16 +117,16 @@ class TestPDFMakerUtils(unittest.TestCase):
 
             self.assertAlmostEqual(
                 pdf_maker_obj.reference_area_array[reference_idx],
-                hdf5_data_grp['%s/%s' %
-                              (key_name,
-                                self.dummy_args.pair_scale_name)
-                              ].attrs['area'])
+                hdf5_data_grp[
+                    '%s/%s' % (key_name,
+                               self.dummy_args.pair_scale_name)
+                    ].attrs['area'])
             self.assertEqual(
                 pdf_maker_obj.reference_resolution_array[reference_idx],
-                hdf5_data_grp['%s/%s' %
-                              (key_name,
-                                self.dummy_args.pair_scale_name)
-                              ].attrs['bin_resolution'])
+                hdf5_data_grp[
+                    '%s/%s' % (key_name,
+                               self.dummy_args.pair_scale_name)
+                    ].attrs['bin_resolution'])
 
             ref_row_list = tmp_output_file.readline().split(' ')
             ref_unkn = np.float32(ref_row_list[0])
@@ -194,13 +194,14 @@ class TestPDFMakerUtils(unittest.TestCase):
             self.assertEqual(
                 len(output[0]),
                 len(hdf5_data_grp[
-                        '%s/%s' % (key, self.dummy_args.pair_scale_name)]
-                        ['ids']))
+                        '%s/%s' %
+                        (key, self.dummy_args.pair_scale_name)]['ids']))
             self.assertEqual(
                 len(output[1]),
                 len(hdf5_data_grp[
-                        '%s/%s' % (key, self.dummy_args.pair_scale_name)]
-                        ['dist_weights']))
+                        '%s/%s' %
+                        (key,
+                         self.dummy_args.pair_scale_name)]['dist_weights']))
 
         open_hdf5_data_file.close()
 

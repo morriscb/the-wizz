@@ -116,8 +116,8 @@ if __name__ == "__main__":
         # Match the ids.
         id_array, quartile_dists = kdtree(match_obj, args.n_kdtree_matched)
         kdtree_utils.collapse_ids_to_single_estimate(
-            hdf5_pair_file[args.pair_scale_name], reference_pair_data, pdf_maker,
-            unknown_data[id_array], args)
+            hdf5_pair_file[args.pair_scale_name], reference_pair_data,
+            pdf_maker, unknown_data[id_array], args)
         # Get the region densities.
         pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
         # Collapse the region densities and estimate the error.

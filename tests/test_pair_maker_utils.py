@@ -44,7 +44,7 @@ class TestPairMakerUtils(unittest.TestCase):
             self.stomp_map, self.dummy_args)
         self.unknown_tree = stomp_utils.load_unknown_sample(
             'data/COSMOS_iband_2009_radecidstomp_regionzp_best.fits',
-            self.stomp_map,self.dummy_args)
+            self.stomp_map, self.dummy_args)
 
     def tearDown(self):
         subprocess.Popen('rm unittest_output.hdf5', shell=True)
@@ -88,11 +88,12 @@ class TestPairMakerUtils(unittest.TestCase):
                       self.reference_id_array[reference_idx])
             self.assertEqual(len(ref_pair_id_array), len(test_pair_id_array))
             for ref_pair_id, test_pair_id, \
-              ref_dist_weight, test_dist_weight in \
-              zip(ref_pair_id_array, test_pair_id_array,
-                  ref_dist_weight_array, test_dist_weight_array):
+                ref_dist_weight, test_dist_weight in \
+                zip(ref_pair_id_array, test_pair_id_array,
+                    ref_dist_weight_array, test_dist_weight_array):
                 self.assertEqual(ref_pair_id, test_pair_id)
                 self.assertAlmostEqual(ref_dist_weight, test_dist_weight)
+
             self.assertAlmostEqual(
                 ref_grp.attrs['redshift'],
                 test_grp.attrs['redshift'])
@@ -140,4 +141,3 @@ class TestPairMakerUtils(unittest.TestCase):
 if __name__ == "__main__":
 
     unittest.main()
-

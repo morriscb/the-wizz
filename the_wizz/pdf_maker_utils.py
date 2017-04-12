@@ -1,6 +1,6 @@
 
-"""Utility functions for collapsing the id arrays stored in a The-wiZZ HDF5 file
-into a clustering redshift estimate given an input sample.
+"""Utility functions for collapsing the id arrays stored in a the-wizz HDF5
+file into a clustering redshift estimate given an input sample.
 """
 
 from __future__ import division, print_function, absolute_import
@@ -17,8 +17,9 @@ from the_wizz import core_utils
 
 def _create_linear_redshift_bin_edges(z_min, z_max, n_bins):
     """Simple utility for computing redshift bins that are linearly spaced in
-    redshift. Not recommened for use if your concern is maximum signal to noise.
-    ----------------------------------------------------------------------------
+    redshift. Not recommened for use if your concern is maximum signal to
+    noise.
+    --------------------------------------------------------------------------
     args:
         z_min: float, minimum redshift to bin from
         z_max: float, maximum redshift to bin to
@@ -107,9 +108,9 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
     """This is the heart of The-wiZZ. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic objects. The
     result of this calculation is a intermediary data product containing the
-    density of unknown objects around each reference object stored in the PDFMaker
-    data structure class.
-    ----------------------------------------------------------------------------
+    density of unknown objects around each reference object stored in the
+    PDFMaker data structure class.
+    --------------------------------------------------------------------------
     Args:
         hdf5_pairs_group: hdf5 group object containing the pair ids for a fixed
             annulus.
@@ -148,9 +149,10 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
     matcher_pool = Pool(np.min((args.n_processes - 1, 1)))
 
     key_array = hdf5_data_grp.keys()
-    loader_result = loader_pool.imap(_load_pair_data,
+    loader_result = loader_pool.imap(
+        _load_pair_data,
         [(args.input_pair_hdf5_file, scale_name,
-         key_array[start_idx:start_idx + args.n_reference_load_size])
+          key_array[start_idx:start_idx + args.n_reference_load_size])
          for start_idx in xrange(0, len(key_array),
                                  args.n_reference_load_size)])
 
@@ -221,14 +223,15 @@ def _compute_region_densities_and_weights(unknown_data, hdf5_data_grp, args):
     """
 
     if args.unknown_weight_name is not None:
-        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+        unknown_data = unknown_data[
+            unknown_data[args.unknown_weight_name] != 0]
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
     rand_ratio = (unknown_data.shape[0] /
                   hdf5_data_grp.attrs['n_random_points'])
-    # If the user specifies the name of a STOMP region column, break up the data
-    # into the individual regions.
+    # If the user specifies the name of a STOMP region column, break up the
+    # data into the individual regions.
     if args.unknown_stomp_region_name is not None:
         id_array = [id_array[
             unknown_data[args.unknown_stomp_region_name][id_args_array] ==
@@ -300,8 +303,8 @@ def _collapse_multiplex(input_tuple):
     id_data_set, inv_data_set = data_set
     if id_data_set.shape[0] == 0 or id_array.shape[0] == 0:
         return 0.0
-    # Since the ids around the reference are partially localized spatially a cut
-    # in id is also a cut spatially. Here we take advantage of this.
+    # Since the ids around the reference are partially localized spatially a
+    # cut in id is also a cut spatially. Here we take advantage of this.
     start_idx = np.searchsorted(id_array, id_data_set[0])
     end_idx = np.searchsorted(id_array, id_data_set[-1], side='right')
     if start_idx == end_idx:
@@ -339,6 +342,7 @@ def _collapse_multiplex(input_tuple):
                     tmp_n_points += 1.0*weight
     return tmp_n_points
 
+
 def collapse_full_sample(hdf5_pairs_grp, pdf_maker_obj, unknown_data, args):
     """Convience function for collapsing the full sample of ids into a single
     estimate.
@@ -354,7 +358,8 @@ def collapse_full_sample(hdf5_pairs_grp, pdf_maker_obj, unknown_data, args):
     """
     print("\tpre-loading unknown data...")
     if args.unknown_weight_name is not None:
-        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+        unknown_data = unknown_data[
+            unknown_data[args.unknown_weight_name] != 0]
     rand_ratio = (unknown_data.shape[0] /
                   hdf5_pairs_grp.attrs['n_random_points'])
     if args.unknown_stomp_region_name is not None:
@@ -374,7 +379,8 @@ def collapse_full_sample(hdf5_pairs_grp, pdf_maker_obj, unknown_data, args):
     reference_unknown_array = np.empty(n_reference, dtype=np.float32)
     print("\t\tcomputing/storing pair count...")
     for reference_idx, key_name in enumerate(hdf5_pairs_grp.keys()):
-        reference_grp = hdf5_pairs_group[key_name]
+        reference_grp = hdf5_pairs_group[
+            '%s/%s' % (key_name, )]
         if args.use_inverse_weighting:
             reference_unknown_array[reference_idx] = np.sum(
                 reference_grp['dist_weight'][...])
@@ -395,10 +401,10 @@ class PDFMaker(object):
     """
     def __init__(self, hdf5_data_file_name, args):
         """Init function for the PDF maker. The init class is a container for
-        arrays of single point estimaties around reference, known redshift objects.
-        The class also computes the estimates of clustering redshift recovery
-        in spatial regions and the collapsed single PDF.
-        ------------------------------------------------------------------------
+        arrays of single point estimaties around reference, known redshift
+        objects. The class also computes the estimates of clustering redshift
+        recovery in spatial regions and the collapsed single PDF.
+        ----------------------------------------------------------------------
         Args:
             hdf5_pair_group: HDF5 group object containing the reference object
                 pairs
@@ -415,7 +421,7 @@ class PDFMaker(object):
                                              dtype=np.float32)
 
         self.reference_unknown_array = np.empty(len(hdf5_data_grp),
-                                                 dtype=np.float32)
+                                                dtype=np.float32)
         self.reference_density_array = np.empty(len(hdf5_data_grp),
                                                 dtype=np.float32)
         self.reference_hold_rand_array = np.empty(len(hdf5_data_grp),
@@ -432,8 +438,10 @@ class PDFMaker(object):
         open_hdf5_file.close()
 
     def reset_pairs(self):
-        self.reference_unknown_array = np.zeros_like(self.reference_redshift_array)
-        self.reference_rand_array = np.zeros_like(self.reference_redshift_array)
+        self.reference_unknown_array = np.zeros_like(
+            self.reference_redshift_array)
+        self.reference_rand_array = np.zeros_like(
+            self.reference_redshift_array)
         self._reference_unknown_array_set = False
         self._computed_region_densities = False
         self._computed_pdf = False
@@ -459,7 +467,8 @@ class PDFMaker(object):
 
             self.reference_redshift_array[reference_idx] = (
                 reference_grp.attrs['redshift'])
-            self.reference_region_array[reference_idx] = reference_grp.attrs['region']
+            self.reference_region_array[reference_idx] = \
+                reference_grp.attrs['region']
 
             self.reference_area_array[reference_idx] = scale_grp.attrs['area']
             self.reference_density_array[reference_idx] = (
@@ -477,7 +486,8 @@ class PDFMaker(object):
         has_density_mask = np.logical_and(
             self.reference_density_array > 0,
             np.isfinite(self.reference_density_array))
-        min_reference_density = self.reference_density_array[has_density_mask].min()
+        min_reference_density = \
+            self.reference_density_array[has_density_mask].min()
         self.reference_density_array[
             np.logical_not(has_density_mask)] = min_reference_density
 
@@ -539,24 +549,25 @@ class PDFMaker(object):
 
     def write_reference_n_points(self, hdf5_file):
         """Method for writing the intermediate products of the over-density of
-        the requested sample per known, reference object. This must be run after a
-        call to self.colapse_ids_to_single_estimate.
-        ------------------------------------------------------------------------
+        the requested sample per known, reference object. This must be run
+        after a call to self.colapse_ids_to_single_estimate.
+        ----------------------------------------------------------------------
         Args:
             hdf5_file: an open hdf5 object from the return of h5py.File
         Returns:
             None
         """
         if not self._reference_unknown_array_set:
-            print("PDFMaker.set_reference_unknown_array not set. Exiting method.")
+            print("PDFMaker.set_reference_unknown_array not set. Exiting "
+                  "method.")
             return None
         # TODO
         pass
 
     def compute_region_densities(self, z_bin_edge_array, z_max):
         """Method for computing the over-density of the unknown sample against
-        the reference sample binned in reference redshift in each of the spatial
-        regions of the considered geometry. This allows for spatial
+        the reference sample binned in reference redshift in each of the
+        spatial regions of the considered geometry. This allows for spatial
         bootstrapping of the final, resultant PDF. Will not run if
         set_reference_unknown_array was not set first.
         ------------------------------------------------------------------------
@@ -568,7 +579,8 @@ class PDFMaker(object):
             None
         """
         if not self._reference_unknown_array_set:
-            print("PDFMaker.set_reference_unknown_array not set. Exiting method.")
+            print("PDFMaker.set_reference_unknown_array not set. Exiting "
+                  "method.")
             return None
         # Initilize arrays.
         self._redshift_reg_array = np.zeros(
@@ -590,12 +602,14 @@ class PDFMaker(object):
             (z_bin_edge_array.shape[0], self.region_array.shape[0]),
             dtype=np.uint)
         # Loop over reference objects
-        for reference_idx, redshift in enumerate(self.reference_redshift_array):
+        for reference_idx, redshift in enumerate(
+                self.reference_redshift_array):
             # If the reference object is out of the redshift range continue.
             if redshift < z_bin_edge_array[0] or redshift >= z_max:
                 continue
             # Grap the reference object region.
-            region_idx = self.region_dict[self.reference_region_array[reference_idx]]
+            region_idx = self.region_dict[
+                self.reference_region_array[reference_idx]]
             # Find the redshift bin this object belongs to.
             bin_idx = np.searchsorted(z_bin_edge_array, redshift, 'right') - 1
             # Store object properties.
@@ -665,8 +679,9 @@ class PDFMaker(object):
                                self._n_reference_reg_array.sum(axis=1))
         self.density_array = (self._unknown_reg_array.sum(axis=1) /
                               self._rand_reg_array.sum(axis=1) - 1.0)
-        self.density_err_array = (np.sqrt(self._unknown_reg_array.sum(axis=1)) /
-                                  self._rand_reg_array.sum(axis=1))
+        self.density_err_array = (
+            np.sqrt(self._unknown_reg_array.sum(axis=1)) /
+            self._rand_reg_array.sum(axis=1))
         self.n_reference_array = self._n_reference_reg_array.sum(axis=1)
         self.unknown_array = self._unknown_reg_array.sum(axis=1)
         self.rand_array = self._rand_reg_array.sum(axis=1)

@@ -27,9 +27,8 @@ def file_checker_loader(input_file_name):
         print("IOError: File %s not found. The-wiZZ is exiting." %
               input_file_name)
         raise IOError("File not found.")
-    if (input_file_name.endswith('fit') or input_file_name.endswith('fits') or
-        input_file_name.endswith('gz') or input_file_name.endswith('cat')):
-        # File is fits. Use astropy.io.fits to load and return a fits table.
+    if input_file_name.endswith('fit') or input_file_name.endswith('fits') or \
+       input_file_name.endswith('gz') or input_file_name.endswith('cat'):
         hdu_list = fits.open(input_file_name)
         data = hdu_list[1].data
         return data

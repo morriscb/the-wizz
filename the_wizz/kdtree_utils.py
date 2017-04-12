@@ -20,10 +20,10 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
     """This is the heart of The-wiZZ. It enables the matching of a set of
     catalog ids to the ids stored as pairs to the spectroscopic
     objects. The result of this calculation is a intermediary data product
-    containing the density of unknown objects around each reference object stored
-    in the PDFMaker data structure class. This specific version is for when
-    all the spectra have been pre-loaded in anticipation of running a large
-    number of sub-samples as is the case with kdtree recovery.
+    containing the density of unknown objects around each reference object
+    stored in the PDFMaker data structure class. This specific version is
+    for when all the spectra have been pre-loaded in anticipation of running
+    a large number of sub-samples as is the case with kdtree recovery.
     ----------------------------------------------------------------------------
     Args:
         hdf5_pairs_group: hdf5 group object containing the pair ids for a fixed
@@ -36,7 +36,8 @@ def collapse_ids_to_single_estimate(hdf5_pairs_group, pair_data, pdf_maker_obj,
     """
     print("\tpre-loading unknown data...")
     if args.unknown_weight_name is not None:
-        unknown_data = unknown_data[unknown_data[args.unknown_weight_name] != 0]
+        unknown_data = unknown_data[
+            unknown_data[args.unknown_weight_name] != 0]
     id_array = unknown_data[args.unknown_index_name]
     id_args_array = id_array.argsort()
     id_array = id_array[id_args_array]
@@ -127,8 +128,8 @@ class CatalogKDTree(object):
         KDTree.
         ------------------------------------------------------------------------
         Args:
-            input_catalog: astropy.io.fits catalog object containing the columns
-                of interest
+            input_catalog: astropy.io.fits catalog object containing the
+                columns of interest
             column_name_list: list of string names of catalog columns to
                consider for the KDTree
             id_column_name: string name of the column containing the indices
@@ -194,8 +195,8 @@ class CatalogKDTree(object):
         self._std_array = self._internal_array.std(axis=0)
         for col_idx in xrange(self._internal_array.shape[1]):
             self._internal_array[:, col_idx] = (
-                (self._internal_array[:, col_idx] - self._mean_array[col_idx]) /
-                self._std_array[col_idx])
+                (self._internal_array[:, col_idx] -
+                 self._mean_array[col_idx]) / self._std_array[col_idx])
         return None
 
     def get_mean_array(self):

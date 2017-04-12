@@ -106,8 +106,8 @@ if __name__ == "__main__":
     pdf_maker.compute_region_densities(z_bin_edge_array, args.z_max)
     if args.output_region_pickle_file is not None:
         pdf_maker.write_region_densities(args.output_region_pickle_file, args)
-    # Now that we've "collapsed" the estimate around the reference object we need
-    # to bin up the results in redshift and create our final PDF.
+    # Now that we've "collapsed" the estimate around the reference object we
+    # need to bin up the results in redshift and create our final PDF.
     print("Calculating pdf...")
     if args.bootstrap_samples is None:
         pdf_maker.compute_pdf_bootstrap(args.n_bootstrap)
