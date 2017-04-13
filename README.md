@@ -81,6 +81,10 @@ through the process of running the-wizz in full.
 TROUBLESHOOTING
 ---------------
 
+The format of the-wizz's data file has changed as of 4/12/17. Data files made
+with the code before this will not work with the current code and must be
+converted.
+
 pdf_maker.py
 ------------
 
