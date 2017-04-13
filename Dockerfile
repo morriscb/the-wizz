@@ -29,7 +29,7 @@ RUN chmod u+x pair_maker.py pdf_maker.py \
     utility_programs/stomp_adapt_map.py \
     utility_programs/stomp_map_from_fits.py \
     utility_programs/stomp_mask_catalog.py
-ENV PATH /home/The-wiZZ:/home/The-wiZZ/utility_programs:$PATH
+ENV PATH /home/the-wizz:/home/the-wizz/utility_programs:$PATH
+ENV PYTHONPATH /home/the-wizz:$PYTHONPATH
 
 WORKDIR /home
-ENV PYTHONPATH /home/the-wizz
