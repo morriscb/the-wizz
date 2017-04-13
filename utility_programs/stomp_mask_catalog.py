@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python
 
 import argparse
 from astropy.io import fits

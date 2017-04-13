@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python
 
 """This code is the main access point for the majority of users of The-wiZZ. It
 takes an input subselection of a survey catalog, a The-wiZZ HDF5 data file, and

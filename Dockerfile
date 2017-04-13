@@ -5,9 +5,7 @@ MAINTAINER Christopher Morrison "morrison.chrisb@gmail.com"
 RUN apt-get update && \
     apt-get install autotools-dev -y && \
     apt-get install zlib1g-dev -y && \
-    apt-get install python-dev -y && \
     apt-get install swig -y && \
-    apt-get install python-pip -y && \
     python -m pip install --upgrade pip && \
     pip install --user numpy scipy h5py astropy
 
