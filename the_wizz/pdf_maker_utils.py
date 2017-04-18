@@ -138,6 +138,7 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
     loader_pool = Pool(1)
     matcher_pool = Pool(np.min((args.n_processes - 1, 1)))
 
+    print("\tPre-loading reference data...")
     loader_result = loader_pool.imap(
         _load_pair_data,
         [(args.input_pair_hdf5_file, scale_name,
@@ -189,9 +190,13 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
         print("\t\tComputing/storing pair count...")
         for pair_idx, reference_value in enumerate(matcher_pool_iter):
             reference_unknown_array[start_idx + pair_idx] = reference_value
+        # Clean up a bit.
+        del pair_data
+        del matcher_pool_iter
         print("\t\t\tWaiting for next load...")
 
     # Close the workers.
+    del loader_result
     loader_pool.close()
     matcher_pool.close()
     loader_pool.join()
@@ -270,15 +275,15 @@ def _load_pair_data(input_tuple):
         ref_data_grp = open_hdf5_file['data/%s' % key]
         scale_grp = ref_data_grp[scale_name]
         output_list.append(
-            {'redshift' : ref_data_grp.attrs['redshift'],
-             'region' : ref_data_grp.attrs['region'],
-             'area' : scale_grp.attrs['area'],
-             'ref_ref_n_points' : scale_grp.attrs['ref_ref_n_points'],
-             'bin_resolution' : scale_grp.attrs['bin_resolution'],
-             'rand_dist_weight' : scale_grp.attrs['rand_dist_weight'],
-             'n_random' : scale_grp.attrs['n_random'],
-             'ids' : scale_grp['ids'][...],
-             'dist_weights' : scale_grp['dist_weights'][...]},)
+            {'redshift': ref_data_grp.attrs['redshift'],
+             'region': ref_data_grp.attrs['region'],
+             'area': scale_grp.attrs['area'],
+             'ref_ref_n_points': scale_grp.attrs['ref_ref_n_points'],
+             'bin_resolution': scale_grp.attrs['bin_resolution'],
+             'rand_dist_weight': scale_grp.attrs['rand_dist_weight'],
+             'n_random': scale_grp.attrs['n_random'],
+             'ids': scale_grp['ids'][...],
+             'dist_weights': scale_grp['dist_weights'][...]},)
     open_hdf5_file.close()
 
     return output_list
@@ -299,7 +304,7 @@ def _collapse_multiplex(input_tuple):
      use_inverse_weighting) = input_tuple
 
     id_data_set = data_set['ids']
-    inv_data_set = data_set['dist_weights']
+    dist_weight_data_set = data_set['dist_weights']
     if id_data_set.shape[0] == 0 or id_array.shape[0] == 0:
         return 0.0
     # Since the ids around the reference are partially localized spatially a
@@ -312,33 +317,59 @@ def _collapse_multiplex(input_tuple):
         start_idx = 0
     if end_idx > id_array.shape[0]:
         end_idx = id_array.shape[0]
+    sub_id_array = id_array[start_idx:end_idx]
+    sub_weight_array = weight_array[start_idx:end_idx]
+
+    # We can trim a bit of fat by doing the same for the data set.
+    start_idx = np.searchsorted(id_data_set, sub_id_array[0])
+    end_idx = np.searchsorted(id_data_set, sub_id_array[-1], side='right')
+    if start_idx == end_idx:
+        return 0.0
+    if start_idx < 0:
+        start_idx = 0
+    if end_idx > id_data_set.shape[0]:
+        end_idx = id_data_set.shape[0]
+    sub_id_data_set = id_data_set[start_idx:end_idx]
+    sub_dist_weight_data_set = dist_weight_data_set[start_idx:end_idx]
+
     tmp_n_points = 0.0
     # We test to see which array is longer, the hdf5 id array or our unknown
     # array. We loop over the shorter of the two. This can yield a significant
     # speed boost for small scales or sparse samples.
-    # TODO: change this so most of it happens within numpy.
-    if id_array[start_idx:end_idx].shape[0] <= id_data_set.shape[0]:
-        for obj_id, weight in zip(id_array[start_idx:end_idx],
-                                  weight_array[start_idx:end_idx]):
-            sort_idx = np.searchsorted(id_data_set, obj_id)
-            if sort_idx >= id_data_set.shape[0] or sort_idx < 0:
-                continue
-            if id_data_set[sort_idx] == obj_id:
-                if use_inverse_weighting:
-                    tmp_n_points += inv_data_set[sort_idx]*weight
-                else:
-                    tmp_n_points += 1.0*weight
+    if sub_id_array.shape[0] <= sub_id_data_set.shape[0]:
+        sort_idx_array = np.searchsorted(
+            sub_id_data_set, sub_id_array)
+        sort_idx_mask = np.where(np.logical_and(
+            sort_idx_array < sub_id_data_set.shape[0],
+            sort_idx_array >= 0))
+        if use_inverse_weighting:
+            tmp_n_points += np.where(
+                np.equal(sub_id_data_set[sort_idx_array[sort_idx_mask]],
+                         sub_id_array[sort_idx_mask]),
+                sub_dist_weight_data_set[sort_idx_array[sort_idx_mask]] *
+                sub_weight_array[sort_idx_mask], 0.0).sum()
+        else:
+            tmp_n_points += np.where(
+                np.equal(sub_id_data_set[sort_idx_array[sort_idx_mask]],
+                         sub_id_array[sort_idx_mask]),
+                sub_weight_array[sort_idx_mask], 0.0).sum()
     else:
-        for pair_id, inv_dist in zip(id_data_set, inv_data_set):
-            sort_idx = np.searchsorted(id_array[start_idx:end_idx], pair_id)
-            if sort_idx >= end_idx - start_idx or sort_idx < 0:
-                continue
-            if id_array[start_idx:end_idx][sort_idx] == pair_id:
-                weight = weight_array[start_idx:end_idx][sort_idx]
-                if use_inverse_weighting:
-                    tmp_n_points += inv_dist*weight
-                else:
-                    tmp_n_points += 1.0*weight
+        sort_idx_array = np.searchsorted(
+            sub_id_array, sub_id_data_set)
+        sort_idx_mask = np.where(np.logical_and(
+            sort_idx_array < sub_id_array.shape[0],
+            sort_idx_array >= 0))
+        if use_inverse_weighting:
+            tmp_n_points += np.where(
+                np.equal(sub_id_data_set[sort_idx_mask],
+                         sub_id_array[sort_idx_array[sort_idx_mask]]),
+                sub_dist_weight_data_set[sort_idx_mask] *
+                sub_weight_array[sort_idx_array[sort_idx_mask]], 0.0).sum()
+        else:
+            tmp_n_points += np.where(
+                np.equal(sub_id_data_set[sort_idx_mask],
+                         sub_id_array[sort_idx_array[sort_idx_mask]]),
+                sub_weight_array[sort_idx_array[sort_idx_mask]], 0.0).sum()
     return tmp_n_points
 
 

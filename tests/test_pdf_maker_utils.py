@@ -130,13 +130,14 @@ class TestPDFMakerUtils(unittest.TestCase):
 
             ref_row_list = tmp_output_file.readline().split(' ')
             ref_unkn = np.float32(ref_row_list[0])
-            self.assertAlmostEqual(
-                pdf_maker_obj.reference_unknown_array[reference_idx],
-                ref_unkn)
-            ref_ref_den = np.float32(ref_row_list[1])
-            self.assertAlmostEqual(
-                pdf_maker_obj.reference_unknown_array[reference_idx],
-                ref_ref_den)
+            if ref_unkn > 0:
+                self.assertAlmostEqual(
+                    pdf_maker_obj.reference_unknown_array[reference_idx] /
+                    ref_unkn - 1, 0.0, places=6)
+            else:
+                self.assertAlmostEqual(
+                    pdf_maker_obj.reference_unknown_array[reference_idx],
+                    ref_unkn, places=6)
             ref_hold_rand = np.float32(ref_row_list[2])
             self.assertAlmostEqual(
                 pdf_maker_obj.reference_hold_rand_array[reference_idx],
