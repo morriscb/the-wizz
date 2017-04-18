@@ -192,12 +192,12 @@ class TestPDFMakerUtils(unittest.TestCase):
 
         for output, key in zip(output_list, key_list):
             self.assertEqual(
-                len(output[0]),
+                len(output['ids']),
                 len(hdf5_data_grp[
                         '%s/%s' %
                         (key, self.dummy_args.pair_scale_name)]['ids']))
             self.assertEqual(
-                len(output[1]),
+                len(output['dist_weights']),
                 len(hdf5_data_grp[
                         '%s/%s' %
                         (key,
