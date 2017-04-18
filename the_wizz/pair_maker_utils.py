@@ -60,7 +60,9 @@ def _multi_proc_write_reference_to_hdf5(input_tuple):
         maxshape=tmp_max_shape, compression='lzf', shuffle=True)
 
     # Close the file.
+    del ref_scale_grp
     open_hdf5_file.close()
+    del open_hdf5_file
 
     return None
 

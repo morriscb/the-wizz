@@ -284,7 +284,10 @@ def _load_pair_data(input_tuple):
              'n_random': scale_grp.attrs['n_random'],
              'ids': scale_grp['ids'][...],
              'dist_weights': scale_grp['dist_weights'][...]},)
+        del ref_data_grp
+        del scale_grp
     open_hdf5_file.close()
+    del open_hdf5_file
 
     return output_list
 
@@ -416,7 +419,7 @@ def collapse_full_sample(hdf5_pairs_grp, pdf_maker_obj, unknown_data, args):
                 reference_grp['dist_weight'][...])
         else:
             reference_unknown_array[reference_idx] = (
-                1.*reference_grp['ids'][...]).shape[0]
+                1. * reference_grp['ids'][...]).shape[0]
     pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, 1.0)
 
