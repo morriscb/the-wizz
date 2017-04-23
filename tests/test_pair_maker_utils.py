@@ -83,10 +83,10 @@ class TestPairMakerUtils(unittest.TestCase):
                 self.reference_id_array[reference_idx]]
             test_pair_id_array = test_grp['kpc100t300/ids'][...]
             test_dist_weight_array = test_grp['kpc100t300/dist_weights'][...]
-            if len(ref_pair_id_array) != len(test_pair_id_array):
+            if ref_pair_id_array.shape[0] != test_pair_id_array.shape[0]:
                 print('Failed for reference id:',
                       self.reference_id_array[reference_idx])
-            self.assertEqual(len(ref_pair_id_array), len(test_pair_id_array))
+            self.assertEqual(ref_pair_id_array.shape, test_pair_id_array.shape)
             for ref_pair_id, test_pair_id, \
                 ref_dist_weight, test_dist_weight in \
                 zip(ref_pair_id_array, test_pair_id_array,
@@ -137,6 +137,7 @@ class TestPairMakerUtils(unittest.TestCase):
             (n_random / tot_area) /
             (ref_random_sum / ref_area_sum) - 1,
             0.0, places=2)
+
 
 if __name__ == "__main__":
 

@@ -138,11 +138,11 @@ class TestPDFMakerUtils(unittest.TestCase):
                 self.assertAlmostEqual(
                     pdf_maker_obj.reference_unknown_array[reference_idx],
                     ref_unkn, places=6)
-            ref_hold_rand = np.float32(ref_row_list[2])
+            ref_hold_rand = np.float32(ref_row_list[1])
             self.assertAlmostEqual(
                 pdf_maker_obj.reference_hold_rand_array[reference_idx],
                 ref_hold_rand)
-            ref_rand = np.float32(ref_row_list[3])
+            ref_rand = np.float32(ref_row_list[2])
             if ref_rand > 0:
                 self.assertAlmostEqual(
                     pdf_maker_obj.reference_rand_array[reference_idx] /
@@ -205,7 +205,30 @@ class TestPDFMakerUtils(unittest.TestCase):
                          self.dummy_args.pair_scale_name)]['dist_weights']))
 
         open_hdf5_data_file.close()
+    """
+    def test_save_data(self):
 
+        cosmos_data = fits.getdata(self.dummy_args.unknown_sample_file)
+        cosmos_zp_cut = cosmos_data[np.logical_and(
+            cosmos_data.zp_best > 0.3, cosmos_data.zp_best <= 0.5)]
+
+        pdf_maker_obj = pdf_maker_utils.collapse_ids_to_single_estimate(
+            self.dummy_args.input_pair_hdf5_file,
+            self.dummy_args.pair_scale_name, cosmos_zp_cut,
+            self.dummy_args)
+
+        test_data = open('data/unittest_pdf_maker_raw_data.ascii', 'w')
+        open_hdf5_file = h5py.File(self.dummy_args.input_pair_hdf5_file)
+        hdf5_data_grp = open_hdf5_file['data']
+
+        for reference_idx, key_name in enumerate(hdf5_data_grp):
+            ref_unkn = pdf_maker_obj.reference_unknown_array[reference_idx]
+            ref_hold_rand = \
+                pdf_maker_obj.reference_hold_rand_array[reference_idx]
+            ref_rand = pdf_maker_obj.reference_rand_array[reference_idx]
+            test_data.writelines('%.8e %.8e %.8e\n' %
+                                 (ref_unkn, ref_hold_rand, ref_rand))
+    """
 
 if __name__ == '__main__':
 

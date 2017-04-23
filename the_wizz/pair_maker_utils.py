@@ -17,7 +17,7 @@ from the_wizz.core_utils import create_hdf5_file
 def _multi_proc_write_reference_to_hdf5(input_tuple):
     """
     Stores the resultant pairs to a requested HDF5 file. This function is
-    for use in a async multiprocessing sub process.
+    for use in an async multiprocessing sub process.
     --------------------------------------------------------------------------
     """
 
@@ -43,25 +43,35 @@ def _multi_proc_write_reference_to_hdf5(input_tuple):
         ref_scale_grp.attrs.create('n_random', n_random)
         ref_scale_grp.attrs.create('rand_dist_weight', rand_dist_weight)
 
+    # Sort the arrays on id and write to disk.
+    sorted_args_array = id_array.argsort()
     # Test of the array is empty so we can write an unbound shape in HDF5,
     # else set the correct size for the arrays.
     if id_array.shape[0] <= 0:
-        tmp_max_shape = (None,)
+        ref_scale_grp.create_dataset(
+            'ids', shape=id_array.shape, dtype=np.uint32)
+        ref_scale_grp.create_dataset(
+            'dist_weights', shape=id_array.shape, dtype=np.float32)
+    elif 0 < id_array.shape[0] <= 1000:
+        ref_scale_grp.create_dataset(
+            'ids', data=id_array[sorted_args_array],
+            shape=id_array.shape, dtype=np.uint32)
+        ref_scale_grp.create_dataset(
+            'dist_weights', data=dist_weight_array[sorted_args_array],
+            shape=id_array.shape, dtype=np.float32)
     else:
-        tmp_max_shape = id_array.shape
-
-    # Sort the arrays on id and write to disk.
-    sorted_args_array = id_array.argsort()
-    ref_scale_grp.create_dataset(
-        'ids', data=id_array[sorted_args_array],
-        maxshape=tmp_max_shape, compression='lzf', shuffle=True)
-    ref_scale_grp.create_dataset(
-        'dist_weights', data=dist_weight_array[sorted_args_array],
-        maxshape=tmp_max_shape, compression='lzf', shuffle=True)
+        ref_scale_grp.create_dataset(
+            'ids', data=id_array[sorted_args_array],
+            shape=id_array.shape, dtype=np.uint32,
+            chunks=True, compression='lzf', shuffle=True)
+        ref_scale_grp.create_dataset(
+            'dist_weights', data=dist_weight_array[sorted_args_array],
+            shape=id_array.shape, dtype=np.float32,
+            chunks=True, compression='lzf', shuffle=True)
 
     # Close the file.
-    del ref_scale_grp
     open_hdf5_file.close()
+    del ref_scale_grp
     del open_hdf5_file
 
     return None
