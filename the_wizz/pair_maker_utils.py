@@ -46,7 +46,9 @@ def _multi_proc_write_reference_to_hdf5(input_tuple):
     # Sort the arrays on id and write to disk.
     sorted_args_array = id_array.argsort()
     # Test of the array is empty so we can write an unbound shape in HDF5,
-    # else set the correct size for the arrays.
+    # else set the correct size for the arrays. We also test if the array
+    # is small. If it is, no storage or load efficiency is gained by
+    # lzf compression.
     if id_array.shape[0] <= 0:
         ref_scale_grp.create_dataset(
             'ids', shape=id_array.shape, dtype=np.uint32)

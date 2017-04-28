@@ -19,7 +19,7 @@ the area by a factor of resolution^2'
 
 def create_exclusion(input_mask, output_map_name,
                      max_resolution, max_load, mask_value,
-                     mask_is_less_than, verbose):
+                     mask_is_less_than, wcs_file, verbose):
     """
     Function for creating an exclusion mask from the input fits mask. Mismatch
     between STOMP pixels and the fits image pixels could cause area the should
@@ -45,7 +45,10 @@ def create_exclusion(input_mask, output_map_name,
         print "ERROR: Failed to load", input_mask, "exiting"
         return None
     hdulist = fits.open(input_mask)
-    w = wcs.WCS(hdulist[0].header)
+    if wcs_file is None:
+        w = wcs.WCS(hdu[0].header)
+    else:
+        w = wcs.WCS(fits.getheader(wcs_file))
 
     if mask_is_less_than:
         max_pix = len(mask[mask < mask_value])
@@ -95,7 +98,8 @@ def create_exclusion(input_mask, output_map_name,
 
 
 def create_excluded_map(input_mask, ext_map, output_name, resolution,
-                        offset, n_points, counter_clockwise_pixels, verbose):
+                        offset, n_points, counter_clockwise_pixels,
+                        wcs_file, verbose):
     """
     Given the input mask, a STOMP map to exclude with, we create the covering
     for the maximum RA and DEC in fits image mask and exclude the area
@@ -110,7 +114,10 @@ def create_excluded_map(input_mask, ext_map, output_name, resolution,
         verbose: bool print check statemetns to stdout
     """
     hdu = fits.open(input_mask)
-    w = wcs.WCS(hdu[0].header)
+    if wcs_file is None:
+        w = wcs.WCS(hdu[0].header)
+    else:
+        w = wcs.WCS(fits.getheader(wcs_file))
 
 
     naxis1_edge_step = ((hdu[0].header['NAXIS1'] - 1 - 2 * offset) /
@@ -239,6 +246,10 @@ if __name__ == '__main__':
                         'pixel has an area of 88.1474 deg^2 and each '
                         'resolution decreases the area by a factor of '
                         'resolution^2')
+    parser.add_argument('--input_wcs_file', default=None,
+                        type=str, help='Specify a fits image file to load a '
+                        'WCS from. If this flag is not specified the WCS is '
+                        'assumed to come from the input_fits_mask.')
     parser.add_argument('--offset', default=1,
                         type=int, help='Value to offset from the '
                         'edge of the image if image coordiantes.')
@@ -269,9 +280,10 @@ if __name__ == '__main__':
                                    args.output_exclusion_name,
                                    args.resolution, args.max_load,
                                    args.mask_value, args.mask_is_less_than,
-                                   args.verbose)
+                                   args.input_wcs_file, args.verbose)
     else:
         ext_map = stomp.Map(args.input_exclusion_name)
     create_excluded_map(args.input_fits_mask, ext_map, args.output_map_name,
                         args.resolution, args.offset, args.n_points,
-                        args.counter_clockwise_pixels, args.verbose)
+                        args.counter_clockwise_pixels,
+                        args.input_wcs_file, args.verbose)
