@@ -37,7 +37,7 @@ class DummyArgs(object):
 
         self.use_inverse_weighting = True
         self.n_processes = 2
-        self.n_reference_load_size = 10000
+        self.n_reference_load_size = 1000
         self.use_reference_cleaning = False
 
 
@@ -179,32 +179,6 @@ class TestPDFMakerUtils(unittest.TestCase):
 
         open_hdf5_data_file.close()
 
-    def test_load_pair_data(self):
-
-        open_hdf5_data_file = h5py.File(self.dummy_args.input_pair_hdf5_file)
-        hdf5_data_grp = open_hdf5_data_file['data']
-
-        key_list = hdf5_data_grp.keys()[:100]
-
-        input_tuple = (self.dummy_args.input_pair_hdf5_file,
-                       self.dummy_args.pair_scale_name,
-                       key_list)
-        output_list = pdf_maker_utils._load_pair_data(input_tuple)
-
-        for output, key in zip(output_list, key_list):
-            self.assertEqual(
-                len(output['ids']),
-                len(hdf5_data_grp[
-                        '%s/%s' %
-                        (key, self.dummy_args.pair_scale_name)]['ids']))
-            self.assertEqual(
-                len(output['dist_weights']),
-                len(hdf5_data_grp[
-                        '%s/%s' %
-                        (key,
-                         self.dummy_args.pair_scale_name)]['dist_weights']))
-
-        open_hdf5_data_file.close()
     """
     def test_save_data(self):
 
