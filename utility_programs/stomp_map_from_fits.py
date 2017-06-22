@@ -44,7 +44,7 @@ def create_exclusion(input_mask, output_map_name,
     except ValueError:
         print "ERROR: Failed to load", input_mask, "exiting"
         return None
-    hdulist = fits.open(input_mask)
+    hdu = fits.open(input_mask)
     if wcs_file is None:
         w = wcs.WCS(hdu[0].header)
     else:
