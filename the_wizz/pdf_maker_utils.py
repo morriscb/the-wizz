@@ -147,7 +147,7 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
                                  args.n_reference_load_size)])
 
     print("\tPre-loading unknown data...")
-    id_array, rand_ratio, weight_array, ave_weight = \
+    id_array, rand_ratio, weight_array, ave_weight, region_weight = \
         _compute_region_densities_and_weights(
             unknown_data, hdf5_data_grp, args)
 
@@ -202,7 +202,7 @@ def collapse_ids_to_single_estimate(hdf5_data_file_name, scale_name,
     loader_pool.join()
     matcher_pool.join()
     # Store the results in our PDFMaker class object.
-    pdf_maker_obj.initialize_regions_and_densities()
+    pdf_maker_obj.initialize_regions_and_densities(region_weight)
     pdf_maker_obj.set_reference_unknown_array(reference_unknown_array)
     pdf_maker_obj.scale_random_points(rand_ratio, ave_weight)
 
@@ -242,9 +242,11 @@ def _compute_region_densities_and_weights(unknown_data, hdf5_data_grp, args):
     # way.
     ave_weight = 1.0
     weight_array = np.ones(unknown_data.shape[0], dtype=np.float32)
+    region_weight = 0
     if args.unknown_weight_name is not None:
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
         ave_weight = np.mean(weight_array)
+        region_weight = weight_array.sum()
     if args.unknown_stomp_region_name is not None:
         weight_array = [weight_array[
             unknown_data[args.unknown_stomp_region_name][id_args_array] ==
@@ -254,8 +256,11 @@ def _compute_region_densities_and_weights(unknown_data, hdf5_data_grp, args):
             [weight_array[reg_idx].mean()
              for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
             dtype=np.float_)
+        region_weight = [
+            weight_array[reg_idx].sum()
+            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
 
-    return id_array, rand_ratio, weight_array, ave_weight
+    return id_array, rand_ratio, weight_array, ave_weight, region_weight
 
 
 def _load_pair_data(input_tuple):
@@ -504,7 +509,7 @@ class PDFMaker(object):
 
         return None
 
-    def initialize_regions_and_densities(self):
+    def initialize_regions_and_densities(self, region_weights=None):
 
         has_density_mask = np.logical_and(
             self.reference_density_array > 0,
@@ -523,6 +528,9 @@ class PDFMaker(object):
         self.region_dict = {}
         for array_idx, region_idx in enumerate(self.region_array):
             self.region_dict[region_idx] = array_idx
+
+        if region_weights is not None:
+            self.region_weights = region_weights
 
     def _load_data_from_hdf5(self, hdf5_data_grp, args):
         """Internal function for loading in non-pair search variables such as
@@ -557,7 +565,7 @@ class PDFMaker(object):
             else:
                 self.reference_hold_rand_array[reference_idx] = (
                     scale_grp.attrs['n_random'])
-        self.initialize_regions_and_densities()
+        self.initialize_regions_and_densities(None)
 
         return None
 
@@ -714,7 +722,8 @@ class PDFMaker(object):
                        "unknown": self._unknown_reg_array,
                        "rand": self._rand_reg_array,
                        "area": self._area_reg_array,
-                       "resolution": self._resolution_reg_array}
+                       "resolution": self._resolution_reg_array,
+                       "region_weights": self.region_weights}
         pickle.dump(output_dict, output_file)
         output_file.close()
         return None

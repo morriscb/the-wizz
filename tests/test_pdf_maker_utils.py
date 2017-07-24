@@ -167,7 +167,7 @@ class TestPDFMakerUtils(unittest.TestCase):
         open_hdf5_data_file = h5py.File(self.dummy_args.input_pair_hdf5_file)
         hdf5_data_grp = open_hdf5_data_file['data']
 
-        id_array, rand_ratio, weight_array, ave_weight = \
+        id_array, rand_ratio, weight_array, ave_weight, region_weights = \
             pdf_maker_utils._compute_region_densities_and_weights(
                 cosmos_zp_cut, hdf5_data_grp, self.dummy_args)
 
