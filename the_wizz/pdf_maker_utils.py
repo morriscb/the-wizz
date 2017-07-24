@@ -242,7 +242,7 @@ def _compute_region_densities_and_weights(unknown_data, hdf5_data_grp, args):
     # way.
     ave_weight = 1.0
     weight_array = np.ones(unknown_data.shape[0], dtype=np.float32)
-    region_weight = 0
+    region_weight = np.array([unknown_data.shape[0]], dtype=np.float32)
     if args.unknown_weight_name is not None:
         weight_array = unknown_data[args.unknown_weight_name][id_args_array]
         ave_weight = np.mean(weight_array)
@@ -256,9 +256,9 @@ def _compute_region_densities_and_weights(unknown_data, hdf5_data_grp, args):
             [weight_array[reg_idx].mean()
              for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])],
             dtype=np.float_)
-        region_weight = [
+        region_weight = np.array([
             weight_array[reg_idx].sum()
-            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])]
+            for reg_idx in xrange(hdf5_data_grp.attrs['n_region'])])
 
     return id_array, rand_ratio, weight_array, ave_weight, region_weight
 
