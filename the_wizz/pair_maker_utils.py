@@ -2,14 +2,9 @@
 """Utility functions for finding and storing close pairs between a reference
 object with known redshifts and objects with unknown redshifts.
 """
-
-from __future__ import division, print_function, absolute_import
-
 import h5py
 from multiprocessing import Pool
 import numpy as np
-
-import stomp
 
 from the_wizz.core_utils import create_hdf5_file
 
@@ -140,7 +135,7 @@ class RawPairFinder(object):
 
         # Find the area of the stomp map and each of its regions.
         region_area = np.empty(self._stomp_map.NRegion(), dtype=np.float32)
-        for reg_idx in xrange(self._stomp_map.NRegion()):
+        for reg_idx in range(self._stomp_map.NRegion()):
             region_area[reg_idx] = self._stomp_map.RegionArea(reg_idx)
 
         # Store global numbers for this stomp_map that are not dependent
