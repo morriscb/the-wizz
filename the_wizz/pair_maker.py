@@ -1,6 +1,8 @@
 
 from astropy.cosmology import Planck15
+from multiprocessing import Pool
 import numpy as np
+import pandas as pd
 from scipy.spatial import cKDTree
 from scipy.interpolate import UnivariateSpline
 
@@ -9,13 +11,25 @@ class PairMaker(object):
     """
     """
 
-    def __init__(self, r_mins, r_maxes, z_min, z_max):
+    def __init__(self,
+                 r_mins,
+                 r_maxes,
+                 z_min,
+                 z_max,
+                 weight_power=-0.8,
+                 distance_metric=None):
         self.r_min = np.min(r_mins)
         self.r_max = np.max(r_maxes)
         self.z_min = z_min
         self.z_max = z_max
 
-        self._compute__splines(np.min(r_mins), np.max(r_maxes))
+        if distance_metric is None:
+            distance_metric = Planck15.comoving_distnace
+        self.distance_metric = distance_metric
+
+        self.weight_power = weight_power
+
+        self._compute__splines(self.z_min, self.z_max)
 
     def _compute_splines(self, z_min, z_max):
         """
@@ -23,7 +37,7 @@ class PairMaker(object):
         redshifts = np.logspace(np.log10(z_min), np.log10(z_max), 1000)
         self._z_to_dist = UnivariateSpline(
             redshifts,
-            Planck15.comoving_distnace(redshifts).values)
+            self.distance_metric(redshifts).values)
         angles = np.linspace(0, np.pi / 2, 10000)
         self._cos_to_theta = UnivariateSpline(np.cos(angles), angles)
 
@@ -34,13 +48,19 @@ class PairMaker(object):
                                                 unknown_catalog["dec"])
         unkn_tree = cKDTree(unkn_vects)
         unkn_ids = unknown_catalog["id"]
+        unkn_weights = unknown_catalog["weight"]
 
         ref_ids = reference_catalog["id"]
         ref_vects = self._convert_radec_to_xyz(reference_catalog["ra"],
                                                reference_catalog["dec"])
-        dists = self._z_to_dist(reference_catalog["z"])
+        redshifts = reference_catalog["redshift"]
 
-        for ref_vect, dist, ref_id in zip(ref_vects, dists, ref_ids):
+        output_data = []
+
+        for ref_vect, redshift, ref_id in zip(ref_vects, redshifts, ref_ids):
+            if redshift < self.z_min or redshift > self.z_max:
+                continue
+            dist = self._z_to_dist(redshift)
             theta_max = self.r_max / dist
             unkn_idxs = unkn_tree.query_ball_point(ref_vect,
                                                    2 - 2 * np.cos(theta_max))
@@ -48,17 +68,32 @@ class PairMaker(object):
             tmp_unkn_ids = unkn_ids[unkn_idxs]
             tmp_unkn_vects = unkn_vects[unkn_idxs]
             cos_thetas = np.dot(tmp_unkn_vects, ref_vect)
+
             tmp_unkn_dists = self._cos_to_theta(cos_thetas) * dist
 
             tmp_unkn_sort_args = tmp_unkn_dists.argsort()
             tmp_unkn_ids = tmp_unkn_ids[tmp_unkn_sort_args]
             tmp_unkn_dists = tmp_unkn_dists[tmp_unkn_sort_args]
 
+            output_row = dict([("id", ref_id), ("redshift", redshift)])
+
             for r_min, r_max in zip(self.r_mins, self.r_maxes):
                 idx_min = np.searchsorted(tmp_unkn_dists, r_min, side="left")
                 idx_max = np.searchsorted(tmp_unkn_dists, r_max, side="right")
 
-                bin_unkn_dists = tmp_unkn_dists[]
+                bin_unkn_ids = tmp_unkn_ids[idx_min:idx_max]
+                bin_unkn_dists = tmp_unkn_dists[idx_min:idx_max]
+                bin_unkn_weights = self._compute_weight(bin_unkn_dists)
+
+                output_row["Mpc%.2ft%.2f_counts" % (r_min, r_max)] = \
+                    len(bin_unkn_ids)
+                output_row["Mpc%.2ft%.2f_weights" % (r_min, r_max)] = \
+                    bin_unkn_weights.sum()
+
+            output_data.append(output_row)
+
+        return pd.DataFrame(output_data)
+
                 
     def _convert_radec_to_xyz(self, ras, decs):
         """Convert RA/DEC positions to points on the unit sphere.
@@ -85,20 +120,25 @@ class PairMaker(object):
 
         return vectors
 
-    def _make_kdtree(self, ras, decs):
-        """Create a spatial search tree given input ra/decs.
+    def _compute_weight(self, dists):
+        """Convert raw distances into a signal matched weight for the
+        correlation.
+
+        All weights with distances below 0.001 Mpc will be set to a value of
+        0.001 ** ``weight_power``.
 
         Parameters
         ----------
-        ras : `numpy.ndarray`, (N,)
-            Right assertion coordinate in radians
-        decs : `numpy.ndarray`, (N,)
-            Declination coordinate in radians
+        dists : `numpy.ndarray`, (N,)
+            Distances in Mpc.
 
         Returns
         -------
-        spatial_tree : `scipy.spatial.cKDTree`
-            searchable spatial tree on the unit-sphere.
+        weights : `numpy.ndarray`, (N,)
+            Output weights.
         """
-        vectors = self._convert_radec_to_xyz(ras, decs)
-        return cKDTree(vectors)
+        return np.where(dists < 0.001,
+                        dists ** self.weight_power,
+                        0.001 ** self.weight_power)
+
+    
