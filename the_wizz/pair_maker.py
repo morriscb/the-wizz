@@ -1,10 +1,9 @@
 
 from astropy.cosmology import Planck15
-from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 
 
 class PairMaker(object):
@@ -24,22 +23,25 @@ class PairMaker(object):
         self.z_max = z_max
 
         if distance_metric is None:
-            distance_metric = Planck15.comoving_distnace
+            distance_metric = Planck15.comoving_distance
         self.distance_metric = distance_metric
 
         self.weight_power = weight_power
 
-        self._compute__splines(self.z_min, self.z_max)
+        self._compute_splines(self.z_min, self.z_max)
 
     def _compute_splines(self, z_min, z_max):
         """
         """
-        redshifts = np.logspace(np.log10(z_min), np.log10(z_max), 1000)
-        self._z_to_dist = UnivariateSpline(
+        redshifts = np.logspace(np.log10(z_min), np.log10(z_max), 100)
+        self._z_to_dist = InterpSpline(
             redshifts,
-            self.distance_metric(redshifts).values)
-        angles = np.linspace(0, np.pi / 2, 10000)
-        self._cos_to_theta = UnivariateSpline(np.cos(angles), angles)
+            self.distance_metric(redshifts).value)
+
+        angles = np.logspace(np.log10(np.pi / 4),
+                             np.log10(np.radians(0.016 / 3600)),
+                             100)
+        self._cos_to_ang = InterpSpline(np.cos(angles), angles)
 
     def run(self, unknown_catalog, reference_catalog):
         """
@@ -69,7 +71,7 @@ class PairMaker(object):
             tmp_unkn_vects = unkn_vects[unkn_idxs]
             cos_thetas = np.dot(tmp_unkn_vects, ref_vect)
 
-            tmp_unkn_dists = self._cos_to_theta(cos_thetas) * dist
+            tmp_unkn_dists = self._cos_to_ang(cos_thetas) * dist
 
             tmp_unkn_sort_args = tmp_unkn_dists.argsort()
             tmp_unkn_ids = tmp_unkn_ids[tmp_unkn_sort_args]
@@ -94,7 +96,6 @@ class PairMaker(object):
 
         return pd.DataFrame(output_data)
 
-                
     def _convert_radec_to_xyz(self, ras, decs):
         """Convert RA/DEC positions to points on the unit sphere.
 
@@ -140,5 +141,3 @@ class PairMaker(object):
         return np.where(dists < 0.001,
                         dists ** self.weight_power,
                         0.001 ** self.weight_power)
-
-    
