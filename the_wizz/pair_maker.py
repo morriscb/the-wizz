@@ -17,6 +17,8 @@ class PairMaker(object):
                  z_max,
                  weight_power=-0.8,
                  distance_metric=None):
+        self.r_mins = r_mins
+        self.r_maxes = r_maxes
         self.r_min = np.min(r_mins)
         self.r_max = np.max(r_maxes)
         self.z_min = z_min
@@ -43,14 +45,17 @@ class PairMaker(object):
                              100)
         self._cos_to_ang = InterpSpline(np.cos(angles), angles)
 
-    def run(self, unknown_catalog, reference_catalog):
+    def run(self, unknown_catalog, reference_catalog, use_unkn_weights=False):
         """
         """
         unkn_vects = self._convert_radec_to_xyz(unknown_catalog["ra"],
                                                 unknown_catalog["dec"])
         unkn_tree = cKDTree(unkn_vects)
         unkn_ids = unknown_catalog["id"]
-        unkn_weights = unknown_catalog["weight"]
+        if use_unkn_weights:
+            unkn_weights = unknown_catalog["weight"]
+        else:
+            unkn_weights = np.ones(len(unkn_ids))
 
         ref_ids = reference_catalog["id"]
         ref_vects = self._convert_radec_to_xyz(reference_catalog["ra"],
@@ -64,11 +69,12 @@ class PairMaker(object):
                 continue
             dist = self._z_to_dist(redshift)
             theta_max = self.r_max / dist
-            unkn_idxs = unkn_tree.query_ball_point(ref_vect,
-                                                   2 - 2 * np.cos(theta_max))
+            unkn_idxs = unkn_tree.query_ball_point(
+                ref_vect, np.sqrt(2 - 2 * np.cos(theta_max)))
 
             tmp_unkn_ids = unkn_ids[unkn_idxs]
             tmp_unkn_vects = unkn_vects[unkn_idxs]
+            tmp_unkn_weights = unkn_weights[unkn_idxs]
             cos_thetas = np.dot(tmp_unkn_vects, ref_vect)
 
             tmp_unkn_dists = self._cos_to_ang(cos_thetas) * dist
@@ -76,6 +82,7 @@ class PairMaker(object):
             tmp_unkn_sort_args = tmp_unkn_dists.argsort()
             tmp_unkn_ids = tmp_unkn_ids[tmp_unkn_sort_args]
             tmp_unkn_dists = tmp_unkn_dists[tmp_unkn_sort_args]
+            tmp_unkn_weights = tmp_unkn_weights[tmp_unkn_sort_args]
 
             output_row = dict([("id", ref_id), ("redshift", redshift)])
 
@@ -85,12 +92,13 @@ class PairMaker(object):
 
                 bin_unkn_ids = tmp_unkn_ids[idx_min:idx_max]
                 bin_unkn_dists = tmp_unkn_dists[idx_min:idx_max]
-                bin_unkn_weights = self._compute_weight(bin_unkn_dists)
+                bin_unkn_dist_weights = self._compute_weight(bin_unkn_dists)
+                bin_unkn_weights = tmp_unkn_weights[idx_min:idx_max]
 
                 output_row["Mpc%.2ft%.2f_counts" % (r_min, r_max)] = \
                     len(bin_unkn_ids)
                 output_row["Mpc%.2ft%.2f_weights" % (r_min, r_max)] = \
-                    bin_unkn_weights.sum()
+                    (bin_unkn_dist_weights * bin_unkn_weights).sum()
 
             output_data.append(output_row)
 
