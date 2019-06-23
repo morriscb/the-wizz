@@ -15,7 +15,7 @@ class TestPairMakerUtils(unittest.TestCase):
 
         # Create a random catalog centered at the pole with a redshift
         # distribution that looks kind of like a mag limited sample.
-        self.n_objects = 100000
+        self.n_objects = 10000
         decs = np.degrees(
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
@@ -47,17 +47,19 @@ class TestPairMakerUtils(unittest.TestCase):
         """
         pm = pair_maker.PairMaker([1], [10], self.z_min, self.z_max)
         decs = np.zeros(5)
-        ras = np.degrees(np.linspace(0, 500, 5) / 3600)
+        ras = np.linspace(0, 500, 5) / 3600
 
-        vects = pm._convert_radec_to_xyz(ras, decs)
-        theta_max = np.degrees(450 / 3600)
+        vects = pm._convert_radec_to_xyz(np.radians(ras),
+                                         np.radians(decs))
+        theta_max = np.radians(450 / 3600)
         dist = 10 / theta_max
 
         from scipy.spatial import cKDTree
         tree = cKDTree(vects)
 
-        indexes = pm._query_tree(vects[0], vects, dist)
-        self.assertEqual(indexes, 4)
+        indexes = pm._query_tree(vects[0], tree, dist)
+        self.assertEqual(len(indexes), 4)
+        self.assertEqual([0, 1, 2, 3], indexes)
 
     def test_splines(self):
         """Test internal splining compared to true expect values.

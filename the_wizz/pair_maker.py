@@ -104,19 +104,19 @@ class PairMaker(object):
                 continue
             # Query the unknown tree.
             dist = self._z_to_dist(redshift)
-            unkn_idxs = self._query_tree(ref_vect, unkn_tree, dist)
+            unkn_idxs = np.array(self._query_tree(ref_vect, unkn_tree, dist))
 
             # Compute angles and convert them to cosmo distances.
             matched_unkn_vects = unkn_vects[unkn_idxs]
-            cos_thetas = np.dot(tmp_unkn_vects, ref_vect)
+            cos_thetas = np.dot(matched_unkn_vects, ref_vect)
             matched_unkn_dists = self._cos_to_ang(cos_thetas) * dist
 
             # Sort on distance.
-            matched_unkn_sort_args = tmp_unkn_dists.argsort()
+            matched_unkn_sort_args = matched_unkn_dists.argsort()
 
             # Sort all arrays on distance
-            matched_unkn_dists = matched_unkn_dists[tmp_unkn_sort_args]
-            unkn_idxs = unkn_idxs[tmp_unkn_sort_args]
+            matched_unkn_dists = matched_unkn_dists[matched_unkn_sort_args]
+            unkn_idxs = unkn_idxs[matched_unkn_sort_args]
             matched_unkn_ids = ref_ids[unkn_idxs]
             matched_unkn_weights = unkn_weights[unkn_idxs]
 
