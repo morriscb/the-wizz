@@ -42,6 +42,23 @@ class TestPairMakerUtils(unittest.TestCase):
         pm = pair_maker.PairMaker([0.1, 1], [1, 10], self.z_min, self.z_max)
         output = pm.run(self.catalog, self.catalog)
 
+    def test_query_tree(self):
+        """Test that the correct number of points are matched in the kdtree.
+        """
+        pm = pair_maker.PairMaker([1], [10], self.z_min, self.z_max)
+        decs = np.zeros(5)
+        ras = np.degrees(np.linspace(0, 500, 5) / 3600)
+
+        vects = pm._convert_radec_to_xyz(ras, decs)
+        theta_max = np.degrees(450 / 3600)
+        dist = 10 / theta_max
+
+        from scipy.spatial import cKDTree
+        tree = cKDTree(vects)
+
+        indexes = pm._query_tree(vects[0], vects, dist)
+        self.assertEqual(indexes, 4)
+
     def test_splines(self):
         """Test internal splining compared to true expect values.
 
