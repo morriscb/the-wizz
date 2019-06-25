@@ -98,7 +98,7 @@ class PairMaker(object):
 
         output_data = []
 
-        for ref_vect, dist, redshift, ref_id in zip(ref_vects,
+        for ref_vect, redshift, dist, ref_id in zip(ref_vects,
                                                     redshifts,
                                                     dists,
                                                     ref_ids):
