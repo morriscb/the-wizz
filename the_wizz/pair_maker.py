@@ -86,46 +86,36 @@ class PairMaker(object):
             np.radians(unknown_catalog["dec"]))
         unkn_tree = cKDTree(unkn_vects)
         unkn_ids = unknown_catalog["id"]
-        if use_unkn_weights:
-            unkn_weights = unknown_catalog["weight"]
-        else:
-            unkn_weights = np.ones(len(unkn_ids))
 
-        ref_ids = reference_catalog["id"]
-        ref_vects = self._convert_radec_to_xyz(
-            np.radians(reference_catalog["ra"]),
-            np.radians(reference_catalog["dec"]))
         redshifts = reference_catalog["redshift"]
+        z_mask = np.logical_and(redshifts > self.z_min, redshifts < self.z_max)
+        ref_ids = reference_catalog["id"][z_mask]
+        ref_vects = self._convert_radec_to_xyz(
+            np.radians(reference_catalog["ra"][z_mask]),
+            np.radians(reference_catalog["dec"][z_mask]))
+        redshifts = reference_catalog["redshift"][z_mask]
+        dists = self._z_to_dist(redshifts)
 
         output_data = []
 
-        for ref_vect, redshift, ref_id in zip(ref_vects, redshifts, ref_ids):
-            if redshift < self.z_min or redshift > self.z_max:
-                continue
+        for ref_vect, dist, redshift, ref_id in zip(ref_vects,
+                                                    redshifts,
+                                                    dists,
+                                                    ref_ids):
             # Query the unknown tree.
-            dist = self._z_to_dist(redshift)
             unkn_idxs = np.array(self._query_tree(ref_vect, unkn_tree, dist))
 
             # Compute angles and convert them to cosmo distances.
             matched_unkn_vects = unkn_vects[unkn_idxs]
             cos_thetas = np.dot(matched_unkn_vects, ref_vect)
             matched_unkn_dists = self._cos_to_ang(cos_thetas) * dist
-
-            # Sort on distance.
-            matched_unkn_sort_args = matched_unkn_dists.argsort()
-
-            # Sort all arrays on distance
-            matched_unkn_dists = matched_unkn_dists[matched_unkn_sort_args]
-            unkn_idxs = unkn_idxs[matched_unkn_sort_args]
-            matched_unkn_ids = ref_ids[unkn_idxs]
-            matched_unkn_weights = unkn_weights[unkn_idxs]
+            matched_unkn_ids = unkn_ids[unkn_idxs]
 
             # Bin data and return counts/sum of weights in bins.
             output_row = self._compute_bin_values(ref_id,
                                                   redshift,
                                                   matched_unkn_ids,
-                                                  matched_unkn_dists,
-                                                  matched_unkn_weights)
+                                                  matched_unkn_dists)
             output_data.append(output_row)
 
         return pd.DataFrame(output_data)
@@ -183,28 +173,23 @@ class PairMaker(object):
                             ref_id,
                             redshift,
                             unkn_ids,
-                            unkn_dists,
-                            unkn_weights):
+                            unkn_dists):
         """
         """
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
-            idx_min = np.searchsorted(unkn_dists, r_min, side="left")
-            idx_max = np.searchsorted(unkn_dists, r_max, side="right")
+            r_mask = np.logical_and(unkn_dists > r_min, unkn_dists < r_max)
 
-            bin_unkn_ids = unkn_ids[idx_min:idx_max]
-            bin_unkn_dists = unkn_dists[idx_min:idx_max]
-            bin_unkn_dist_weights = self._compute_weight(bin_unkn_dists)
-            bin_unkn_weights = unkn_weights[idx_min:idx_max]
+            bin_unkn_ids = unkn_ids[r_mask]
+            bin_unkn_dist_weights = self._compute_weight(unkn_dists[r_mask])
 
             output_row["Mpc%.2ft%.2f_counts" % (r_min, r_max)] = \
                 len(bin_unkn_ids)
             output_row["Mpc%.2ft%.2f_weights" % (r_min, r_max)] = \
-                (bin_unkn_dist_weights * bin_unkn_weights).sum()
+                bin_unkn_dist_weights.sum()
 
         return output_row
-
 
     def _compute_weight(self, dists):
         """Convert raw distances into a signal matched weight for the
