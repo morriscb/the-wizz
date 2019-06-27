@@ -1,9 +1,45 @@
 
 from astropy.cosmology import Planck15
+import h5py
+from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
 from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
+
+
+def write_to_pairs_hdf5(data):
+    """
+    """
+    hdf5_file = h5py.File(data["file_name"], "a")
+    ref_group = hdf5_file.create_group("data/%i" % data["id"])
+    ref_group.attrs["redshift"] = data["redshift"]
+
+    for scale_name in data["scale_names"]:
+
+        id_name = "%s_ids" % scale_name
+        dist_name = "%s_dist_weights" % scale_name
+
+        ids = data[id_name]
+        dist_weights = data[dist_name].astype(np.float16)
+
+        id_sort_args = ids.argsort()
+
+        if len(ids) <= 0:
+            ref_group.create_dataset(
+                id_name, shape=ids.shape, dtype=np.uint64)
+            ref_group.create_dataset(
+                dist_name, shape=ids.shape, dtype=np.float16)
+        else:
+            ref_group.create_dataset(
+                id_name, data=ids[id_sort_args],
+                shape=ids.shape, dtype=np.uint64,
+                chunks=True, compression='lzf', shuffle=True)
+            ref_group.create_dataset(
+                dist_name, data=dist_weights[id_sort_args],
+                shape=ids.shape, dtype=np.float16,
+                chunks=True, compression='lzf', shuffle=True)
+    hdf5_file.close()
 
 
 class PairMaker(object):
@@ -34,7 +70,8 @@ class PairMaker(object):
                  z_min=0.01,
                  z_max=5.00,
                  weight_power=-0.8,
-                 distance_metric=None):
+                 distance_metric=None,
+                 output_pair_file_name=None):
         self.r_mins = r_mins
         self.r_maxes = r_maxes
         self.r_min = np.min(r_mins)
@@ -48,29 +85,7 @@ class PairMaker(object):
 
         self.weight_power = weight_power
 
-        self._compute_splines(self.z_min, self.z_max)
-
-    def _compute_splines(self, z_min, z_max):
-        """Create splines for lookup between redshift and distance as well
-        ass cos(theta) to theta.
-
-        Minimum theta is 0.016 arcseconds. Max is 45 degrees.
-
-        Parameters
-        ----------
-        z_min : `float`
-            Minimum redshift to create distance spline
-        z_max : `float`
-        """
-        redshifts = np.logspace(np.log10(z_min), np.log10(z_max), 100)
-        self._z_to_dist = InterpSpline(
-            redshifts,
-            self.distance_metric(redshifts).value)
-
-        angles = np.logspace(np.log10(np.pi / 4),
-                             np.log10(np.radians(0.016 / 3600)),
-                             100)
-        self._cos_to_ang = InterpSpline(np.cos(angles), angles)
+        self.output_pair_file_name = output_pair_file_name
 
     def run(self, reference_catalog, unknown_catalog, use_unkn_weights=False):
         """Find the (un)weighted pair counts between reference and unknown
@@ -94,10 +109,14 @@ class PairMaker(object):
             np.radians(reference_catalog["ra"][z_mask]),
             np.radians(reference_catalog["dec"][z_mask]))
         redshifts = reference_catalog["redshift"][z_mask]
-        dists = self._z_to_dist(redshifts)
+        dists = self.distance_metric(redshifts).value
 
         output_data = []
 
+        if self.output_pair_file_name is not None:
+            self.hdf5_writer = Pool(1)
+
+        print("Starting iteration...")
         for ref_vect, redshift, dist, ref_id in zip(ref_vects,
                                                     redshifts,
                                                     dists,
@@ -108,7 +127,7 @@ class PairMaker(object):
             # Compute angles and convert them to cosmo distances.
             matched_unkn_vects = unkn_vects[unkn_idxs]
             cos_thetas = np.dot(matched_unkn_vects, ref_vect)
-            matched_unkn_dists = self._cos_to_ang(cos_thetas) * dist
+            matched_unkn_dists = np.arccos(cos_thetas) * dist
             matched_unkn_ids = unkn_ids[unkn_idxs]
 
             # Bin data and return counts/sum of weights in bins.
@@ -117,6 +136,10 @@ class PairMaker(object):
                                                   matched_unkn_ids,
                                                   matched_unkn_dists)
             output_data.append(output_row)
+
+        if self.output_pair_file_name is not None:
+            self.hdf5_writer.close()
+            self.hdf5_writer.join()
 
         return pd.DataFrame(output_data)
 
@@ -178,16 +201,33 @@ class PairMaker(object):
         """
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
+        if self.output_pair_file_name is not None:
+            hdf5_output_dict = dict([("id", ref_id),
+                                     ("redshift", redshift),
+                                     ("file_name", self.output_pair_file_name),
+                                     ("scale_names", [])])
+
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
+            scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
             r_mask = np.logical_and(unkn_dists > r_min, unkn_dists < r_max)
 
             bin_unkn_ids = unkn_ids[r_mask]
             bin_unkn_dist_weights = self._compute_weight(unkn_dists[r_mask])
 
-            output_row["Mpc%.2ft%.2f_counts" % (r_min, r_max)] = \
+            if self.output_pair_file_name is not None:
+                hdf5_output_dict["scale_names"].append(scale_name)
+                hdf5_output_dict["%s_ids" % scale_name] = bin_unkn_ids
+                hdf5_output_dict["%s_dist_weights" % scale_name] = \
+                    bin_unkn_dist_weights
+
+            output_row["%s_counts" % scale_name] = \
                 len(bin_unkn_ids)
-            output_row["Mpc%.2ft%.2f_weights" % (r_min, r_max)] = \
+            output_row["%s_weights" % scale_name] = \
                 bin_unkn_dist_weights.sum()
+
+        if self.output_pair_file_name is not None:
+            self.hdf5_writer.apply_async(write_to_pairs_hdf5,
+                                         (hdf5_output_dict,))
 
         return output_row
 
@@ -208,6 +248,6 @@ class PairMaker(object):
         weights : `numpy.ndarray`, (N,)
             Output weights.
         """
-        return np.where(dists < 0.001,
+        return np.where(dists > 0.001,
                         dists ** self.weight_power,
                         0.001 ** self.weight_power)
