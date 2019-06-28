@@ -11,36 +11,41 @@ from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 def write_to_pairs_hdf5(data):
     """
     """
-    hdf5_file = h5py.File(data["file_name"], "a")
-    ref_group = hdf5_file.create_group("data/%i" % data["id"])
-    ref_group.attrs["redshift"] = data["redshift"]
+    with h5py.File(data["file_name"], "a") as hdf5_file:
+        ref_group = hdf5_file.create_group("data/%i" % data["id"])
+        ref_group.attrs["redshift"] = data["redshift"]
 
-    for scale_name in data["scale_names"]:
+        for scale_name in data["scale_names"]:
 
-        id_name = "%s_ids" % scale_name
-        dist_name = "%s_dist_weights" % scale_name
+            id_name = "%s_ids" % scale_name
+            dist_name = "%s_dist_weights" % scale_name
 
-        ids = data[id_name]
-        dist_weights = data[dist_name].astype(np.float16)
+            ids = data[id_name]
+            dist_weights = data[dist_name].astype(np.float16)
 
-        id_sort_args = ids.argsort()
+            id_sort_args = ids.argsort()
 
-        if len(ids) <= 0:
-            ref_group.create_dataset(
-                id_name, shape=ids.shape, dtype=np.uint64)
-            ref_group.create_dataset(
-                dist_name, shape=ids.shape, dtype=np.float16)
-        else:
-            ref_group.create_dataset(
-                id_name, data=ids[id_sort_args],
-                shape=ids.shape, dtype=np.uint64,
-                chunks=True, compression='lzf', shuffle=True)
-            ref_group.create_dataset(
-                dist_name, data=dist_weights[id_sort_args],
-                shape=ids.shape, dtype=np.float16,
-                chunks=True, compression='lzf', shuffle=True)
-    hdf5_file.close()
+            if len(ids) <= 0:
+                ref_group.create_dataset(
+                    id_name, shape=ids.shape, dtype=np.uint64)
+                ref_group.create_dataset(
+                    dist_name, shape=ids.shape, dtype=np.float16)
+            else:
+                ref_group.create_dataset(
+                    id_name, data=ids[id_sort_args],
+                    shape=ids.shape, dtype=np.uint64,
+                    chunks=True, compression='gzip', shuffle=True,
+                    scaleoffset=0, compression_opts=9)
+                ref_group.create_dataset(
+                    dist_name, data=np.log(dist_weights[id_sort_args]),
+                    shape=ids.shape, dtype=np.float32,
+                    chunks=True, compression='gzip', shuffle=True,
+                    scaleoffset=2, compression_opts=9)
+    del ref_group
+    return None
 
+def callback_error(exception):
+    raise exception
 
 class PairMaker(object):
     """Class for computing distance weighted correlations of a reference sample
@@ -113,6 +118,7 @@ class PairMaker(object):
 
         output_data = []
 
+        self.subproc = None
         if self.output_pair_file_name is not None:
             self.hdf5_writer = Pool(1)
 
@@ -212,7 +218,7 @@ class PairMaker(object):
             r_mask = np.logical_and(unkn_dists > r_min, unkn_dists < r_max)
 
             bin_unkn_ids = unkn_ids[r_mask]
-            bin_unkn_dist_weights = self._compute_weight(unkn_dists[r_mask])
+            bin_unkn_dist_weights = unkn_dists[r_mask]
 
             if self.output_pair_file_name is not None:
                 hdf5_output_dict["scale_names"].append(scale_name)
@@ -226,8 +232,12 @@ class PairMaker(object):
                 bin_unkn_dist_weights.sum()
 
         if self.output_pair_file_name is not None:
-            self.hdf5_writer.apply_async(write_to_pairs_hdf5,
-                                         (hdf5_output_dict,))
+            if self.subproc is not None:
+                self.subproc.get()
+            self.subproc = self.hdf5_writer.apply_async(write_to_pairs_hdf5,
+                                                        (hdf5_output_dict,),
+                                                        error_callback=callback_error)
+            # write_to_pairs_hdf5(hdf5_output_dict)
 
         return output_row
 

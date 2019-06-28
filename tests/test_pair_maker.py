@@ -30,7 +30,7 @@ class TestPairMakerUtils(unittest.TestCase):
                         "dec": decs,
                         "redshift": redshifts}
 
-        self.z_min = 0.01
+        self.z_min = 0.05
         self.z_max = 3.0
 
     def test_run(self):
