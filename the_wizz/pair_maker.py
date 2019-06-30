@@ -7,6 +7,8 @@ import pandas as pd
 from scipy.spatial import cKDTree
 from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 
+from kdtree_utils import SphericalKDTree
+
 
 def write_to_pairs_hdf5(data):
     """
@@ -44,8 +46,10 @@ def write_to_pairs_hdf5(data):
     del ref_group
     return None
 
+
 def callback_error(exception):
     raise exception
+
 
 class PairMaker(object):
     """Class for computing distance weighted correlations of a reference sample
@@ -99,22 +103,24 @@ class PairMaker(object):
         Parameters
         ----------
         reference_catalog : 'dict' of `numpy.ndarray`
-            Dictionary containing arrays 
+            Dictionary containing arrays
         """
-        unkn_vects = self._convert_radec_to_xyz(
-            np.radians(unknown_catalog["ra"]),
-            np.radians(unknown_catalog["dec"]))
         unkn_tree = cKDTree(unkn_vects)
+        unkn_vects = unkn_tree.tree.data
+        unkn_tree = SphericalKDTree(
+            unknown_catalog["ra"], unknown_catalog["dec"])
         unkn_ids = unknown_catalog["id"]
 
         redshifts = reference_catalog["redshift"]
         z_mask = np.logical_and(redshifts > self.z_min, redshifts < self.z_max)
         ref_ids = reference_catalog["id"][z_mask]
-        ref_vects = self._convert_radec_to_xyz(
-            np.radians(reference_catalog["ra"][z_mask]),
-            np.radians(reference_catalog["dec"][z_mask]))
         redshifts = reference_catalog["redshift"][z_mask]
-        dists = self.distance_metric(redshifts).value
+        try:
+            dists = self.distance_metric(redshifts).value
+        except AttributeError:
+            dists = self.distance_metric(redshifts)
+        except Exception:
+            raise ValueError("distance_metric is invalid")
 
         output_data = []
 
@@ -123,19 +129,15 @@ class PairMaker(object):
             self.hdf5_writer = Pool(1)
 
         print("Starting iteration...")
-        for ref_vect, redshift, dist, ref_id in zip(ref_vects,
-                                                    redshifts,
-                                                    dists,
-                                                    ref_ids):
+        ref_obj_iter = zip(
+            reference_catalog["ra"], reference_catalog["dec"],
+            redshifts, dists, ref_ids)
+        for ref_ra, ref_dec, redshift, dist, ref_id in ref_obj_iter:
             # Query the unknown tree.
-            unkn_idxs = np.array(self._query_tree(ref_vect, unkn_tree, dist))
-
-            # Compute angles and convert them to cosmo distances.
-            matched_unkn_vects = unkn_vects[unkn_idxs]
-            cos_thetas = np.dot(matched_unkn_vects, ref_vect)
-            matched_unkn_dists = np.arccos(cos_thetas) * dist
-            matched_unkn_ids = unkn_ids[unkn_idxs]
-
+            ang_min = self.r_min / dist  # convert to angular scales
+            ang_max = self.r_max / dist
+            matched_unkn_ids, matched_unkn_dists = unkn_tree.query_shell(
+                ref_ra, ref_dec, ang_min, ang_max)
             # Bin data and return counts/sum of weights in bins.
             output_row = self._compute_bin_values(ref_id,
                                                   redshift,
@@ -148,55 +150,6 @@ class PairMaker(object):
             self.hdf5_writer.join()
 
         return pd.DataFrame(output_data)
-
-    def _convert_radec_to_xyz(self, ras, decs):
-        """Convert RA/DEC positions to points on the unit sphere.
-
-        Parameters
-        ----------
-        ras : `numpy.ndarray`, (N,)
-            Right assertion coordinate in radians
-        decs : `numpy.ndarray`, (N,)
-            Declination coordinate in radians
-
-        Returns
-        -------
-        vectors : `numpy.ndarray`, (N, 3)
-            Array of points on the unit sphere.
-        """
-        vectors = np.empty((len(ras), 3))
-
-        vectors[:, 2] = np.sin(decs)
-
-        sintheta = np.cos(decs)
-        vectors[:, 0] = np.cos(ras) * sintheta
-        vectors[:, 1] = np.sin(ras) * sintheta
-
-        return vectors
-
-    def _query_tree(self, ref_vect, unkn_tree, dist):
-        """Query the kdtree for all points within the maximum r value at a
-        given redshift/distance.
-
-        Parameters
-        ----------
-        ref_vecct : `numpy.ndarray`, (3,)
-            Position to center ball tree search on.
-        unkn_tree : `scipy.spatial.cKDTree`
-            Searchable kdtree containing points to correlate with.
-        dist : `float`
-            Distance from observer to the reference object at redshift, z.
-
-        Returns
-        -------
-        output_indexes : `list` of `int`s
-            List of integer index lookups into the array the tree was created
-            with.
-        """
-        theta_max = self.r_max / dist
-        return unkn_tree.query_ball_point(
-            ref_vect,
-            np.sqrt(2 - 2 * np.cos(theta_max)))
 
     def _compute_bin_values(self,
                             ref_id,
