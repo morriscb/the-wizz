@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.spatial import cKDTree
 from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 
-from kdtree_utils import SphericalKDTree
+from .kdtree_utils import SphericalKDTree
 
 
 def write_to_pairs_hdf5(data):
@@ -105,10 +105,9 @@ class PairMaker(object):
         reference_catalog : 'dict' of `numpy.ndarray`
             Dictionary containing arrays
         """
-        unkn_tree = cKDTree(unkn_vects)
-        unkn_vects = unkn_tree.tree.data
         unkn_tree = SphericalKDTree(
             unknown_catalog["ra"], unknown_catalog["dec"])
+        unkn_vects = unkn_tree.tree.data
         unkn_ids = unknown_catalog["id"]
 
         redshifts = reference_catalog["redshift"]
