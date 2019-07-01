@@ -1,5 +1,6 @@
 
 from __future__ import division, print_function, absolute_import
+import os
 
 import numpy as np
 import subprocess
@@ -16,7 +17,12 @@ from the_wizz import pdf_maker_utils
 class DummyArgs(object):
 
     def __init__(self):
-        self.input_pair_hdf5_file = 'data/unittest_output.hdf5'
+        self.testdir = os.path.dirname(os.path.realpath(__file__))
+        self.datadir = os.path.join(self.testdir, "data")
+
+        self.input_pair_hdf5_file = os.path.join(
+            self.datadir,
+            'unittest_output.hdf5')
         self.pair_scale_name = 'kpc100t300'
         self.reference_ra_name = 'ra'
         self.reference_dec_name = 'dec'
@@ -26,9 +32,9 @@ class DummyArgs(object):
         self.z_max = 10.0
         self.n_z_bins = 10
 
-        self.unknown_sample_file = \
-            'data/' \
-            'COSMOS_iband_2009_radecidstomp_regionzp_best.fits'
+        self.unknown_sample_file = os.path.join(
+            self.datadir,
+            'COSMOS_iband_2009_radecidstomp_regionzp_best.fits')
         self.unknown_ra_name = 'ra'
         self.unknown_dec_name = 'dec'
         self.unknown_index_name = 'id'
@@ -105,7 +111,10 @@ class TestPDFMakerUtils(unittest.TestCase):
         self.assertEqual(len(pdf_maker_obj.reference_redshift_array),
                          len(hdf5_data_grp))
 
-        tmp_output_file = open('data/unittest_pdf_maker_raw_data.ascii')
+        tmp_output_path = os.path.join(
+            self.dummy_args.datadir,
+            'unittest_pdf_maker_raw_data.ascii')
+        tmp_output_file = open(tmp_output_path)
         for reference_idx, key_name in enumerate(hdf5_data_grp):
 
             self.assertAlmostEqual(
@@ -159,8 +168,10 @@ class TestPDFMakerUtils(unittest.TestCase):
                             0.01281959, 0.01212378, 0.0128798, 0.01246496]
         test_ave_weight = np.ones_like(test_rand_ration)
 
-        cosmos_data = fits.getdata(
-            'data/COSMOS_iband_2009_radecidstomp_regionzp_best.fits')
+        fits_path = os.path.join(
+            self.dummy_args.datadir,
+            'COSMOS_iband_2009_radecidstomp_regionzp_best.fits')
+        cosmos_data = fits.getdata(fits_path)
         cosmos_zp_cut = cosmos_data[np.logical_and(
             cosmos_data.zp_best > 0.3, cosmos_data.zp_best <= 0.5)]
 
@@ -217,7 +228,10 @@ class TestPDFMakerUtils(unittest.TestCase):
             self.dummy_args.pair_scale_name, cosmos_zp_cut,
             self.dummy_args)
 
-        test_data = open('data/unittest_pdf_maker_raw_data.ascii', 'w')
+        test_path = os.path.join(
+            self.dummy_args.datadir,
+            'unittest_pdf_maker_raw_data.ascii')
+        test_data = open(test_path, 'w')
         open_hdf5_file = h5py.File(self.dummy_args.input_pair_hdf5_file)
         hdf5_data_grp = open_hdf5_file['data']
 
