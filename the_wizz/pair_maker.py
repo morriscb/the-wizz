@@ -285,10 +285,23 @@ class PairMaker(object):
             Redshift of the reference object.
         unkn_ids : `numpy.ndarray`, (N,)
             Unique ids of all objects with unknown redshift that are within
-            
+
 
         Returns
         -------
+        output_row : `dict`
+            Dictionary containing the values:
+
+            ``"id"``
+                Unique reference id (`int`)
+            ``"redshift"``
+                Reference redshift (`float`)
+            ``"[scale_name]_counts"``
+                Number of unknown objects with the annulus around the
+                reference for annulus [scale_name]. (`int`)
+            ``"[scale_name]_weights"``
+                Weighted number  unknown objects with the annulus around the
+                reference for annulus [scale_name]. (`float`)
         """
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
