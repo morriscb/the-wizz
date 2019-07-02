@@ -9,7 +9,32 @@ from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 
 
 def write_to_pairs_hdf5(data):
-    """
+    """Write raw pairs produced by pair maker to disk using HDF5.
+
+    Ids are losslessly compressed distances are stored as log, keeping 3
+    decimal digits.
+
+    Parameters
+    ----------
+    data : `dict`
+        Dictionary of data produced by the PairMaker class.
+        Dictionary has should have following keys:
+
+        ``"file_name"``
+            File name of the file to write to. (`str`)
+        ``"id"``
+            Id of the reference object. (`int`)
+        ``"redshift"``
+            Redshift of the reference object. (`float`)
+        ``"scale_names"``
+            Names of the scales run in pair_maker. Formated e.g. 'Mpc1.00t10.00' 
+            (`list`)
+        ``"'scale_name'_ids"``
+            Unique ids of unknown objects within annulus 'scale_name' around
+            the reference object (`numpy.ndarray`, (N,))
+        ``"'scale_name'_dists"``
+            Distance to unknown object with id in 'scale_name'_ids
+            (`numpy.ndarray`, (N,))
     """
     with h5py.File(data["file_name"], "a") as hdf5_file:
         ref_group = hdf5_file.create_group("data/%i" % data["id"])
@@ -18,7 +43,7 @@ def write_to_pairs_hdf5(data):
         for scale_name in data["scale_names"]:
 
             id_name = "%s_ids" % scale_name
-            dist_name = "%s_dist_weights" % scale_name
+            dist_name = "%s_dist" % scale_name
 
             ids = data[id_name]
             dist_weights = data[dist_name].astype(np.float16)
@@ -40,11 +65,17 @@ def write_to_pairs_hdf5(data):
                     dist_name, data=np.log(dist_weights[id_sort_args]),
                     shape=ids.shape, dtype=np.float32,
                     chunks=True, compression='gzip', shuffle=True,
-                    scaleoffset=2, compression_opts=9)
-    del ref_group
-    return None
+                    scaleoffset=3, compression_opts=9)
 
-def callback_error(exception):
+
+def error_callback(exception):
+    """Simple function to propagate errors from multiprocessing.Process
+    objects.
+
+    Parameters
+    ----------
+    exception : `Exception`
+    """
     raise exception
 
 class PairMaker(object):
@@ -68,6 +99,9 @@ class PairMaker(object):
         Cosmological distance metric to use for all calculations. Should be
         either comoving_distance or angular_diameter_distance. Defaults to
         the Planck15 cosmology and comoving metric.
+    output_pair_file_name : `string`
+        Name of a file name to write raw pair counts and distances to. Spawns
+        a multiprocessing child task to write out data.
     """
     def __init__(self,
                  r_mins,
@@ -98,8 +132,43 @@ class PairMaker(object):
 
         Parameters
         ----------
-        reference_catalog : 'dict' of `numpy.ndarray`
-            Dictionary containing arrays 
+        reference_catalog : `dict`
+            Catalog of objects with known redshift to count pairs around.
+            Dictionary contains:
+
+            ``"ra"``
+                RA position in degrees (`numpy.ndarray`, (N,))
+            ``"dec"``
+                Dec position in degrees (`numpy.ndarray`, (N,))
+            ``"id"``
+                Unique identifier in the catalog (`numpy.ndarray`, (N,))
+            ``"redshift"``
+                Redshift of the reference object (`numpy.ndarray`, (N,))
+        unknown_catalog : `dict`
+            Catalog of objects with unknown redshift to count around the
+            reference objects.
+            Dictionary contains:
+
+            ``"ra"``
+                RA position in degrees (`numpy.ndarray`, (N,))
+            ``"dec"``
+                Dec position in degrees (`numpy.ndarray`, (N,))
+            ``"id"``
+                Unique identifier in the catalog (`numpy.ndarray`, (N,))
+            ``"weight"``
+                OPTIONAL: If setting use_unkn_weights flag, weight to apply
+                to each unknown object. (`numpy.ndarray`, (N,))
+        use_unkn_weights : `bool`
+            Use unknown weights in output simple sum. Weights are not stored
+            in the pair file, only the `pandas.DataFrame` output by this
+            method.
+
+        Returns
+        -------
+        output_data : `pandas.DataFrame`
+            Summary data produced from the pair finding, cross-correlation.
+            Contains a summary of the N_pairs and requested distance weights
+            per reference object.
         """
         unkn_vects = self._convert_radec_to_xyz(
             np.radians(unknown_catalog["ra"]),
@@ -203,7 +272,23 @@ class PairMaker(object):
                             redshift,
                             unkn_ids,
                             unkn_dists):
-        """
+        """Bin data and construct output dict.
+
+        If an output data file is specified, send the raw pairs off to be
+        written to disk.
+
+        Parameters
+        ----------
+        ref_id : `int`
+            Unique identifier for the reference object.
+        redshift : `float`
+            Redshift of the reference object.
+        unkn_ids : `numpy.ndarray`, (N,)
+            Unique ids of all objects with unknown redshift that are within
+            
+
+        Returns
+        -------
         """
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
@@ -218,13 +303,13 @@ class PairMaker(object):
             r_mask = np.logical_and(unkn_dists > r_min, unkn_dists < r_max)
 
             bin_unkn_ids = unkn_ids[r_mask]
-            bin_unkn_dist_weights = unkn_dists[r_mask]
+            bin_unkn_dists = unkn_dists[r_mask]
 
             if self.output_pair_file_name is not None:
                 hdf5_output_dict["scale_names"].append(scale_name)
                 hdf5_output_dict["%s_ids" % scale_name] = bin_unkn_ids
-                hdf5_output_dict["%s_dist_weights" % scale_name] = \
-                    bin_unkn_dist_weights
+                hdf5_output_dict["%s_dists" % scale_name] = \
+                    bin_unkn_dists
 
             output_row["%s_counts" % scale_name] = \
                 len(bin_unkn_ids)
@@ -234,11 +319,10 @@ class PairMaker(object):
         if self.output_pair_file_name is not None:
             if self.subproc is not None:
                 self.subproc.get()
-            self.subproc = self.hdf5_writer.apply_async(write_to_pairs_hdf5,
-                                                        (hdf5_output_dict,),
-                                                        error_callback=callback_error)
-            # write_to_pairs_hdf5(hdf5_output_dict)
-
+            self.subproc = self.hdf5_writer.apply_async(
+                write_to_pairs_hdf5,
+                (hdf5_output_dict,),
+                error_callback=error_callback)
         return output_row
 
     def _compute_weight(self, dists):
@@ -258,6 +342,6 @@ class PairMaker(object):
         weights : `numpy.ndarray`, (N,)
             Output weights.
         """
-        return np.where(dists > 0.001,
+        return np.where(dists > 0.01,
                         dists ** self.weight_power,
-                        0.001 ** self.weight_power)
+                        0.01 ** self.weight_power)
