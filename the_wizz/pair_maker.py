@@ -327,7 +327,7 @@ class PairMaker(object):
             output_row["%s_counts" % scale_name] = \
                 len(bin_unkn_ids)
             output_row["%s_weights" % scale_name] = \
-                bin_unkn_dist_weights.sum()
+                self._compute_weight(bin_unkn_dists).sum()
 
         if self.output_pair_file_name is not None:
             if self.subproc is not None:
