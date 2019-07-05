@@ -64,14 +64,14 @@ class TestPairMakerUtils(unittest.TestCase):
         for r_min, r_max in zip([0.1, 1], [1, 10]):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
 
-            self.assertEqual(output[0]["id"], ids[0])
-            self.assertEqual(output[0]["redshift"], redshifts[0])
+            self.assertEqual(output.iloc[0]["id"], ids[0])
+            self.assertEqual(output.iloc[0]["redshift"], redshifts[0])
 
-            tmp_weights = weights(np.logical_and(rs > r_min,
-                                                 rs < r_max))
-            self.assertEqual(output[0]["%s_counts" % scale_name],
+            tmp_weights = weights[np.logical_and(rs > r_min,
+                                                 rs < r_max)]
+            self.assertEqual(output.iloc[0]["%s_counts" % scale_name],
                              len(tmp_weights))
-            self.assertAlmostEqual(output[0]["%s_weights" % scale_name],
+            self.assertAlmostEqual(output.iloc[0]["%s_weights" % scale_name],
                                    tmp_weights.sum())
 
 
