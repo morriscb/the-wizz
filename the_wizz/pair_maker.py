@@ -78,6 +78,7 @@ def error_callback(exception):
     """
     raise exception
 
+
 class PairMaker(object):
     """Class for computing distance weighted correlations of a reference sample
     with known redshift against a sample with unknown redshifts.

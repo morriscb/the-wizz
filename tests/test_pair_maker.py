@@ -40,10 +40,40 @@ class TestPairMakerUtils(unittest.TestCase):
         pm = pair_maker.PairMaker([0.1, 1], [1, 10], self.z_min, self.z_max)
         output = pm.run(self.catalog, self.catalog)
 
-    def test_exact_weights(self):
+    def test_output_file(self):
         """
         """
         pass
+
+    def test_exact_weights(self):
+        """Test that the correct pair summary values are computed.
+        """
+        ids = np.arange(5)
+        decs = np.zeros(5)
+        ras = np.linspace(0, 500, 5) / 3600
+        redshifts = np.full(5, 2.0)
+        catalog = {"id": ids,
+                   "ra": ras,
+                   "dec": decs,
+                   "redshift": redshifts}
+        pm = pair_maker.PairMaker([0.1, 1], [1, 10], self.z_min, self.z_max)
+        output = pm.run(catalog, catalog)
+
+        rs = Planck15.comoving_distance(2.0).value * np.radians(ras)
+        weights = pm._compute_weight(rs)
+        for r_min, r_max in zip([0.1, 1], [1, 10]):
+            scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
+
+            self.assertEqual(output[0]["id"], ids[0])
+            self.assertEqual(output[0]["redshift"], redshifts[0])
+
+            tmp_weights = weights(np.logical_and(rs > r_min,
+                                                 rs < r_max))
+            self.assertEqual(output[0]["%s_counts" % scale_name],
+                             len(tmp_weights))
+            self.assertAlmostEqual(output[0]["%s_weights" % scale_name],
+                                   tmp_weights.sum())
+
 
     def test_query_tree(self):
         """Test that the correct number of points are matched in the kdtree.
