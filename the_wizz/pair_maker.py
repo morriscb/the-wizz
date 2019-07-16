@@ -64,7 +64,7 @@ def write_pairs(data):
                 log_dist_name, data=np.log10(dist_weights[id_sort_args]),
                 shape=ids.shape, dtype=np.float32,
                 chunks=True, compression='gzip', shuffle=True,
-                scaleoffset=3, compression_opts=9)
+                scaleoffset=4, compression_opts=9)
 
 
 def error_callback(exception):

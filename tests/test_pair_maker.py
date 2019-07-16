@@ -92,7 +92,7 @@ class TestPairMakerUtils(unittest.TestCase):
                     self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
                 else:
                     self.assertLess(np.fabs(pair_diff),
-                                    1 / data_row["%s_counts" % scale_name])
+                                    9 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
                 else:
@@ -103,9 +103,8 @@ class TestPairMakerUtils(unittest.TestCase):
                     tot_pair_diff += pair_diff
                 if np.isfinite(dist_diff):
                     tot_dist_diff += dist_diff
-            print("tot_diff", tot_pair_diff, tot_dist_diff)
-            self.assertAlmostEqual(tot_pair_diff / self.n_objects, 0, places=2)
-            self.assertAlmostEqual(tot_dist_diff / self.n_objects, 0, places=2)
+            self.assertAlmostEqual(tot_pair_diff / self.n_objects, 0, places=3)
+            self.assertAlmostEqual(tot_dist_diff / self.n_objects, 0, places=3)
 
     def test_exact_weights(self):
         """Test that the correct pair summary values are computed.
