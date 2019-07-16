@@ -18,7 +18,7 @@ class TestPairMakerUtils(unittest.TestCase):
 
         # Create a random catalog centered at the pole with a redshift
         # distribution that looks kind of like a mag limited sample.
-        self.n_objects = 1000
+        self.n_objects = 10000
         decs = np.degrees(
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
@@ -81,11 +81,17 @@ class TestPairMakerUtils(unittest.TestCase):
                                                  dists < r_max)]
                 n_pairs = len(sub_dists)
                 dist_weight = pm._compute_weight(sub_dists).sum()
-
-                self.assertEqual(n_pairs, data_row["%s_count" % scale_name])
-                self.assertAlmostEqual(dist_weight,
-                                       data_row["%s_weights" % scale_name],
-                                       places=3)
+                if n_pairs == 0:
+                    self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
+                else:
+                    self.assertLess(np.fabs(1 - n_pairs / data_row["%s_counts" % scale_name]),
+                                    10 / data_row["%s_counts" % scale_name])
+                if dist_weight == 0:
+                    self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
+                else:
+                    self.assertLess(np.fabs(1 - dist_weight / data_row["%s_weights" % scale_name]),
+                                    1 / data_row["%s_counts" % scale_name] *
+                                    data_row["%s_weights" % scale_name])
 
     def test_exact_weights(self):
         """Test that the correct pair summary values are computed.
