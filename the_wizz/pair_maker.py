@@ -11,7 +11,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 def write_to_pairs_hdf5(data):
     """Write raw pairs produced by pair maker to disk using HDF5.
 
-    Ids are losslessly compressed distances are stored as log, keeping 3
+    Ids are loss-lessly compressed distances are stored as log, keeping 3
     decimal digits.
 
     Parameters
@@ -40,32 +40,30 @@ def write_to_pairs_hdf5(data):
         ref_group = hdf5_file.create_group("data/%i" % data["id"])
         ref_group.attrs["redshift"] = data["redshift"]
 
-        for scale_name in data["scale_names"]:
+        id_name = "%s_ids" % data["scale_name"]
+        dist_name = "%s_dist" % data["scale_name"]
 
-            id_name = "%s_ids" % scale_name
-            dist_name = "%s_dist" % scale_name
+        ids = data[id_name]
+        dist_weights = data[dist_name].astype(np.float16)
 
-            ids = data[id_name]
-            dist_weights = data[dist_name].astype(np.float16)
+        id_sort_args = ids.argsort()
 
-            id_sort_args = ids.argsort()
-
-            if len(ids) <= 0:
-                ref_group.create_dataset(
-                    id_name, shape=ids.shape, dtype=np.uint64)
-                ref_group.create_dataset(
-                    dist_name, shape=ids.shape, dtype=np.float16)
-            else:
-                ref_group.create_dataset(
-                    id_name, data=ids[id_sort_args],
-                    shape=ids.shape, dtype=np.uint64,
-                    chunks=True, compression='gzip', shuffle=True,
-                    scaleoffset=0, compression_opts=9)
-                ref_group.create_dataset(
-                    dist_name, data=np.log(dist_weights[id_sort_args]),
-                    shape=ids.shape, dtype=np.float32,
-                    chunks=True, compression='gzip', shuffle=True,
-                    scaleoffset=3, compression_opts=9)
+        if len(ids) <= 0:
+            ref_group.create_dataset(
+                id_name, shape=ids.shape, dtype=np.uint64)
+            ref_group.create_dataset(
+                dist_name, shape=ids.shape, dtype=np.float16)
+        else:
+            ref_group.create_dataset(
+                id_name, data=ids[id_sort_args],
+                shape=ids.shape, dtype=np.uint64,
+                chunks=True, compression='gzip', shuffle=True,
+                scaleoffset=0, compression_opts=9)
+            ref_group.create_dataset(
+                dist_name, data=np.log(dist_weights[id_sort_args]),
+                shape=ids.shape, dtype=np.float32,
+                chunks=True, compression='gzip', shuffle=True,
+                scaleoffset=3, compression_opts=9)
 
 
 def error_callback(exception):
@@ -202,15 +200,19 @@ class PairMaker(object):
 
             # Compute angles and convert them to cosmo distances.
             matched_unkn_vects = unkn_vects[unkn_idxs]
-            cos_thetas = np.dot(matched_unkn_vects, ref_vect)
-            matched_unkn_dists = np.arccos(cos_thetas) * dist
             matched_unkn_ids = unkn_ids[unkn_idxs]
+            matched_unkn_dists = np.arccos(
+                np.dot(matched_unkn_vects, ref_vect)) * dist 
+            dist_mask = np.logical_and(matched_unkn_dists > self.r_min,
+                                       matched_unkn_dists < self.r_max)
+
 
             # Bin data and return counts/sum of weights in bins.
-            output_row = self._compute_bin_values(ref_id,
-                                                  redshift,
-                                                  matched_unkn_ids,
-                                                  matched_unkn_dists)
+            output_row = self._compute_bin_values(
+                ref_id,
+                redshift,
+                matched_unkn_ids[dist_mask],
+                matched_unkn_dists[dist_mask])
             output_data.append(output_row)
 
         if self.output_pair_file_name is not None:
@@ -286,6 +288,10 @@ class PairMaker(object):
             Redshift of the reference object.
         unkn_ids : `numpy.ndarray`, (N,)
             Unique ids of all objects with unknown redshift that are within
+            the distance r_min to r_max
+        unkn_dists : `numpy.ndarray`, (N,)
+            Distances in Mpc from the reference to the unknown objects between
+            r_min and r_max. 
 
 
         Returns
@@ -307,10 +313,7 @@ class PairMaker(object):
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
         if self.output_pair_file_name is not None:
-            hdf5_output_dict = dict([("id", ref_id),
-                                     ("redshift", redshift),
-                                     ("file_name", self.output_pair_file_name),
-                                     ("scale_names", [])])
+            self._subproc_write(ref_id, redshift, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
@@ -319,24 +322,11 @@ class PairMaker(object):
             bin_unkn_ids = unkn_ids[r_mask]
             bin_unkn_dists = unkn_dists[r_mask]
 
-            if self.output_pair_file_name is not None:
-                hdf5_output_dict["scale_names"].append(scale_name)
-                hdf5_output_dict["%s_ids" % scale_name] = bin_unkn_ids
-                hdf5_output_dict["%s_dists" % scale_name] = \
-                    bin_unkn_dists
-
             output_row["%s_counts" % scale_name] = \
                 len(bin_unkn_ids)
             output_row["%s_weights" % scale_name] = \
                 self._compute_weight(bin_unkn_dists).sum()
 
-        if self.output_pair_file_name is not None:
-            if self.subproc is not None:
-                self.subproc.get()
-            self.subproc = self.hdf5_writer.apply_async(
-                write_to_pairs_hdf5,
-                (hdf5_output_dict,),
-                error_callback=error_callback)
         return output_row
 
     def _compute_weight(self, dists):
@@ -359,3 +349,35 @@ class PairMaker(object):
         return np.where(dists > 0.01,
                         dists ** self.weight_power,
                         0.01 ** self.weight_power)
+
+    def _subproc_write(self, ref_id, redshift, unkn_ids, unkn_dists):
+        """Construct a dataformate of values to be written to disk via a
+        subprocess.
+
+        Parameters
+        ----------
+        ref_id : `int`
+            Unique identifier for the reference object.
+        redshift : `float`
+            Redshift of the reference object.
+        unkn_ids : `numpy.ndarray`, (N,)
+            Unique ids of all objects with unknown redshift that are within
+            the distance r_min to r_max
+        unkn_dists : `numpy.ndarray`, (N,)
+            Distances in Mpc from the reference to the unknown objects between
+            r_min and r_max. 
+        """
+        hdf5_output_dict = dict(
+            [("id", ref_id),
+             ("redshift", redshift),
+             ("file_name", self.output_pair_file_name),
+             ("scale_name", "Mpc%.2ft%.2f" % (self.r_min, self.r_max)),
+             ("%s_ids", unkn_ids),
+             ("%s_dists", unkn_dists)])
+
+        if self.subproc is not None:
+            self.subproc.get()
+        self.subproc = self.hdf5_writer.apply_async(
+            write_to_pairs_hdf5,
+            (hdf5_output_dict,),
+            error_callback=error_callback)
