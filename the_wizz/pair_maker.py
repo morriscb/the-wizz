@@ -378,8 +378,7 @@ class PairMaker(object):
 
         if self.subproc is not None:
             self.subproc.get()
-        # self.subproc = self.hdf5_writer.apply_async(
-        #     write_pairs,
-        #     (hdf5_output_dict,),
-        #     error_callback=error_callback)
-        write_pairs(hdf5_output_dict)
+        self.subproc = self.hdf5_writer.apply_async(
+            write_pairs,
+            (hdf5_output_dict,),
+            error_callback=error_callback)

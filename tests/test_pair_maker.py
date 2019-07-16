@@ -69,29 +69,39 @@ class TestPairMakerUtils(unittest.TestCase):
                                   output_pair_file_name=self.file_name)
         output = pm.run(self.catalog, self.catalog)
 
+
+
         hdf5_file = h5py.File(self.file_name, 'r')
 
-        for idx in range(100):
-            data_row = output.iloc[idx]
-            dists = np.exp(hdf5_file["data/%i/%s_log_dists" %
-                                     (data_row["id"], tot_scale_name)][...])
-            for r_min, r_max in zip(self.r_mins, self.r_maxes):
+        for r_min, r_max in zip(self.r_mins, self.r_maxes):
+            tot_pair_diff = 0
+            tot_dist_diff = 0
+            for idx in range(100):
+                data_row = output.iloc[idx]
+                dists = np.exp(hdf5_file["data/%i/%s_log_dists" %
+                                         (data_row["id"], tot_scale_name)][...])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
                 n_pairs = len(sub_dists)
                 dist_weight = pm._compute_weight(sub_dists).sum()
+
+                pair_diff = 1 - n_pairs / data_row["%s_counts" % scale_name]
+                dist_diff = 1 - dist_weight / data_row["%s_weights" % scale_name]
                 if n_pairs == 0:
                     self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
                 else:
-                    self.assertLess(np.fabs(1 - n_pairs / data_row["%s_counts" % scale_name]),
+                    self.assertLess(np.fabs(),
                                     12 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
                 else:
-                    self.assertLess(np.fabs(1 - dist_weight / data_row["%s_weights" % scale_name]),
+                    self.assertLess(np.fabs(),
                                     1 / data_row["%s_counts" % scale_name] *
                                     data_row["%s_weights" % scale_name])
+                tot_pair_diff += pair_diff
+                tot_dist_diff += dist_diff
+            print("tot_diff", tot_pair_diff, tot_dist_diff)
 
     def test_exact_weights(self):
         """Test that the correct pair summary values are computed.
