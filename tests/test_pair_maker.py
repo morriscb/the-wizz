@@ -85,7 +85,7 @@ class TestPairMakerUtils(unittest.TestCase):
                     self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
                 else:
                     self.assertLess(np.fabs(1 - n_pairs / data_row["%s_counts" % scale_name]),
-                                    10 / data_row["%s_counts" % scale_name])
+                                    12 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
                 else:
