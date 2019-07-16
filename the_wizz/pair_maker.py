@@ -366,13 +366,14 @@ class PairMaker(object):
             Distances in Mpc from the reference to the unknown objects between
             r_min and r_max. 
         """
+        scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         hdf5_output_dict = dict(
             [("id", ref_id),
              ("redshift", redshift),
              ("file_name", self.output_pair_file_name),
-             ("scale_name", "Mpc%.2ft%.2f" % (self.r_min, self.r_max)),
-             ("%s_ids", unkn_ids),
-             ("%s_dists", unkn_dists)])
+             ("scale_name", scale_name),
+             ("%s_ids" % scale_name, unkn_ids),
+             ("%s_dists" % scale_name, unkn_dists)])
 
         if self.subproc is not None:
             self.subproc.get()
