@@ -39,7 +39,7 @@ class TestPairMakerUtils(unittest.TestCase):
         self.r_mins = [0.1, 1]
         self.r_maxes = [1, 10]
         self.r_min = np.min(self.r_mins)
-        self.r_max = np.min(self.r_maxes)
+        self.r_max = np.max(self.r_maxes)
 
         self.tmp_file_handle, self.file_name = tempfile.mkstemp(
             dir=os.path.dirname(__file__))
@@ -73,6 +73,7 @@ class TestPairMakerUtils(unittest.TestCase):
 
         for idx in range(100):
             data_row = output.iloc[idx]
+            import pdb; pdb.set_trace()
             dists = np.exp(hdf5_file["data/%i/%s_log_dists" %
                                      (data_row["id"], scale_name)][...])
             for r_min, r_max in zip(self.r_mins, self.r_maxes):

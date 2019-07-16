@@ -41,7 +41,8 @@ def write_pairs(data):
         ref_group.attrs["redshift"] = data["redshift"]
 
         id_name = "%s_ids" % data["scale_name"]
-        dist_name = "%s_log_dists" % data["scale_name"]
+        dist_name = "%s_dists" % data["scale_name"]
+        log_dist_name = "%s_log_dists" % data["scale_name"]
 
         ids = data[id_name]
         dist_weights = data[dist_name].astype(np.float16)
@@ -52,7 +53,7 @@ def write_pairs(data):
             ref_group.create_dataset(
                 id_name, shape=ids.shape, dtype=np.uint64)
             ref_group.create_dataset(
-                dist_name, shape=ids.shape, dtype=np.float16)
+                log_dist_name, shape=ids.shape, dtype=np.float32)
         else:
             ref_group.create_dataset(
                 id_name, data=ids[id_sort_args],
@@ -60,7 +61,7 @@ def write_pairs(data):
                 chunks=True, compression='gzip', shuffle=True,
                 scaleoffset=0, compression_opts=9)
             ref_group.create_dataset(
-                dist_name, data=np.log(dist_weights[id_sort_args]),
+                log_dist_name, data=np.log(dist_weights[id_sort_args]),
                 shape=ids.shape, dtype=np.float32,
                 chunks=True, compression='gzip', shuffle=True,
                 scaleoffset=3, compression_opts=9)
@@ -377,7 +378,8 @@ class PairMaker(object):
 
         if self.subproc is not None:
             self.subproc.get()
-        self.subproc = self.hdf5_writer.apply_async(
-            write_pairs,
-            (hdf5_output_dict,),
-            error_callback=error_callback)
+        # self.subproc = self.hdf5_writer.apply_async(
+        #     write_pairs,
+        #     (hdf5_output_dict,),
+        #     error_callback=error_callback)
+        write_pairs(hdf5_output_dict)
