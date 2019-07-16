@@ -61,7 +61,7 @@ class TestPairMakerUtils(unittest.TestCase):
     def test_output_file(self):
         """Test writing and loading fro the output file. 
         """
-        scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
+        tot_scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         pm = pair_maker.PairMaker(self.r_mins,
                                   self.r_maxes,
                                   self.z_min,
@@ -73,12 +73,12 @@ class TestPairMakerUtils(unittest.TestCase):
 
         for idx in range(100):
             data_row = output.iloc[idx]
-            import pdb; pdb.set_trace()
             dists = np.exp(hdf5_file["data/%i/%s_log_dists" %
-                                     (data_row["id"], scale_name)][...])
+                                     (data_row["id"], tot_scale_name)][...])
             for r_min, r_max in zip(self.r_mins, self.r_maxes):
-                sub_dists = sub_dists[np.logical_and(dists > r_min,
-                                                     dists < r_max)]
+                scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
+                sub_dists = dists[np.logical_and(dists > r_min,
+                                                 dists < r_max)]
                 n_pairs = len(sub_dists)
                 dist_weight = pm._compute_weight(sub_dists).sum()
 
