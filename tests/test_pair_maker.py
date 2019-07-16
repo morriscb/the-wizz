@@ -78,7 +78,7 @@ class TestPairMakerUtils(unittest.TestCase):
             tot_dist_diff = 0
             for idx in range(self.n_objects):
                 data_row = output.iloc[idx]
-                dists =  10 ** (hdf5_file["data/%i/%s_log_dists" %
+                dists =  np.exp(hdf5_file["data/%i/%s_log_dists" %
                                           (data_row["id"], tot_scale_name)][...])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
@@ -92,7 +92,7 @@ class TestPairMakerUtils(unittest.TestCase):
                     self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
                 else:
                     self.assertLess(np.fabs(pair_diff),
-                                    9 / data_row["%s_counts" % scale_name])
+                                    3 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
                 else:

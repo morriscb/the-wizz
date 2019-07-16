@@ -61,7 +61,7 @@ def write_pairs(data):
                 chunks=True, compression='gzip', shuffle=True,
                 scaleoffset=0, compression_opts=9)
             ref_group.create_dataset(
-                log_dist_name, data=np.log10(dists[id_sort_args]),
+                log_dist_name, data=np.log(dists[id_sort_args]),
                 shape=ids.shape, dtype=np.float32,
                 chunks=True, compression='gzip', shuffle=True,
                 scaleoffset=4, compression_opts=9)
