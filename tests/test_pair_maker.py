@@ -1,6 +1,9 @@
 
 from astropy.cosmology import Planck15
+import h5py
+import os
 import numpy as np
+import tempfile
 import unittest
 
 from the_wizz import pair_maker
@@ -15,7 +18,7 @@ class TestPairMakerUtils(unittest.TestCase):
 
         # Create a random catalog centered at the pole with a redshift
         # distribution that looks kind of like a mag limited sample.
-        self.n_objects = 10000
+        self.n_objects = 1000
         decs = np.degrees(
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
@@ -33,17 +36,55 @@ class TestPairMakerUtils(unittest.TestCase):
         self.z_min = 0.05
         self.z_max = 3.0
 
+        self.r_mins = [0.1, 1]
+        self.r_maxes = [1, 10]
+        self.r_min = np.min(self.r_mins)
+        self.r_max = np.min(self.r_maxes)
+
+        self.tmp_file_handle, self.file_name = tempfile.mkstemp(
+            dir=os.path.dirname(__file__))
+
+    def tearDown(self):
+        del self.tmp_file_handle
+        os.remove(self.file_name)
+
     def test_run(self):
         """Test that the run method runs to completion and outputs expected
         values.
         """
-        pm = pair_maker.PairMaker([0.1, 1], [1, 10], self.z_min, self.z_max)
+        pm = pair_maker.PairMaker(self.r_mins,
+                                  self.r_maxes,
+                                  self.z_min,
+                                  self.z_max)
         output = pm.run(self.catalog, self.catalog)
 
     def test_output_file(self):
+        """Test writing and loading fro the output file. 
         """
-        """
-        pass
+        scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
+        pm = pair_maker.PairMaker(self.r_mins,
+                                  self.r_maxes,
+                                  self.z_min,
+                                  self.z_max,
+                                  output_pair_file_name=self.file_name)
+        output = pm.run(self.catalog, self.catalog)
+
+        hdf5_file = h5py.File(self.file_name, 'r')
+
+        for idx in range(100):
+            data_row = output.iloc[idx]
+            dists = np.exp(hdf5_file["data/%i/%s_log_dists" %
+                                     (data_row["id"], scale_name)][...])
+            for r_min, r_max in zip(self.r_mins, self.r_maxes):
+                sub_dists = sub_dists[np.logical_and(dists > r_min,
+                                                     dists < r_max)]
+                n_pairs = len(sub_dists)
+                dist_weight = pm._compute_weight(sub_dists).sum()
+
+                self.assertEqual(n_pairs, data_row["%s_count" % scale_name])
+                self.assertAlmostEqual(dist_weight,
+                                       data_row["%s_weights" % scale_name],
+                                       places=3)
 
     def test_exact_weights(self):
         """Test that the correct pair summary values are computed.
@@ -56,12 +97,15 @@ class TestPairMakerUtils(unittest.TestCase):
                    "ra": ras,
                    "dec": decs,
                    "redshift": redshifts}
-        pm = pair_maker.PairMaker([0.1, 1], [1, 10], self.z_min, self.z_max)
+        pm = pair_maker.PairMaker(self.r_mins,
+                                  self.r_maxes,
+                                  self.z_min,
+                                  self.z_max)
         output = pm.run(catalog, catalog)
 
         rs = Planck15.comoving_distance(2.0).value * np.radians(ras)
         weights = pm._compute_weight(rs)
-        for r_min, r_max in zip([0.1, 1], [1, 10]):
+        for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
 
             self.assertEqual(output.iloc[0]["id"], ids[0])

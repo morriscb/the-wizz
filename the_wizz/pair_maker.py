@@ -8,8 +8,8 @@ from scipy.spatial import cKDTree
 from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 
 
-def write_to_pairs_hdf5(data):
-    """Write raw pairs produced by pair maker to disk using HDF5.
+def write_pairs(data):
+    """Write raw pairs produced by pair maker to disk.
 
     Ids are loss-lessly compressed distances are stored as log, keeping 3
     decimal digits.
@@ -41,7 +41,7 @@ def write_to_pairs_hdf5(data):
         ref_group.attrs["redshift"] = data["redshift"]
 
         id_name = "%s_ids" % data["scale_name"]
-        dist_name = "%s_dist" % data["scale_name"]
+        dist_name = "%s_log_dists" % data["scale_name"]
 
         ids = data[id_name]
         dist_weights = data[dist_name].astype(np.float16)
@@ -190,7 +190,6 @@ class PairMaker(object):
         if self.output_pair_file_name is not None:
             self.hdf5_writer = Pool(1)
 
-        print("Starting iteration...")
         for ref_vect, redshift, dist, ref_id in zip(ref_vects,
                                                     redshifts,
                                                     dists,
@@ -378,6 +377,6 @@ class PairMaker(object):
         if self.subproc is not None:
             self.subproc.get()
         self.subproc = self.hdf5_writer.apply_async(
-            write_to_pairs_hdf5,
+            write_pairs,
             (hdf5_output_dict,),
             error_callback=error_callback)
