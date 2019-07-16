@@ -78,8 +78,8 @@ class TestPairMakerUtils(unittest.TestCase):
             tot_dist_diff = 0
             for idx in range(self.n_objects):
                 data_row = output.iloc[idx]
-                dists = np.exp(hdf5_file["data/%i/%s_log_dists" %
-                                         (data_row["id"], tot_scale_name)][...])
+                dists =  10 ** (hdf5_file["data/%i/%s_log_dists" %
+                                          (data_row["id"], tot_scale_name)][...])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
@@ -92,7 +92,7 @@ class TestPairMakerUtils(unittest.TestCase):
                     self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
                 else:
                     self.assertLess(np.fabs(pair_diff),
-                                    12 / data_row["%s_counts" % scale_name])
+                                    1 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
                 else:
@@ -104,8 +104,8 @@ class TestPairMakerUtils(unittest.TestCase):
                 if np.isfinite(dist_diff):
                     tot_dist_diff += dist_diff
             print("tot_diff", tot_pair_diff, tot_dist_diff)
-            self.assertAlmostEqual(tot_pair_diff / self.n_objects, 0, places=4)
-            self.assertAlmostEqual(tot_dist_diff / self.n_objects, 0, places=4)
+            self.assertAlmostEqual(tot_pair_diff / self.n_objects, 0, places=2)
+            self.assertAlmostEqual(tot_dist_diff / self.n_objects, 0, places=2)
 
     def test_exact_weights(self):
         """Test that the correct pair summary values are computed.
