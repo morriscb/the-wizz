@@ -70,7 +70,12 @@ class TestPairMakerUtils(unittest.TestCase):
 
         print(output.iloc[random_idx])
 
-        expected_values = np.zeros(len(self.expected_columns))
+        expected_values = [708,
+                           0.620252,
+                           4,
+                           6.528845,
+                           531,
+                           133.259605]
         for col, val in zip(self.expected_columns, expected_values):
             pd_val = output.iloc[random_idx][col]
             if col == "id":
