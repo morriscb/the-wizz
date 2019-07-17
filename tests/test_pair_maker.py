@@ -66,9 +66,9 @@ class TestPairMakerUtils(unittest.TestCase):
                                   self.z_max)
         output = pm.run(self.catalog, self.catalog)
 
-        random_index = np.random.int(self.n_objects)
+        random_idx = np.random.randint(self.n_objects)
 
-        print(output.iloc[random_index])
+        print(output.iloc[random_idx])
 
         expected_values = np.zeros(len(self.expected_columns))
         for col, val in zip(self.expected_columns, expected_values):
