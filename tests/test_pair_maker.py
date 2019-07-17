@@ -68,12 +68,10 @@ class TestPairMakerUtils(unittest.TestCase):
 
         random_idx = np.random.randint(self.n_objects)
 
-        print(output.iloc[random_idx])
-
         expected_values = [708,
-                           0.620252,
+                           0.6202522969616155,
                            4,
-                           6.528845,
+                           6.52884524482144,
                            531,
                            133.259605]
         for col, val in zip(self.expected_columns, expected_values):
