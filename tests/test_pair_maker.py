@@ -41,6 +41,14 @@ class TestPairMakerUtils(unittest.TestCase):
         self.r_min = np.min(self.r_mins)
         self.r_max = np.max(self.r_maxes)
 
+        self.expected_columns = ["id",
+                                 "redshift"]
+        for r_min, r_max in zip(self.r_mins, self.r_maxes):
+            self.expected_columns.append("Mpc%.2ft%.2f_counts" %
+                                         (r_min, r_max))
+            self.expected_columns.append("Mpc%.2ft%.2f_weights" %
+                                         (r_min, r_max))
+
         self.tmp_file_handle, self.file_name = tempfile.mkstemp(
             dir=os.path.dirname(__file__))
 
@@ -49,14 +57,27 @@ class TestPairMakerUtils(unittest.TestCase):
         os.remove(self.file_name)
 
     def test_run(self):
-        """Test that the run method runs to completion and outputs expected
-        values.
+        """Smoke test that the run method runs to completion and outputs
+        expected values.
         """
         pm = pair_maker.PairMaker(self.r_mins,
                                   self.r_maxes,
                                   self.z_min,
                                   self.z_max)
         output = pm.run(self.catalog, self.catalog)
+
+        random_index = np.random.int(self.n_objects)
+
+        print(output.iloc[random_index])
+
+        expected_values = np.zeros(len(self.expected_columns))
+        for col, val in zip(self.expected_columns, expected_values):
+            pd_val = output.iloc[random_idx][col]
+            if col == "id":
+                self.assertEqual(pd_val, val)
+            else:
+                self.assertAlmostEqual(pd_val, val)
+
 
     def test_output_file(self):
         """Test writing and loading fro the output file. 
@@ -69,8 +90,6 @@ class TestPairMakerUtils(unittest.TestCase):
                                   output_pair_file_name=self.file_name)
         output = pm.run(self.catalog, self.catalog)
 
-
-
         hdf5_file = h5py.File(self.file_name, 'r')
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
@@ -78,8 +97,9 @@ class TestPairMakerUtils(unittest.TestCase):
             tot_dist_diff = 0
             for idx in range(self.n_objects):
                 data_row = output.iloc[idx]
-                dists =  np.exp(hdf5_file["data/%i/%s_log_dists" %
-                                          (data_row["id"], tot_scale_name)][...])
+                dists =  np.exp(
+                    hdf5_file["data/%i/%s_log_dists" %
+                              (data_row["id"], tot_scale_name)][...])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
@@ -87,14 +107,17 @@ class TestPairMakerUtils(unittest.TestCase):
                 dist_weight = pm._compute_weight(sub_dists).sum()
 
                 pair_diff = 1 - n_pairs / data_row["%s_counts" % scale_name]
-                dist_diff = 1 - dist_weight / data_row["%s_weights" % scale_name]
+                dist_diff = 1 - dist_weight / data_row["%s_weights" %
+                                                       scale_name]
                 if n_pairs == 0:
-                    self.assertEqual(n_pairs, data_row["%s_counts" % scale_name])
+                    self.assertEqual(n_pairs,
+                                     data_row["%s_counts" % scale_name])
                 else:
                     self.assertLess(np.fabs(pair_diff),
                                     3 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
-                    self.assertEqual(dist_weight, data_row["%s_weights" % scale_name])
+                    self.assertEqual(dist_weight,
+                                     data_row["%s_weights" % scale_name])
                 else:
                     self.assertLess(np.fabs(dist_diff),
                                     1 / data_row["%s_counts" % scale_name] *
