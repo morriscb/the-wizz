@@ -49,10 +49,10 @@ class TestPDFMaker(unittest.TestCase):
         """
         pass
 
-    def bin_data(self):
+    def test_bin_data(self):
         """
         """
-        pass
+        pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
 
     def test_compute_correlation(self):
         """Test computing correlations.
@@ -82,8 +82,48 @@ class TestPDFMaker(unittest.TestCase):
             self.assertEqual(weight, 8 - 1)
 
     def test_create_bin_edges(self):
-        pass
+        pdf_linear = pdf_maker.PDFMaker(self.z_min, self.z_max, 10, "linear")
+        test_linear = np.linear(self.z_min, self.z_max, 11)
+        self.assertEqual(pdf_linear.z_min, 0.0)
+        self.assertEqual(pdf_linear.z_max, 1.1)
+        self.assertEqual(pdf_linear.bins, 10)
+        self.assertEqual(pdf_linear.binning_type, "linear")
+        for pdf_edge, test_edge in zip(pdf_linear.bin_edges, test_linear):
+            self.assertAlmostEqual(pdf_edge, test_edge)
 
+        log_z_min = np.log(1 + self.z_min)
+        log_z_max = np.log(1 + self.z_max)
+        pdf_log = pdf_maker.PDFMaker(self.z_min, self.z_max, 10, "log")
+        test_log = np.linear(log_z_min, log_z_max, 11)
+        self.assertEqual(pdf_log.z_min, 0.0)
+        self.assertEqual(pdf_log.z_max, 1.1)
+        self.assertEqual(pdf_log.bins, 10)
+        self.assertEqual(pdf_log.binning_type, "linear")
+        for pdf_edge, test_edge in zip(np.log(1 + pdf_log.bin_edges),
+                                       test_log):
+            self.assertAlmostEqual(pdf_edge, test_edge)
+
+        cov_z_min = Planck15.comoving_distance(self.z_min)
+        cov_z_max = Planck15.comoving_distance(self.z_max)
+        pdf_cov = pdf_maker.PDFMaker(self.z_min, self.z_max, 10, "log")
+        test_cov = np.linear(cov_z_min, cov_z_max, 11)
+        self.assertEqual(pdf_cov.z_min, 0.0)
+        self.assertEqual(pdf_cov.z_max, 1.1)
+        self.assertEqual(pdf_cov.bins, 10)
+        self.assertEqual(pdf_log.binning_type, "linear")
+        for pdf_edge, test_edge in zip(Planck15.comoving_distance(
+                                            pdf_cov.bin_edges),
+                                       test_cov):
+            self.assertAlmostEqual(pdf_edge, test_edge)
+
+        pdf_custom = pdf_maker.PDFMaker(self.z_min,
+                                      self.z_max,
+                                      np.linspace(1.1, 2.2, 11),
+                                      "linear")
+        self.assertEqual(pdf_custom.z_min, 1.1)
+        self.assertEqual(pdf_custom.z_max, 2.2)
+        self.assertEqual(pdf_custom.bins, 10)
+        self.assertEqual(pdf_custom.binning_type, "custom")
 
 if __name__ == "__main__":
 
