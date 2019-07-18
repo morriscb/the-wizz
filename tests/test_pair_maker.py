@@ -9,7 +9,7 @@ import unittest
 from the_wizz import pair_maker
 
 
-class TestPairMakerUtils(unittest.TestCase):
+class TestPairMaker(unittest.TestCase):
 
     def setUp(self):
 
