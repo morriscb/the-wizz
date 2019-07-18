@@ -81,7 +81,6 @@ class TestPairMakerUtils(unittest.TestCase):
             else:
                 self.assertAlmostEqual(pd_val, val)
 
-
     def test_output_file(self):
         """Test writing and loading fro the output file. 
         """

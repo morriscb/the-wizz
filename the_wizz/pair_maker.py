@@ -5,7 +5,6 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
-from scipy.interpolate import InterpolatedUnivariateSpline as InterpSpline
 
 
 def write_pairs(data):
@@ -175,6 +174,7 @@ class PairMaker(object):
             np.radians(unknown_catalog["dec"]))
         unkn_tree = cKDTree(unkn_vects)
         unkn_ids = unknown_catalog["id"]
+        total_unknown = len(unkn_ids)
 
         redshifts = reference_catalog["redshift"]
         z_mask = np.logical_and(redshifts > self.z_min, redshifts < self.z_max)
@@ -213,6 +213,7 @@ class PairMaker(object):
                 redshift,
                 matched_unkn_ids[dist_mask],
                 matched_unkn_dists[dist_mask])
+            output_row["tot_sample"] = total_unknown
             output_data.append(output_row)
 
         if self.output_pair_file_name is not None:
