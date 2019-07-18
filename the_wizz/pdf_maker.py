@@ -39,6 +39,7 @@ class PDFMaker(object):
                  bins=10,
                  binning_type='linear',
                  scale_name="Mpc1.00t10.00"):
+        self.scale_name = scale_name
         self.z_min = z_min
         self.z_max = z_max
         self.bins = bins
@@ -54,24 +55,17 @@ class PDFMaker(object):
         else:
             raise TypeError("Input bins not valid type. Use int or ndarray.")
 
-    def _create_bin_edges(self, bins, binning_type):
+    def _create_bin_edges(self):
         """Compute bin edges in redshift using different prescriptions.
-
-        Parameters
-        ----------
-        bins : `int`
-            Number of bins to create
-        binning_type : `str`
-            Type of binning to create
         """
-        if binning_type == "linear":
+        if self.binning_type == "linear":
             self.bin_edges = np.linspace(self.z_min, self.z_max, self.bins + 1)
-        elif binning_type == "log":
+        elif self.binning_type == "log":
             log_min = np.log(1 + self.z_min)
             log_max = np.log(1 + self.z_max)
             log_edges = np.linspace(log_min, log_max, self.bins + 1)
             self.bin_edges = np.exp(log_edges) - 1
-        elif binning_type == "comoving":
+        elif self.binning_type == "comoving":
             cov_min = Planck15.comoving_distance(self.z_min).value
             cov_max = Planck15.comoving_distance(self.z_max).value
             cov_edges = np.linspace(cov_min, cov_max, self.bins + 1)
@@ -230,8 +224,8 @@ class PDFMaker(object):
             weighted counts.
         """
         rand_ratio = random["tot_sample"] / data["tot_sample"]
-        count_corr = (data["counts" % self.scale_name] * rand_ratio / 
-                       random["counts" % self.scale_name] - 1)
-        weight_corr = (data["weights" % self.scale_name] * rand_corr / 
-                       random["weights" % self.scale_name] - 1)
+        count_corr = (data["counts"] * rand_ratio / 
+                      random["counts"] - 1)
+        weight_corr = (data["weights"] * rand_ratio / 
+                       random["weights"] - 1)
         return count_corr, weight_corr

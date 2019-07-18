@@ -10,9 +10,9 @@ from the_wizz import pair_maker
 from the_wizz import pdf_maker
 
 
-class TestPDFMakerUtils(unittest.TestCase):
+class TestPDFMaker(unittest.TestCase):
 
-    def setup(self):
+    def setUp(self):
         # Seed all random numbers for reproducibility.
         np.random.seed(1234)
 
@@ -54,7 +54,7 @@ class TestPDFMakerUtils(unittest.TestCase):
         """
         pass
 
-    def compute_correlation(self):
+    def test_compute_correlation(self):
         """Test computing correlations.
         """
         count = np.random.randint(100)
@@ -78,8 +78,8 @@ class TestPDFMakerUtils(unittest.TestCase):
         for idx in range(5):
             count = count_corr[idx]
             weight = weight_corr[idx]
-            self.assertEqual(count, 4)
-            self.assertEqual(count, 8)
+            self.assertEqual(count, 4 - 1)
+            self.assertEqual(weight, 8 - 1)
 
     def test_create_bin_edges(self):
         pass
