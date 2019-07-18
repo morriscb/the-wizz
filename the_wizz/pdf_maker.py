@@ -48,7 +48,7 @@ class PDFMaker(object):
             self.z_min = np.min(bins)
             self.z_max = np.max(bins)
             self.bin_edges = bins
-            self.bins = len(self.bin_edges)
+            self.bins = len(self.bin_edges) - 1
             self.binning_type = "custom"
         elif isinstance(bins, int):
             self._create_bin_edges()
