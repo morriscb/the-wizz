@@ -69,8 +69,12 @@ class PDFMaker(object):
             cov_min = Planck15.comoving_distance(self.z_min).value
             cov_max = Planck15.comoving_distance(self.z_max).value
             cov_edges = np.linspace(cov_min, cov_max, self.bins + 1)
-            self.bin_edges = z_at_value(Planck15.comoving_distance,
-                                        cov_edges * u.Mpc)
+
+            tmp_edges = []
+            for cov_edge in cov_edges:
+                tmp_edges.append(z_at_value(Planck15.comoving_distance,
+                                            cov_edge * u.Mpc))
+            self.bin_edges = np.array(tmp_edges)
         else:
             raise TypeError("Requested binning type is invalid. Use either "
                             "'linear', 'log', 'comoving'. Custom bins can be "
