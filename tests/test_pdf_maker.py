@@ -80,22 +80,22 @@ class TestPDFMaker(unittest.TestCase):
              {"mean_redshift": 0.7, "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
               "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
-                                                       test_data):
+                                                       test_data.iterrows()):
             for val, test_val in zip(row, test_row):
-                self.assertEqual(val, test_val)
+                self.assertAlmostEqual(val, test_val)
 
         binned_data = pdf.bin_data(self.pairs, self.ref_weights)
         test_data = pd.DataFrame([
             {"mean_redshift": (0.2 * 1 + 0.4 * 0.5) / 1.5,
             "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
-             "counts": 7.5, "weights": 3.75, "n_ref": 2, "tot_sample": 10},
+             "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10},
             {"mean_redshift": (0.6 * 1 + 0.8 * 0.5) / 1.5,
             "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
-             "counts": 7.5, "weights": 3.75, "n_ref": 2, "tot_sample": 10}])
+             "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
-                                                       test_data):
+                                                       test_data.iterrows()):
             for val, test_val in zip(row, test_row):
-                self.assertEqual(val, test_val)
+                self.assertAlmostEqual(val, test_val)
 
     def test_compute_correlation(self):
         """Test computing correlations.

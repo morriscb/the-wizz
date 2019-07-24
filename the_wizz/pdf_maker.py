@@ -184,7 +184,7 @@ class PDFMaker(object):
                                 data["redshift"] < self.z_max)
         tmp_data = data[z_mask]
         tmp_weights = ref_weights[z_mask]
-        bin_number = np.digitize(data["redshift"], self.bin_edges)
+        bin_number = np.digitize(tmp_data["redshift"], self.bin_edges)
 
         total_sample = data.iloc[0]["tot_sample"]
 
