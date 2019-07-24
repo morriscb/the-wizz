@@ -33,7 +33,7 @@ class TestPDFMaker(unittest.TestCase):
                    "dec": decs,
                    "redshift": redshifts}
 
-        self.z_min = 0.01
+        self.z_min = 0.1
         self.z_max = 1.1
 
         pm = pair_maker.PairMaker([1], [10], self.z_min, self.z_max)
@@ -62,7 +62,16 @@ class TestPDFMaker(unittest.TestCase):
     def test_run(self):
         """
         """
-        pass
+        ref_unkn = self.pair_counts.copy()
+        ref_rand = self.pair_counts.copy()
+
+        ref_unkn.loc["Mpc1.00t10.00_counts"] *= 2
+        ref_unkn.loc["Mpc1.00t10.00_weights"] *= 2
+
+        pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
+        output = pdf.run(ref_unkn, ref_rand)
+
+        import pdb; pdb.set_trace()
 
     def test_run_bias_mitigation(self):
         """
