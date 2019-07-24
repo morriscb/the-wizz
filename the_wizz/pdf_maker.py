@@ -130,7 +130,7 @@ class PDFMaker(object):
         ref_unkn_binned["weighted_corr"] = ref_unkn_weight_corr
         ref_unkn_binned["corr_err"] = 1 / np.sqrt(ref_unkn_binned["counts"])
         ref_unkn_binned["weighted_corr_err"] = 1 / np.sqrt(
-            ref_unkn_binned["weight"])
+            ref_unkn_binned["weights"])
 
         ref_unkn_binned["rand_counts"] = ref_rand_binned["counts"]
         ref_unkn_binned["rand_weights"] = ref_rand_binned["weights"]
