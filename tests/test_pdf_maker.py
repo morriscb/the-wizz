@@ -39,6 +39,21 @@ class TestPDFMaker(unittest.TestCase):
         pm = pair_maker.PairMaker([1], [10], self.z_min, self.z_max)
         self.pair_counts = pm.run(catalog, catalog)
 
+        self.pairs = pd.DataFrame([
+            {"redshift": 0.2, "tot_sample": 10,
+             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+            {"redshift": 0.4, "tot_sample": 10,
+             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+            {"redshift": 0.6, "tot_sample": 10,
+             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+            {"redshift": 0.8, "tot_sample": 10,
+             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+            {"redshift": 1.0, "tot_sample": 10,
+             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+            {"redshift": 1.2, "tot_sample": 10,
+             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5}])
+        self.ref_weights = np.array([1., 0.5, 1., 0.5, 1, 0.5])
+
     def tearDown(self):
         """
         """
@@ -49,10 +64,38 @@ class TestPDFMaker(unittest.TestCase):
         """
         pass
 
+    def test_run_bias_mitigation(self):
+        """
+        """
+        pass
+
     def test_bin_data(self):
+        """Test that binning the data and weighting a reference weight works.
         """
-        """
-        pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
+        pdf = pdf_maker.PDFMaker(0.0, 1.0, 2)
+        binned_data = pdf.bin_data(self.pairs)
+        test_data = pd.DataFrame([
+            {"mean_redshift": 0.3, "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
+             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10},
+             {"mean_redshift": 0.7, "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
+              "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10}])
+        for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
+                                                       test_data):
+            for val, test_val in zip(row, test_row):
+                self.assertEqual(val, test_val)
+
+        binned_data = pdf.bin_data(self.pairs, self.ref_weights)
+        test_data = pd.DataFrame([
+            {"mean_redshift": (0.2 * 1 + 0.4 * 0.5) / 1.5,
+            "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
+             "counts": 7.5, "weights": 3.75, "n_ref": 2, "tot_sample": 10},
+            {"mean_redshift": (0.6 * 1 + 0.8 * 0.5) / 1.5,
+            "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
+             "counts": 7.5, "weights": 3.75, "n_ref": 2, "tot_sample": 10}])
+        for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
+                                                       test_data):
+            for val, test_val in zip(row, test_row):
+                self.assertEqual(val, test_val)
 
     def test_compute_correlation(self):
         """Test computing correlations.
@@ -82,6 +125,8 @@ class TestPDFMaker(unittest.TestCase):
             self.assertEqual(weight, 8 - 1)
 
     def test_create_bin_edges(self):
+        """Test that all binning types produce predictable results.
+        """
         pdf_linear = pdf_maker.PDFMaker(self.z_min, self.z_max, 10, "linear")
         test_linear = np.linspace(self.z_min, self.z_max, 11)
         self.assertEqual(pdf_linear.z_min, self.z_min)

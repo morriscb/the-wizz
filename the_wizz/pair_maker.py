@@ -177,7 +177,8 @@ class PairMaker(object):
         total_unknown = len(unkn_ids)
 
         redshifts = reference_catalog["redshift"]
-        z_mask = np.logical_and(redshifts > self.z_min, redshifts < self.z_max)
+        z_mask = np.logical_and(redshifts >= self.z_min,
+                                redshifts < self.z_max)
         ref_ids = reference_catalog["id"][z_mask]
         ref_vects = self._convert_radec_to_xyz(
             np.radians(reference_catalog["ra"][z_mask]),
@@ -203,8 +204,8 @@ class PairMaker(object):
             matched_unkn_ids = unkn_ids[unkn_idxs]
             matched_unkn_dists = np.arccos(
                 np.dot(matched_unkn_vects, ref_vect)) * dist 
-            dist_mask = np.logical_and(matched_unkn_dists > self.r_min,
-                                       matched_unkn_dists < self.r_max)
+            dist_mask = np.logical_and(matched_unkn_dists >= self.r_min,
+                                       matched_unkn_dists <  self.r_max)
 
 
             # Bin data and return counts/sum of weights in bins.
@@ -318,7 +319,7 @@ class PairMaker(object):
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
-            r_mask = np.logical_and(unkn_dists > r_min, unkn_dists < r_max)
+            r_mask = np.logical_and(unkn_dists >= r_min, unkn_dists < r_max)
 
             bin_unkn_ids = unkn_ids[r_mask]
             bin_unkn_dists = unkn_dists[r_mask]

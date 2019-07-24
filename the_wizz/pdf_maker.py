@@ -142,6 +142,7 @@ class PDFMaker(object):
                 ref_ref_binned, ref_rand_binned)
 
             n_z_s = ref_unkn_binned["n_ref"] / ref_unkn_binned["dz"]
+            n_z_s /=  ref_ref_binned["tot_sample"]
             ref_unkn_binned["n_z_bu_bs"] = (n_z_s * 
                                             ref_unkn_weight_corr /
                                             ref_ref_w_corr)
@@ -185,7 +186,7 @@ class PDFMaker(object):
         tmp_weights = ref_weights[z_mask]
         bin_number = np.digitize(data["redshift"], self.bin_edges)
 
-        total_sample = data.loc[0, "tot_sample"]
+        total_sample = data.iloc[0]["tot_sample"]
 
         output_data = []
         for z_bin in range(self.bins):
@@ -200,10 +201,10 @@ class PDFMaker(object):
                         "z_max": self.bin_edges[z_bin + 1],
                         "dz": dz,
                         "counts": np.sum(bin_data["%s_counts" % 
-                                                   self.scale_name]),
+                                                  self.scale_name]),
                         "weights": np.sum(bin_data["%s_weights" % 
-                                                  self.scale_name] *
-                                         bin_weights),
+                                                   self.scale_name] *
+                                          bin_weights),
                         "n_ref": len(bin_data),
                         "tot_sample": total_sample}
             output_data.append(row_dict)
