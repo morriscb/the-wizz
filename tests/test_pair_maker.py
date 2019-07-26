@@ -82,7 +82,7 @@ class TestPairMaker(unittest.TestCase):
                 self.assertAlmostEqual(pd_val, val)
 
     def test_output_file(self):
-        """Test writing and loading fro the output file. 
+        """Test writing and loading fro the output file.
         """
         tot_scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         pm = pair_maker.PairMaker(self.r_mins,
@@ -99,7 +99,7 @@ class TestPairMaker(unittest.TestCase):
             tot_dist_diff = 0
             for idx in range(self.n_objects):
                 data_row = output.iloc[idx]
-                dists =  np.exp(
+                dists = np.exp(
                     hdf5_file["data/%i/%s_log_dists" %
                               (data_row["id"], tot_scale_name)][...])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
@@ -162,7 +162,6 @@ class TestPairMaker(unittest.TestCase):
                              len(tmp_weights))
             self.assertAlmostEqual(output.iloc[0]["%s_weights" % scale_name],
                                    tmp_weights.sum())
-
 
     def test_query_tree(self):
         """Test that the correct number of points are matched in the kdtree.

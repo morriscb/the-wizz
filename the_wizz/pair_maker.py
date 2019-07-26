@@ -66,6 +66,58 @@ def write_pairs(data):
                 scaleoffset=4, compression_opts=9)
 
 
+def write_pairs_parquet(data):
+    """Write raw pairs produced by pair maker to disk.
+
+    Ids are loss-lessly compressed distances are stored as log, keeping 3
+    decimal digits.
+
+    Parameters
+    ----------
+    data : `dict`
+        Dictionary of data produced by the PairMaker class.
+        Dictionary has should have following keys:
+
+        ``"file_name"``
+            File name of the file to write to. (`str`)
+        ``"id"``
+            Id of the reference object. (`int`)
+        ``"redshift"``
+            Redshift of the reference object. (`float`)
+        ``"scale_names"``
+            Names of the scales run in pair_maker. Formated e.g.
+            'Mpc1.00t10.00' (`list`)
+        ``"'scale_name'_ids"``
+            Unique ids of unknown objects within annulus 'scale_name' around
+            the reference object (`numpy.ndarray`, (N,))
+        ``"'scale_name'_dists"``
+            Distance to unknown object with id in 'scale_name'_ids
+            (`numpy.ndarray`, (N,))
+    """
+    id_name = "%s_id" % data["scale_name"]
+    dist_name = "%s_dists" % data["scale_name"]
+    log_dist_name = "%s_comp_log_dist" % data["scale_name"]
+
+    ids = data[id_name]
+    id_sort_args = ids.argsort()
+
+    dists = data[dist_name]
+    comp_log_dists = int(np.log(dists) * 10 ** 4)
+
+    n_pairs = len(ids)
+    ref_ids = np.full(n_pairs, np.data["id"])
+    ref_redshifts = np.full(n_pairs, data["redshift"])
+
+    out_df = pd.DataFrame(data={"ref_id": ref_ids,
+                                "redshift": ref_redshifts,
+                                id_name: ids[id_sort_args],
+                                log_dist_name: comp_log_dists[id_sort_args]})
+    out_df.to_parquet(data["file_name"],
+                      compression='gzip',
+                      index=False,
+                      partition_cols=["ref_id"])
+
+
 def error_callback(exception):
     """Simple function to propagate errors from multiprocessing.Process
     objects.
@@ -313,7 +365,7 @@ class PairMaker(object):
         """
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
-        if self.output_pair_file_name is not None:
+        if self.output_pair_file_name is not None and len(unkn_ids > 0):
             self._subproc_write(ref_id, redshift, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
@@ -380,6 +432,6 @@ class PairMaker(object):
         if self.subproc is not None:
             self.subproc.get()
         self.subproc = self.hdf5_writer.apply_async(
-            write_pairs,
+            write_pairs_parquet,
             (hdf5_output_dict,),
             error_callback=error_callback)
