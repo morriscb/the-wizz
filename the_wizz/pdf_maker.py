@@ -146,7 +146,7 @@ class PDFMaker(object):
             ref_unkn_binned["n_z_bu_bs_err"] = n_z_s * np.sqrt(
                 (ref_unkn_binned["weighted_corr_err"] / ref_ref_w_corr) ** 2 +
                 (ref_unkn_weight_corr /
-                 (np.sqrt(ref_ref_binned["weight"]) *
+                 (np.sqrt(ref_ref_binned["weights"]) *
                   ref_ref_w_corr ** 2)) ** 2)
 
             ref_unkn_binned["ref_counts"] = ref_ref_binned["counts"]

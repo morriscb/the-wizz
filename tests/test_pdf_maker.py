@@ -88,11 +88,11 @@ class TestPDFMaker(unittest.TestCase):
         ref_ref.loc[:, "Mpc1.00t10.00_weights"] *= 2
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
-        output = pdf.run(ref_unkn, ref_rand)
+        output = pdf.run(ref_unkn, ref_rand, ref_ref)
 
         n_z_s = (output["n_ref"] / output["tot_sample"]) / output["dz"]
 
-        for out_idx, row, n_z in zip(output.iterrows(), n_z_s):
+        for (out_idx, row), n_z in zip(output.iterrows(), n_z_s):
             self.assertAlmostEqual(row["corr"], 1.)
             self.assertAlmostEqual(row["weighted_corr"], 1.)
             self.assertAlmostEqual(row["n_z_bu_bs"], n_z)
