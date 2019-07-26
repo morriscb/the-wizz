@@ -1,14 +1,12 @@
 
 from astropy.cosmology import Planck15, z_at_value
 import astropy.units as u
-import h5py
-from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
 
 class PDFMaker(object):
-    """Class to estimate the raw, clustering redshift over-desnity from the 
+    """Class to estimate the raw, clustering redshift over-desnity from the
     `pandas.DataFrame` output of pair_maker or pair_collapser.
 
     Parameters
@@ -122,7 +120,7 @@ class PDFMaker(object):
         """
         ref_unkn_binned = self.bin_data(ref_unkn, ref_weights)
         ref_rand_binned = self.bin_data(ref_rand, ref_weights)
-        
+
         ref_unkn_count_corr, ref_unkn_weight_corr = self.compute_correlation(
             ref_unkn_binned, ref_rand_binned)
 
@@ -142,13 +140,11 @@ class PDFMaker(object):
                 ref_ref_binned, ref_rand_binned)
 
             n_z_s = ref_unkn_binned["n_ref"] / ref_unkn_binned["dz"]
-            n_z_s /=  ref_ref_binned["tot_sample"]
-            ref_unkn_binned["n_z_bu_bs"] = (n_z_s * 
-                                            ref_unkn_weight_corr /
-                                            ref_ref_w_corr)
+            n_z_s /= ref_ref_binned["tot_sample"]
+            ref_unkn_binned["n_z_bu_bs"] = (
+                n_z_s * ref_unkn_weight_corr / ref_ref_w_corr)
             ref_unkn_binned["n_z_bu_bs_err"] = n_z_s * np.sqrt(
-                (ref_unkn_binned["weighted_corr_err"] /
-                 ref_ref_w_corr) ** 2 +
+                (ref_unkn_binned["weighted_corr_err"] / ref_ref_w_corr) ** 2 +
                 (ref_unkn_weight_corr /
                  (np.sqrt(ref_ref_binned["weight"]) *
                   ref_ref_w_corr ** 2)) ** 2)
@@ -158,7 +154,6 @@ class PDFMaker(object):
             ref_unkn_binned["tot_sample_ref"] = ref_ref_binned["tot_sample"]
 
         return ref_unkn_binned
-
 
     def bin_data(self, data, ref_weights=None):
         """Bin the reference data in the requested redshift bins.
@@ -200,9 +195,9 @@ class PDFMaker(object):
                         "z_min": self.bin_edges[z_bin],
                         "z_max": self.bin_edges[z_bin + 1],
                         "dz": dz,
-                        "counts": np.sum(bin_data["%s_counts" % 
+                        "counts": np.sum(bin_data["%s_counts" %
                                                   self.scale_name]),
-                        "weights": np.sum(bin_data["%s_weights" % 
+                        "weights": np.sum(bin_data["%s_weights" %
                                                    self.scale_name] *
                                           bin_weights),
                         "n_ref": len(bin_data),
@@ -229,8 +224,8 @@ class PDFMaker(object):
             weighted counts.
         """
         rand_ratio = random["tot_sample"] / data["tot_sample"]
-        count_corr = (data["counts"] * rand_ratio / 
-                      random["counts"] - 1)
-        weight_corr = (data["weights"] * rand_ratio / 
-                       random["weights"] - 1)
+        count_corr = (
+            data["counts"] * rand_ratio / random["counts"] - 1)
+        weight_corr = (
+            data["weights"] * rand_ratio / random["weights"] - 1)
         return count_corr, weight_corr

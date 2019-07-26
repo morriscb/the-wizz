@@ -26,8 +26,8 @@ def write_pairs(data):
         ``"redshift"``
             Redshift of the reference object. (`float`)
         ``"scale_names"``
-            Names of the scales run in pair_maker. Formated e.g. 'Mpc1.00t10.00' 
-            (`list`)
+            Names of the scales run in pair_maker. Formated e.g.
+            'Mpc1.00t10.00' (`list`)
         ``"'scale_name'_ids"``
             Unique ids of unknown objects within annulus 'scale_name' around
             the reference object (`numpy.ndarray`, (N,))
@@ -203,10 +203,9 @@ class PairMaker(object):
             matched_unkn_vects = unkn_vects[unkn_idxs]
             matched_unkn_ids = unkn_ids[unkn_idxs]
             matched_unkn_dists = np.arccos(
-                np.dot(matched_unkn_vects, ref_vect)) * dist 
+                np.dot(matched_unkn_vects, ref_vect)) * dist
             dist_mask = np.logical_and(matched_unkn_dists >= self.r_min,
-                                       matched_unkn_dists <  self.r_max)
-
+                                       matched_unkn_dists < self.r_max)
 
             # Bin data and return counts/sum of weights in bins.
             output_row = self._compute_bin_values(
@@ -293,7 +292,7 @@ class PairMaker(object):
             the distance r_min to r_max
         unkn_dists : `numpy.ndarray`, (N,)
             Distances in Mpc from the reference to the unknown objects between
-            r_min and r_max. 
+            r_min and r_max.
 
 
         Returns
@@ -367,7 +366,7 @@ class PairMaker(object):
             the distance r_min to r_max
         unkn_dists : `numpy.ndarray`, (N,)
             Distances in Mpc from the reference to the unknown objects between
-            r_min and r_max. 
+            r_min and r_max.
         """
         scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         hdf5_output_dict = dict(

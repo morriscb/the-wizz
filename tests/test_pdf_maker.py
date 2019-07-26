@@ -60,7 +60,7 @@ class TestPDFMaker(unittest.TestCase):
         pass
 
     def test_run(self):
-        """
+        """Test that final correlation values make sense.
         """
         ref_unkn = self.pair_counts.copy()
         ref_rand = self.pair_counts.copy()
@@ -71,12 +71,31 @@ class TestPDFMaker(unittest.TestCase):
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
         output = pdf.run(ref_unkn, ref_rand)
 
-        import pdb; pdb.set_trace()
+        for out_idx, row in output.iterrows():
+            self.assertAlmostEqual(row["corr"], 1.)
+            self.assertAlmostEqual(row["weighted_corr"], 1.)
 
     def test_run_bias_mitigation(self):
+        """Test that the calculations from bias mitigation make sense.
         """
-        """
-        pass
+        ref_unkn = self.pair_counts.copy()
+        ref_rand = self.pair_counts.copy()
+        ref_ref = self.pair_counts.copy()
+
+        ref_unkn.loc[:, "Mpc1.00t10.00_counts"] *= 2
+        ref_unkn.loc[:, "Mpc1.00t10.00_weights"] *= 2
+        ref_ref.loc[:, "Mpc1.00t10.00_counts"] *= 2
+        ref_ref.loc[:, "Mpc1.00t10.00_weights"] *= 2
+
+        pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
+        output = pdf.run(ref_unkn, ref_rand)
+
+        n_z_s = (output["n_ref"] / output["tot_sample"]) / output["dz"]
+
+        for out_idx, row, n_z in zip(output.iterrows(), n_z_s):
+            self.assertAlmostEqual(row["corr"], 1.)
+            self.assertAlmostEqual(row["weighted_corr"], 1.)
+            self.assertAlmostEqual(row["n_z_bu_bs"], n_z)
 
     def test_bin_data(self):
         """Test that binning the data and weighting a reference weight works.
@@ -86,8 +105,8 @@ class TestPDFMaker(unittest.TestCase):
         test_data = pd.DataFrame([
             {"mean_redshift": 0.3, "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
              "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10},
-             {"mean_redshift": 0.7, "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
-              "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10}])
+            {"mean_redshift": 0.7, "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
+             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
             for val, test_val in zip(row, test_row):
@@ -96,10 +115,10 @@ class TestPDFMaker(unittest.TestCase):
         binned_data = pdf.bin_data(self.pairs, self.ref_weights)
         test_data = pd.DataFrame([
             {"mean_redshift": (0.2 * 1 + 0.4 * 0.5) / 1.5,
-            "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
+             "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
              "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10},
             {"mean_redshift": (0.6 * 1 + 0.8 * 0.5) / 1.5,
-            "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
+             "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
              "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
@@ -165,19 +184,19 @@ class TestPDFMaker(unittest.TestCase):
         self.assertEqual(pdf_cov.z_max, self.z_max)
         self.assertEqual(pdf_cov.bins, 10)
         self.assertEqual(pdf_cov.binning_type, "comoving")
-        for pdf_edge, test_edge in zip(Planck15.comoving_distance(
-                                            pdf_cov.bin_edges).value,
-                                       test_cov):
+        comoving_edges = Planck15.comoving_distance(pdf_cov.bin_edges).value
+        for pdf_edge, test_edge in zip(comoving_edges, test_cov):
             self.assertAlmostEqual(pdf_edge / test_edge - 1, 0, places=6)
 
         pdf_custom = pdf_maker.PDFMaker(self.z_min,
-                                      self.z_max,
-                                      np.linspace(1.1, 2.2, 11),
-                                      "linear")
+                                        self.z_max,
+                                        np.linspace(1.1, 2.2, 11),
+                                        "linear")
         self.assertEqual(pdf_custom.z_min, 1.1)
         self.assertEqual(pdf_custom.z_max, 2.2)
         self.assertEqual(pdf_custom.bins, 10)
         self.assertEqual(pdf_custom.binning_type, "custom")
+
 
 if __name__ == "__main__":
 
