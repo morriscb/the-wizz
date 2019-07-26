@@ -101,13 +101,13 @@ def write_pairs_parquet(data):
     ids = data[id_name]
     id_sort_args = ids.argsort()
 
-    dists = data[dist_name]
-    comp_log_dists = int(np.log(dists) * 10 ** 4)
+    comp_log_dists = (np.log(data[dist_name]) * 10 ** 4).astype(np.uint32)
 
     n_pairs = len(ids)
-    ref_ids = np.full(n_pairs, np.data["id"])
-    ref_redshifts = np.full(n_pairs, data["redshift"])
+    ref_ids = np.full(n_pairs, data["id"], dtype=np.unit64)
+    ref_redshifts = np.full(n_pairs, data["redshift"], dtype=np.unit32)
 
+    id_sort_args = ids.argsort()
     out_df = pd.DataFrame(data={"ref_id": ref_ids,
                                 "redshift": ref_redshifts,
                                 id_name: ids[id_sort_args],
@@ -432,6 +432,6 @@ class PairMaker(object):
         if self.subproc is not None:
             self.subproc.get()
         self.subproc = self.hdf5_writer.apply_async(
-            write_pairs_parquet,
+            write_pairs,
             (hdf5_output_dict,),
             error_callback=error_callback)
