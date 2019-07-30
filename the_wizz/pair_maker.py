@@ -5,6 +5,10 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
+from time import time
+
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 def write_pairs(data):
@@ -82,8 +86,6 @@ def write_pairs_parquet(data):
             File name of the file to write to. (`str`)
         ``"id"``
             Id of the reference object. (`int`)
-        ``"redshift"``
-            Redshift of the reference object. (`float`)
         ``"scale_names"``
             Names of the scales run in pair_maker. Formated e.g.
             'Mpc1.00t10.00' (`list`)
@@ -94,22 +96,19 @@ def write_pairs_parquet(data):
             Distance to unknown object with id in 'scale_name'_ids
             (`numpy.ndarray`, (N,))
     """
-    id_name = "%s_id" % data["scale_name"]
+    id_name = "%s_ids" % data["scale_name"]
     dist_name = "%s_dists" % data["scale_name"]
     log_dist_name = "%s_comp_log_dist" % data["scale_name"]
 
     ids = data[id_name]
-    id_sort_args = ids.argsort()
 
-    comp_log_dists = (np.log(data[dist_name]) * 10 ** 4).astype(np.uint32)
+    comp_log_dists = (np.log(data[dist_name]) * 10 ** 4).astype(np.int32)
 
     n_pairs = len(ids)
-    ref_ids = np.full(n_pairs, data["id"], dtype=np.unit64)
-    ref_redshifts = np.full(n_pairs, data["redshift"], dtype=np.unit32)
+    ref_ids = np.full(n_pairs, data["id"], dtype=np.uint64)
 
     id_sort_args = ids.argsort()
     out_df = pd.DataFrame(data={"ref_id": ref_ids,
-                                "redshift": ref_redshifts,
                                 id_name: ids[id_sort_args],
                                 log_dist_name: comp_log_dists[id_sort_args]})
     out_df.to_parquet(data["file_name"],
@@ -161,13 +160,18 @@ class PairMaker(object):
                  z_max=5.00,
                  weight_power=-0.8,
                  distance_metric=None,
-                 output_pair_file_name=None):
+                 output_pair_file_name=None,
+                 n_write_proc=2,
+                 n_write_clean_up=100):
         self.r_mins = r_mins
         self.r_maxes = r_maxes
         self.r_min = np.min(r_mins)
         self.r_max = np.max(r_maxes)
         self.z_min = z_min
         self.z_max = z_max
+
+        self.n_write_proc = n_write_proc
+        self.n_write_clean_up = n_write_clean_up
 
         if distance_metric is None:
             distance_metric = Planck15.comoving_distance
@@ -240,9 +244,9 @@ class PairMaker(object):
 
         output_data = []
 
-        self.subproc = None
+        self.subprocs = []
         if self.output_pair_file_name is not None:
-            self.hdf5_writer = Pool(1)
+            self.hdf5_writer = Pool(self.n_write_proc)
 
         for ref_vect, redshift, dist, ref_id in zip(ref_vects,
                                                     redshifts,
@@ -365,7 +369,7 @@ class PairMaker(object):
         """
         output_row = dict([("id", ref_id), ("redshift", redshift)])
 
-        if self.output_pair_file_name is not None and len(unkn_ids > 0):
+        if self.output_pair_file_name is not None and len(unkn_ids) > 0:
             self._subproc_write(ref_id, redshift, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
@@ -411,8 +415,6 @@ class PairMaker(object):
         ----------
         ref_id : `int`
             Unique identifier for the reference object.
-        redshift : `float`
-            Redshift of the reference object.
         unkn_ids : `numpy.ndarray`, (N,)
             Unique ids of all objects with unknown redshift that are within
             the distance r_min to r_max
@@ -423,15 +425,17 @@ class PairMaker(object):
         scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         hdf5_output_dict = dict(
             [("id", ref_id),
-             ("redshift", redshift),
              ("file_name", self.output_pair_file_name),
              ("scale_name", scale_name),
              ("%s_ids" % scale_name, unkn_ids),
              ("%s_dists" % scale_name, unkn_dists)])
 
-        if self.subproc is not None:
-            self.subproc.get()
-        self.subproc = self.hdf5_writer.apply_async(
-            write_pairs,
+        if len(self.subprocs) >= self.n_write_clean_up:
+            for subproc in self.subprocs:
+                subproc.get()
+            self.subprocs = []
+        self.subprocs.append(self.hdf5_writer.apply_async(
+            write_pairs_parquet,
             (hdf5_output_dict,),
-            error_callback=error_callback)
+            error_callback=error_callback))
+        # write_pairs_parquet(hdf5_output_dict)

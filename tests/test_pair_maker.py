@@ -18,7 +18,7 @@ class TestPairMaker(unittest.TestCase):
 
         # Create a random catalog centered at the pole with a redshift
         # distribution that looks kind of like a mag limited sample.
-        self.n_objects = 10000
+        self.n_objects = 100000
         decs = np.degrees(
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
@@ -49,12 +49,15 @@ class TestPairMaker(unittest.TestCase):
             self.expected_columns.append("Mpc%.2ft%.2f_weights" %
                                          (r_min, r_max))
 
-        self.tmp_file_handle, self.file_name = tempfile.mkstemp(
+        # self.tmp_file_handle, self.file_name = tempfile.mkstemp(
+        #     dir=os.path.dirname(__file__))
+        self.file_name = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
 
     def tearDown(self):
-        del self.tmp_file_handle
-        os.remove(self.file_name)
+        # del self.tmp_file_handle
+        # os.remove(self.file_name)
+        pass
 
     def test_run(self):
         """Smoke test that the run method runs to completion and outputs
@@ -89,7 +92,8 @@ class TestPairMaker(unittest.TestCase):
                                   self.r_maxes,
                                   self.z_min,
                                   self.z_max,
-                                  output_pair_file_name=self.file_name)
+                                  n_write_proc=4,
+                                  output_pair_file_name="/project/morriscb/test_parquet")
         output = pm.run(self.catalog, self.catalog)
 
         hdf5_file = h5py.File(self.file_name, 'r')
