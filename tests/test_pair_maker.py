@@ -3,6 +3,7 @@ from astropy.cosmology import Planck15
 import h5py
 import os
 import numpy as np
+import pandas as pd
 import subprocess
 import tempfile
 import unittest
@@ -53,7 +54,8 @@ class TestPairMaker(unittest.TestCase):
             dir=os.path.dirname(__file__))
 
     def tearDown(self):
-        job = subproces.Popen("rm -rf " + self.output_path)
+        job = subprocess.Popen("rm -rf " + self.output_path,
+                               shell=True)
         job.wait()
         del job
 
@@ -90,11 +92,9 @@ class TestPairMaker(unittest.TestCase):
                                   self.r_maxes,
                                   self.z_min,
                                   self.z_max,
-                                  n_write_proc=4,
-                                  output_pair_file_name="/project/morriscb/test_parquet")
+                                  n_write_proc=2,
+                                  output_pair_file_name=self.output_path)
         output = pm.run(self.catalog, self.catalog)
-
-        hdf5_file = h5py.File(self.file_name, 'r')
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             tot_pair_diff = 0

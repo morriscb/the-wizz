@@ -178,7 +178,7 @@ class PairMaker(object):
         unkn_ids = unknown_catalog["id"]
         total_unknown = len(unkn_ids)
         try:
-            unkn_weights = unknow_catalog["weight"]
+            unkn_weights = unknown_catalog["weight"]
         except KeyError:
             unkn_weights = np.ones(total_unknown, dtype=np.float32)
 
@@ -202,11 +202,11 @@ class PairMaker(object):
         if self.output_pair_file_name is not None:
             self.hdf5_writer = Pool(self.n_write_proc)
 
-        for ref_vect, redshift, dist, ref_id ref_region in zip(ref_vects,
-                                                               redshifts,
-                                                               dists,
-                                                               ref_ids,
-                                                               ref_regions):
+        for ref_vect, redshift, dist, ref_id, ref_region in zip(ref_vects,
+                                                                redshifts,
+                                                                dists,
+                                                                ref_ids,
+                                                                ref_regions):
             # Query the unknown tree.
             unkn_idxs = np.array(self._query_tree(ref_vect, unkn_tree, dist))
 
@@ -344,7 +344,7 @@ class PairMaker(object):
                            ("region", region)])
 
         if self.output_pair_file_name is not None and len(unkn_ids) > 0:
-            self._subproc_write(ref_id, redshift, region, unkn_ids, unkn_dists)
+            self._subproc_write(ref_id, region, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
@@ -402,7 +402,7 @@ class PairMaker(object):
         scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         output_dict = dict(
             [("id", ref_id),
-             ("region", region)
+             ("region", region),
              ("file_name", self.output_pair_file_name),
              ("scale_name", scale_name),
              ("%s_ids" % scale_name, unkn_ids),
@@ -413,6 +413,6 @@ class PairMaker(object):
                 subproc.get()
             self.subprocs = []
         self.subprocs.append(self.hdf5_writer.apply_async(
-            write_pairs_parquet,
+            write_pairs,
             (output_dict,),
             error_callback=error_callback))
