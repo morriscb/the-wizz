@@ -27,65 +27,6 @@ def write_pairs(data):
             File name of the file to write to. (`str`)
         ``"id"``
             Id of the reference object. (`int`)
-        ``"redshift"``
-            Redshift of the reference object. (`float`)
-        ``"scale_names"``
-            Names of the scales run in pair_maker. Formated e.g.
-            'Mpc1.00t10.00' (`list`)
-        ``"'scale_name'_ids"``
-            Unique ids of unknown objects within annulus 'scale_name' around
-            the reference object (`numpy.ndarray`, (N,))
-        ``"'scale_name'_dists"``
-            Distance to unknown object with id in 'scale_name'_ids
-            (`numpy.ndarray`, (N,))
-    """
-    with h5py.File(data["file_name"], "a") as hdf5_file:
-        ref_group = hdf5_file.create_group("data/%i" % data["id"])
-        ref_group.attrs["redshift"] = data["redshift"]
-
-        id_name = "%s_ids" % data["scale_name"]
-        dist_name = "%s_dists" % data["scale_name"]
-        log_dist_name = "%s_log_dists" % data["scale_name"]
-
-        ids = data[id_name]
-        dists = data[dist_name]
-
-        id_sort_args = ids.argsort()
-
-        if len(ids) <= 0:
-            ref_group.create_dataset(
-                id_name, shape=ids.shape, dtype=np.uint64)
-            ref_group.create_dataset(
-                log_dist_name, shape=ids.shape, dtype=np.float32)
-        else:
-            ref_group.create_dataset(
-                id_name, data=ids[id_sort_args],
-                shape=ids.shape, dtype=np.uint64,
-                chunks=True, compression='gzip', shuffle=True,
-                scaleoffset=0, compression_opts=9)
-            ref_group.create_dataset(
-                log_dist_name, data=np.log(dists[id_sort_args]),
-                shape=ids.shape, dtype=np.float32,
-                chunks=True, compression='gzip', shuffle=True,
-                scaleoffset=4, compression_opts=9)
-
-
-def write_pairs_parquet(data):
-    """Write raw pairs produced by pair maker to disk.
-
-    Ids are loss-lessly compressed distances are stored as log, keeping 3
-    decimal digits.
-
-    Parameters
-    ----------
-    data : `dict`
-        Dictionary of data produced by the PairMaker class.
-        Dictionary has should have following keys:
-
-        ``"file_name"``
-            File name of the file to write to. (`str`)
-        ``"id"``
-            Id of the reference object. (`int`)
         ``"scale_names"``
             Names of the scales run in pair_maker. Formated e.g.
             'Mpc1.00t10.00' (`list`)
@@ -106,15 +47,17 @@ def write_pairs_parquet(data):
 
     n_pairs = len(ids)
     ref_ids = np.full(n_pairs, data["id"], dtype=np.uint64)
+    regions = np.full(n_pairs, data["region"], dtype=np.uint32)
 
     id_sort_args = ids.argsort()
     out_df = pd.DataFrame(data={"ref_id": ref_ids,
+                                "region": regions,
                                 id_name: ids[id_sort_args],
                                 log_dist_name: comp_log_dists[id_sort_args]})
     out_df.to_parquet(data["file_name"],
                       compression='gzip',
                       index=False,
-                      partition_cols=["ref_id"])
+                      partition_cols=["region", "ref_id"])
 
 
 def error_callback(exception):
@@ -151,7 +94,14 @@ class PairMaker(object):
         the Planck15 cosmology and comoving metric.
     output_pair_file_name : `string`
         Name of a file name to write raw pair counts and distances to. Spawns
-        a multiprocessing child task to write out data.
+        a multiprocessing child task to write out data.\
+    n_write_proc : `int`
+        If an output file name is specified, this sets the number of
+        subprocesses to spawn to write the data to disk.
+    n_write_clean_up : `int`
+        If an output file name is specified, this sets the number reference
+        objects to process before cleaning up the subprocess queue. Controls
+        the amount of memory on the main processes.
     """
     def __init__(self,
                  r_mins,
@@ -181,7 +131,7 @@ class PairMaker(object):
 
         self.output_pair_file_name = output_pair_file_name
 
-    def run(self, reference_catalog, unknown_catalog, use_unkn_weights=False):
+    def run(self, reference_catalog, unknown_catalog):
         """Find the (un)weighted pair counts between reference and unknown
         catalogs.
 
@@ -213,10 +163,6 @@ class PairMaker(object):
             ``"weight"``
                 OPTIONAL: If setting use_unkn_weights flag, weight to apply
                 to each unknown object. (`numpy.ndarray`, (N,))
-        use_unkn_weights : `bool`
-            Use unknown weights in output simple sum. Weights are not stored
-            in the pair file, only the `pandas.DataFrame` output by this
-            method.
 
         Returns
         -------
@@ -231,6 +177,10 @@ class PairMaker(object):
         unkn_tree = cKDTree(unkn_vects)
         unkn_ids = unknown_catalog["id"]
         total_unknown = len(unkn_ids)
+        try:
+            unkn_weights = unknow_catalog["weight"]
+        except KeyError:
+            unkn_weights = np.ones(total_unknown, dtype=np.float32)
 
         redshifts = reference_catalog["redshift"]
         z_mask = np.logical_and(redshifts >= self.z_min,
@@ -241,6 +191,10 @@ class PairMaker(object):
             np.radians(reference_catalog["dec"][z_mask]))
         redshifts = reference_catalog["redshift"][z_mask]
         dists = self.distance_metric(redshifts).value
+        try:
+            ref_regions = reference_catalog["region"]
+        except KeyError:
+            ref_regions = np.zeros(len(ref_ids), dtype=np.uint32)
 
         output_data = []
 
@@ -248,16 +202,16 @@ class PairMaker(object):
         if self.output_pair_file_name is not None:
             self.hdf5_writer = Pool(self.n_write_proc)
 
-        for ref_vect, redshift, dist, ref_id in zip(ref_vects,
-                                                    redshifts,
-                                                    dists,
-                                                    ref_ids):
+        for ref_vect, redshift, dist, ref_id ref_region in zip(ref_vects,
+                                                               redshifts,
+                                                               dists,
+                                                               ref_ids,
+                                                               ref_regions):
             # Query the unknown tree.
             unkn_idxs = np.array(self._query_tree(ref_vect, unkn_tree, dist))
 
             # Compute angles and convert them to cosmo distances.
             matched_unkn_vects = unkn_vects[unkn_idxs]
-            matched_unkn_ids = unkn_ids[unkn_idxs]
             matched_unkn_dists = np.arccos(
                 np.dot(matched_unkn_vects, ref_vect)) * dist
             dist_mask = np.logical_and(matched_unkn_dists >= self.r_min,
@@ -266,17 +220,29 @@ class PairMaker(object):
             # Bin data and return counts/sum of weights in bins.
             output_row = self._compute_bin_values(
                 ref_id,
+                ref_region,
                 redshift,
-                matched_unkn_ids[dist_mask],
-                matched_unkn_dists[dist_mask])
+                unkn_ids[unkn_idxs][dist_mask],
+                matched_unkn_dists[dist_mask],
+                unkn_weights[unkn_idxs][dist_mask])
             output_row["tot_sample"] = total_unknown
             output_data.append(output_row)
+
+        output_data_frame = pd.DataFrame(output_data)
 
         if self.output_pair_file_name is not None:
             self.hdf5_writer.close()
             self.hdf5_writer.join()
 
-        return pd.DataFrame(output_data)
+            for region in np.unique(output_data_frame["region"]):
+                mask = output_data_frame["region"] == region
+                sub_df = output_data_frame[mask]
+                sub_df.to_parquet("%s/region=%i/reference_data.parquet" %
+                                  (self.output_pair_file_name, region),
+                                  compression='gzip',
+                                  index=False)
+
+        return output_data_frame
 
     def _convert_radec_to_xyz(self, ras, decs):
         """Convert RA/DEC positions to points on the unit sphere.
@@ -329,9 +295,11 @@ class PairMaker(object):
 
     def _compute_bin_values(self,
                             ref_id,
+                            region,
                             redshift,
                             unkn_ids,
-                            unkn_dists):
+                            unkn_dists,
+                            unkn_weights):
         """Bin data and construct output dict.
 
         If an output data file is specified, send the raw pairs off to be
@@ -349,6 +317,8 @@ class PairMaker(object):
         unkn_dists : `numpy.ndarray`, (N,)
             Distances in Mpc from the reference to the unknown objects between
             r_min and r_max.
+        unkn_weights : `numpy.ndarray`, (N,)
+            Weights 
 
 
         Returns
@@ -360,6 +330,8 @@ class PairMaker(object):
                 Unique reference id (`int`)
             ``"redshift"``
                 Reference redshift (`float`)
+            ``"region"``
+                Spatial region the reference belongs to (`int`)
             ``"[scale_name]_counts"``
                 Number of unknown objects with the annulus around the
                 reference for annulus [scale_name]. (`int`)
@@ -367,10 +339,12 @@ class PairMaker(object):
                 Weighted number  unknown objects with the annulus around the
                 reference for annulus [scale_name]. (`float`)
         """
-        output_row = dict([("id", ref_id), ("redshift", redshift)])
+        output_row = dict([("id", ref_id),
+                           ("redshift", redshift),
+                           ("region", region)])
 
         if self.output_pair_file_name is not None and len(unkn_ids) > 0:
-            self._subproc_write(ref_id, redshift, unkn_ids, unkn_dists)
+            self._subproc_write(ref_id, redshift, region, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
@@ -378,11 +352,12 @@ class PairMaker(object):
 
             bin_unkn_ids = unkn_ids[r_mask]
             bin_unkn_dists = unkn_dists[r_mask]
+            bin_unkn_weights = unkn_weights[r_mask]
 
-            output_row["%s_counts" % scale_name] = \
-                len(bin_unkn_ids)
-            output_row["%s_weights" % scale_name] = \
-                self._compute_weight(bin_unkn_dists).sum()
+            output_row["%s_counts" % scale_name] = len(bin_unkn_ids)
+            output_row["%s_weights" % scale_name] = (
+                bin_unkn_weights *
+                self._compute_weight(bin_unkn_dists)).sum()
 
         return output_row
 
@@ -407,7 +382,7 @@ class PairMaker(object):
                         dists ** self.weight_power,
                         0.01 ** self.weight_power)
 
-    def _subproc_write(self, ref_id, redshift, unkn_ids, unkn_dists):
+    def _subproc_write(self, ref_id, region, unkn_ids, unkn_dists):
         """Construct a dataformate of values to be written to disk via a
         subprocess.
 
@@ -415,6 +390,8 @@ class PairMaker(object):
         ----------
         ref_id : `int`
             Unique identifier for the reference object.
+        region : `int`
+            Spatial region this reference belongs to.
         unkn_ids : `numpy.ndarray`, (N,)
             Unique ids of all objects with unknown redshift that are within
             the distance r_min to r_max
@@ -423,8 +400,9 @@ class PairMaker(object):
             r_min and r_max.
         """
         scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
-        hdf5_output_dict = dict(
+        output_dict = dict(
             [("id", ref_id),
+             ("region", region)
              ("file_name", self.output_pair_file_name),
              ("scale_name", scale_name),
              ("%s_ids" % scale_name, unkn_ids),
@@ -436,6 +414,5 @@ class PairMaker(object):
             self.subprocs = []
         self.subprocs.append(self.hdf5_writer.apply_async(
             write_pairs_parquet,
-            (hdf5_output_dict,),
+            (output_dict,),
             error_callback=error_callback))
-        # write_pairs_parquet(hdf5_output_dict)

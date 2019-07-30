@@ -3,6 +3,7 @@ from astropy.cosmology import Planck15
 import h5py
 import os
 import numpy as np
+import subprocess
 import tempfile
 import unittest
 
@@ -18,7 +19,7 @@ class TestPairMaker(unittest.TestCase):
 
         # Create a random catalog centered at the pole with a redshift
         # distribution that looks kind of like a mag limited sample.
-        self.n_objects = 100000
+        self.n_objects = 10000
         decs = np.degrees(
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
@@ -48,16 +49,13 @@ class TestPairMaker(unittest.TestCase):
                                          (r_min, r_max))
             self.expected_columns.append("Mpc%.2ft%.2f_weights" %
                                          (r_min, r_max))
-
-        # self.tmp_file_handle, self.file_name = tempfile.mkstemp(
-        #     dir=os.path.dirname(__file__))
-        self.file_name = tempfile.mkdtemp(
+        self.output_path = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
 
     def tearDown(self):
-        # del self.tmp_file_handle
-        # os.remove(self.file_name)
-        pass
+        job = subproces.Popen("rm -rf " + self.output_path)
+        job.wait()
+        del job
 
     def test_run(self):
         """Smoke test that the run method runs to completion and outputs
@@ -103,9 +101,12 @@ class TestPairMaker(unittest.TestCase):
             tot_dist_diff = 0
             for idx in range(self.n_objects):
                 data_row = output.iloc[idx]
-                dists = np.exp(
-                    hdf5_file["data/%i/%s_log_dists" %
-                              (data_row["id"], tot_scale_name)][...])
+                raw_pair_df = pd.read_parquet("%s/region=%i/ref_id=%i" %
+                                              (self.output_path,
+                                               data_row["region"],
+                                               data_row["id"]))
+                dists = np.exp(raw_pair_df["%s_comp_log_dist" %
+                                           (tot_scale_name)] * 10 ** -4)
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
