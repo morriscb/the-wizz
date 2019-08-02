@@ -7,9 +7,6 @@ import pandas as pd
 from scipy.spatial import cKDTree
 from time import time
 
-import pyarrow as pa
-import pyarrow.parquet as pq
-
 from .pdf_maker import comoving_bins
 
 
@@ -17,7 +14,7 @@ def pool_init(locks):
     """
     """
     global lock_dict
-    lock_dict = locks
+    lock_dict = lock
 
 
 def write_pairs(data):
@@ -52,7 +49,7 @@ def write_pairs(data):
 
     ids = data[id_name]
 
-    comp_log_dists = (np.log(data[dist_name]) * 10 ** 4).astype(np.int32)
+    comp_log_dists = compress(data[dist_name])
 
     n_pairs = len(ids)
     ref_ids = np.full(n_pairs, data["id"], dtype=np.uint64)
@@ -82,6 +79,18 @@ def error_callback(exception):
     exception : `Exception`
     """
     raise exception
+
+
+def compress_distances(dists):
+    """
+    """
+    return (np.log(dists) * 10 ** 4).astype(np.int32)
+
+
+def decompress_distances(comp_dists):
+    """
+    """
+    return np.exp(comp_dists * 10 ** -4)
 
 
 class PairMaker(object):

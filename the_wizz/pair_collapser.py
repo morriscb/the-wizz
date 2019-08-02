@@ -9,7 +9,6 @@ from .pair_maker import decompress, distance_weight
 def collapse_pairs(data):
     """
     """
-
     output = {"id": ,
               "redshift": ,
               "region": ,}

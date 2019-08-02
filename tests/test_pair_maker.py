@@ -112,9 +112,8 @@ class TestPairMaker(unittest.TestCase):
             tot_dist_diff = 0
             for ref_id, data_row in output.iterrows():
                 raw_data = raw_pair_df.loc[ref_id]
-                dists = np.exp(
-                    raw_data["%s_comp_log_dist" % (tot_scale_name)] *
-                    10 ** -4)
+                dists = pair_maker.decompres_distances(
+                    raw_data["%s_comp_log_dist" % (tot_scale_name)])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
