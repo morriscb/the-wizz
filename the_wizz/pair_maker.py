@@ -192,7 +192,7 @@ class PairMaker(object):
         redshifts = reference_catalog["redshift"][z_mask]
         dists = self.distance_metric(redshifts).value
         try:
-            ref_regions = reference_catalog["region"]
+            ref_regions = reference_catalog["region"][z_mask]
         except KeyError:
             ref_regions = np.zeros(len(ref_ids), dtype=np.uint32)
 
