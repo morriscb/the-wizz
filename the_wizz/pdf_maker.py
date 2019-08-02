@@ -5,7 +5,36 @@ import numpy as np
 import pandas as pd
 
 
-class PDFMaker(object):
+def linear_bins(z_min, z_max, n_bins):
+    """
+    """
+    return np.linspace(z_min, z_max, n_bins + 1)
+
+
+def log_bins(z_min, z_max, n_bins):
+    """
+    """
+    log_min = np.log(1 + z_min)
+    log_max = np.log(1 + z_max)
+    log_edges = np.linspace(log_min, log_max, n_bins + 1)
+    return np.exp(log_edges) - 1
+
+
+def comoving_bins(z_min, z_max, n_bins):
+    """
+    """
+    cov_min = Planck15.comoving_distance(z_min).value
+    cov_max = Planck15.comoving_distance(z_max).value
+    cov_edges = np.linspace(cov_min, cov_max, n_bins + 1)
+
+    tmp_edges = []
+    for cov_edge in cov_edges:
+        tmp_edges.append(z_at_value(Planck15.comoving_distance,
+                         cov_edge * u.Mpc))
+    return np.array(tmp_edges)
+
+
+class PDFMaker:
     """Class to estimate the raw, clustering redshift over-desnity from the
     `pandas.DataFrame` output of pair_maker or pair_collapser.
 
@@ -57,22 +86,11 @@ class PDFMaker(object):
         """Compute bin edges in redshift using different prescriptions.
         """
         if self.binning_type == "linear":
-            self.bin_edges = np.linspace(self.z_min, self.z_max, self.bins + 1)
+            self.bin_edges = linear_bins(self.z_min, self.z_max, self.bins)
         elif self.binning_type == "log":
-            log_min = np.log(1 + self.z_min)
-            log_max = np.log(1 + self.z_max)
-            log_edges = np.linspace(log_min, log_max, self.bins + 1)
-            self.bin_edges = np.exp(log_edges) - 1
+            self.bin_edges = log_bins(self.z_min, self.z_max, self.bins)
         elif self.binning_type == "comoving":
-            cov_min = Planck15.comoving_distance(self.z_min).value
-            cov_max = Planck15.comoving_distance(self.z_max).value
-            cov_edges = np.linspace(cov_min, cov_max, self.bins + 1)
-
-            tmp_edges = []
-            for cov_edge in cov_edges:
-                tmp_edges.append(z_at_value(Planck15.comoving_distance,
-                                            cov_edge * u.Mpc))
-            self.bin_edges = np.array(tmp_edges)
+            self.bin_edges = comoving_bins(self.z_min, self.z_max, self.bins)
         else:
             raise TypeError("Requested binning type is invalid. Use either "
                             "'linear', 'log', 'comoving'. Custom bins can be "
