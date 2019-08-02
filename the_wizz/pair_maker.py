@@ -143,7 +143,6 @@ class PairMaker(object):
         self.z_min = z_min
         self.z_max = z_max
         self.n_z_bins = n_z_bins
-        self.z_bin_edges = comoving_bins(z_min, z_max, n_z_bins)
 
         self.n_write_proc = n_write_proc
         self.n_write_clean_up = n_write_clean_up
@@ -215,7 +214,6 @@ class PairMaker(object):
             np.radians(reference_catalog["ra"][z_mask]),
             np.radians(reference_catalog["dec"][z_mask]))
         redshifts = reference_catalog["redshift"][z_mask]
-        redshift_bins = np.digitize(redshifts, self.z_bin_edges)
         dists = self.distance_metric(redshifts).value
         try:
             ref_regions = reference_catalog["region"][z_mask]
@@ -232,6 +230,12 @@ class PairMaker(object):
             self.hdf5_writer = Pool(self.n_write_proc,
                                     initializer=pool_init,
                                     initargs=(locks,))
+            redshift_args = redshifts.argsort()
+            inv_dist_cumsum = np.cumsum(1 / dists[redshift_args])
+            inv_dist_cumsum /= inv_dist_cumsum[-1]
+            percent = np.arange(self.n_z_bins) / self.n_z_bins
+            bin_edge_idxs = np.searchsorted(inv_dist_cumsum, percent)
+            self.z_bin_edges = redshifts[redshift_args][bin_edge_idxs]
 
         for ref_vect, redshift, dist, ref_id, ref_region in zip(ref_vects,
                                                                 redshifts,
