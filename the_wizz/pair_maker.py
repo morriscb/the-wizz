@@ -1,7 +1,7 @@
 
 from astropy.cosmology import Planck15
 import h5py
-from multiprocessing import Pool
+from multiprocessing import Lock, Pool
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
@@ -9,6 +9,15 @@ from time import time
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+from .pdf_maker import comoving_bins
+
+
+def pool_init(locks):
+    """
+    """
+    global lock_dict
+    lock_dict = locks
 
 
 def write_pairs(data):
@@ -48,16 +57,20 @@ def write_pairs(data):
     n_pairs = len(ids)
     ref_ids = np.full(n_pairs, data["id"], dtype=np.uint64)
     regions = np.full(n_pairs, data["region"], dtype=np.uint32)
+    z_bins = np.full(n_pairs, data["z_bin"], dtype=np.uint32)
 
     id_sort_args = ids.argsort()
     out_df = pd.DataFrame(data={"ref_id": ref_ids,
                                 "region": regions,
+                                "z_bin": z_bins,
                                 id_name: ids[id_sort_args],
                                 log_dist_name: comp_log_dists[id_sort_args]})
+    lock_dict[data["z_bin"]].acquire()
     out_df.to_parquet(data["file_name"],
                       compression='gzip',
                       index=False,
-                      partition_cols=["region", "ref_id"])
+                      partition_cols=["region", "z_bin"])
+    lock_dict[data["z_bin"]].release()
 
 
 def error_callback(exception):
@@ -112,13 +125,16 @@ class PairMaker(object):
                  distance_metric=None,
                  output_pair_file_name=None,
                  n_write_proc=2,
-                 n_write_clean_up=100):
+                 n_write_clean_up=100,
+                 n_z_bins=100):
         self.r_mins = r_mins
         self.r_maxes = r_maxes
         self.r_min = np.min(r_mins)
         self.r_max = np.max(r_maxes)
         self.z_min = z_min
         self.z_max = z_max
+        self.n_z_bins = n_z_bins
+        self.z_bin_edges = comoving_bins(z_min, z_max, n_z_bins)
 
         self.n_write_proc = n_write_proc
         self.n_write_clean_up = n_write_clean_up
@@ -190,6 +206,7 @@ class PairMaker(object):
             np.radians(reference_catalog["ra"][z_mask]),
             np.radians(reference_catalog["dec"][z_mask]))
         redshifts = reference_catalog["redshift"][z_mask]
+        redshift_bins = np.digitize(redshifts, self.z_bin_edges)
         dists = self.distance_metric(redshifts).value
         try:
             ref_regions = reference_catalog["region"][z_mask]
@@ -200,7 +217,12 @@ class PairMaker(object):
 
         self.subprocs = []
         if self.output_pair_file_name is not None:
-            self.hdf5_writer = Pool(self.n_write_proc)
+            locks = dict()
+            for idx in range(1, self.n_z_bins + 1):
+                locks[idx] = Lock()
+            self.hdf5_writer = Pool(self.n_write_proc,
+                                    initializer=pool_init,
+                                    initargs=(locks,))
 
         for ref_vect, redshift, dist, ref_id, ref_region in zip(ref_vects,
                                                                 redshifts,
@@ -344,7 +366,8 @@ class PairMaker(object):
                            ("region", region)])
 
         if self.output_pair_file_name is not None and len(unkn_ids) > 0:
-            self._subproc_write(ref_id, region, unkn_ids, unkn_dists)
+            z_bin = np.searchsorted(self.z_bin_edges, redshift, side="right")
+            self._subproc_write(ref_id, region, z_bin, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
@@ -382,7 +405,7 @@ class PairMaker(object):
                         dists ** self.weight_power,
                         0.01 ** self.weight_power)
 
-    def _subproc_write(self, ref_id, region, unkn_ids, unkn_dists):
+    def _subproc_write(self, ref_id, region, z_bin, unkn_ids, unkn_dists):
         """Construct a dataformate of values to be written to disk via a
         subprocess.
 
@@ -403,6 +426,7 @@ class PairMaker(object):
         output_dict = dict(
             [("id", ref_id),
              ("region", region),
+             ("z_bin", z_bin),
              ("file_name", self.output_pair_file_name),
              ("scale_name", scale_name),
              ("%s_ids" % scale_name, unkn_ids),

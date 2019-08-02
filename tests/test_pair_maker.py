@@ -93,20 +93,28 @@ class TestPairMaker(unittest.TestCase):
                                   self.z_min,
                                   self.z_max,
                                   n_write_proc=2,
-                                  output_pair_file_name=self.output_path)
+                                  output_pair_file_name=self.output_path,
+                                  n_z_bins=4)
         output = pm.run(self.catalog, self.catalog)
+        output.set_index("id", inplace=True)
+
+        raw_pair_df = pd.read_parquet("%s/region=0/z_bin=1" % self.output_path)
+        raw_pair_df = raw_pair_df.append(pd.read_parquet(
+            "%s/region=0/z_bin=2" % self.output_path))
+        raw_pair_df = raw_pair_df.append(pd.read_parquet(
+            "%s/region=0/z_bin=3" % self.output_path))
+        raw_pair_df = raw_pair_df.append(pd.read_parquet(
+            "%s/region=0/z_bin=4" % self.output_path))
+        raw_pair_df.set_index("ref_id", inplace=True)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             tot_pair_diff = 0
             tot_dist_diff = 0
-            for idx in range(self.n_objects):
-                data_row = output.iloc[idx]
-                raw_pair_df = pd.read_parquet("%s/region=%i/ref_id=%i" %
-                                              (self.output_path,
-                                               data_row["region"],
-                                               data_row["id"]))
-                dists = np.exp(raw_pair_df["%s_comp_log_dist" %
-                                           (tot_scale_name)] * 10 ** -4)
+            for ref_id, data_row in output.iterrows():
+                raw_data = raw_pair_df.loc[ref_id]
+                dists = np.exp(
+                    raw_data["%s_comp_log_dist" % (tot_scale_name)] *
+                    10 ** -4)
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
@@ -121,7 +129,7 @@ class TestPairMaker(unittest.TestCase):
                                      data_row["%s_counts" % scale_name])
                 else:
                     self.assertLess(np.fabs(pair_diff),
-                                    3 / data_row["%s_counts" % scale_name])
+                                    2 / data_row["%s_counts" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight,
                                      data_row["%s_weights" % scale_name])
