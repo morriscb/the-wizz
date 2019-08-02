@@ -43,7 +43,7 @@ class TestPairMaker(unittest.TestCase):
         self.r_min = np.min(self.r_mins)
         self.r_max = np.max(self.r_maxes)
 
-        self.expected_columns = ["id",
+        self.expected_columns = ["ref_id",
                                  "redshift"]
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             self.expected_columns.append("Mpc%.2ft%.2f_counts" %
@@ -79,7 +79,7 @@ class TestPairMaker(unittest.TestCase):
                            133.259605]
         for col, val in zip(self.expected_columns, expected_values):
             pd_val = output.iloc[random_idx][col]
-            if col == "id":
+            if col == "ref_id":
                 self.assertEqual(pd_val, val)
             else:
                 self.assertAlmostEqual(pd_val, val)
@@ -96,7 +96,7 @@ class TestPairMaker(unittest.TestCase):
                                   output_pair_file_name=self.output_path,
                                   n_z_bins=4)
         output = pm.run(self.catalog, self.catalog)
-        output.set_index("id", inplace=True)
+        output.set_index("ref_id", inplace=True)
 
         raw_pair_df = pd.read_parquet("%s/region=0/z_bin=1" % self.output_path)
         raw_pair_df = raw_pair_df.append(pd.read_parquet(
@@ -113,7 +113,7 @@ class TestPairMaker(unittest.TestCase):
             for ref_id, data_row in output.iterrows():
                 raw_data = raw_pair_df.loc[ref_id]
                 dists = pair_maker.decompress_distances(
-                    raw_data["%s_comp_log_dist" % (tot_scale_name)])
+                    raw_data["comp_log_dist"])
                 scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
@@ -165,7 +165,7 @@ class TestPairMaker(unittest.TestCase):
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
 
-            self.assertEqual(output.iloc[0]["id"], ids[0])
+            self.assertEqual(output.iloc[0]["ref_id"], ids[0])
             self.assertEqual(output.iloc[0]["redshift"], redshifts[0])
 
             tmp_weights = weights[np.logical_and(rs > r_min,

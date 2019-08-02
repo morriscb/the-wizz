@@ -1,96 +1,9 @@
 
 from astropy.cosmology import Planck15
-import h5py
 from multiprocessing import Lock, Pool
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
-from time import time
-
-from .pdf_maker import comoving_bins
-
-
-def pool_init(locks):
-    """
-    """
-    global lock_dict
-    lock_dict = locks
-
-
-def write_pairs(data):
-    """Write raw pairs produced by pair maker to disk.
-
-    Ids are loss-lessly compressed distances are stored as log, keeping 3
-    decimal digits.
-
-    Parameters
-    ----------
-    data : `dict`
-        Dictionary of data produced by the PairMaker class.
-        Dictionary has should have following keys:
-
-        ``"file_name"``
-            File name of the file to write to. (`str`)
-        ``"id"``
-            Id of the reference object. (`int`)
-        ``"scale_names"``
-            Names of the scales run in pair_maker. Formated e.g.
-            'Mpc1.00t10.00' (`list`)
-        ``"'scale_name'_ids"``
-            Unique ids of unknown objects within annulus 'scale_name' around
-            the reference object (`numpy.ndarray`, (N,))
-        ``"'scale_name'_dists"``
-            Distance to unknown object with id in 'scale_name'_ids
-            (`numpy.ndarray`, (N,))
-    """
-    id_name = "%s_ids" % data["scale_name"]
-    dist_name = "%s_dists" % data["scale_name"]
-    log_dist_name = "%s_comp_log_dist" % data["scale_name"]
-
-    ids = data[id_name]
-
-    comp_log_dists = compress_distances(data[dist_name])
-
-    n_pairs = len(ids)
-    ref_ids = np.full(n_pairs, data["id"], dtype=np.uint64)
-    regions = np.full(n_pairs, data["region"], dtype=np.uint32)
-    z_bins = np.full(n_pairs, data["z_bin"], dtype=np.uint32)
-
-    id_sort_args = ids.argsort()
-    out_df = pd.DataFrame(data={"ref_id": ref_ids,
-                                "region": regions,
-                                "z_bin": z_bins,
-                                id_name: ids[id_sort_args],
-                                log_dist_name: comp_log_dists[id_sort_args]})
-    lock_dict[data["z_bin"]].acquire()
-    out_df.to_parquet(data["file_name"],
-                      compression='gzip',
-                      index=False,
-                      partition_cols=["region", "z_bin"])
-    lock_dict[data["z_bin"]].release()
-
-
-def error_callback(exception):
-    """Simple function to propagate errors from multiprocessing.Process
-    objects.
-
-    Parameters
-    ----------
-    exception : `Exception`
-    """
-    raise exception
-
-
-def compress_distances(dists):
-    """
-    """
-    return (np.log(dists) * 10 ** 4).astype(np.int32)
-
-
-def decompress_distances(comp_dists):
-    """
-    """
-    return np.exp(comp_dists * 10 ** -4)
 
 
 class PairMaker(object):
@@ -114,9 +27,9 @@ class PairMaker(object):
         Cosmological distance metric to use for all calculations. Should be
         either comoving_distance or angular_diameter_distance. Defaults to
         the Planck15 cosmology and comoving metric.
-    output_pair_file_name : `string`
-        Name of a file name to write raw pair counts and distances to. Spawns
-        a multiprocessing child task to write out data.\
+    output_pairs : `string`
+        Name of a directory to write raw pair counts and distances to. Spawns
+        a multiprocessing child task to write out data.
     n_write_proc : `int`
         If an output file name is specified, this sets the number of
         subprocesses to spawn to write the data to disk.
@@ -132,7 +45,7 @@ class PairMaker(object):
                  z_max=5.00,
                  weight_power=-0.8,
                  distance_metric=None,
-                 output_pair_file_name=None,
+                 output_pairs=None,
                  n_write_proc=2,
                  n_write_clean_up=100,
                  n_z_bins=100):
@@ -153,7 +66,7 @@ class PairMaker(object):
 
         self.weight_power = weight_power
 
-        self.output_pair_file_name = output_pair_file_name
+        self.output_pairs = output_pairs
 
     def run(self, reference_catalog, unknown_catalog):
         """Find the (un)weighted pair counts between reference and unknown
@@ -223,7 +136,7 @@ class PairMaker(object):
         output_data = []
 
         self.subprocs = []
-        if self.output_pair_file_name is not None:
+        if self.output_pairs is not None:
             locks = dict()
             for idx in range(1, self.n_z_bins + 1):
                 locks[idx] = Lock()
@@ -235,7 +148,7 @@ class PairMaker(object):
                 1 - np.cos(self.r_max / dists[redshift_args]))
             area_cumsum /= area_cumsum[-1]
             percent = np.arange(self.n_z_bins) / self.n_z_bins
-            bin_edge_idxs = np.searchsorted(area_cumsum, percent)
+            bin_edge_idxs = np.searchsorted(area_cumsum, percent, side="right")
             self.z_bin_edges = redshifts[redshift_args][bin_edge_idxs]
 
         for ref_vect, redshift, dist, ref_id, ref_region in zip(ref_vects,
@@ -266,7 +179,7 @@ class PairMaker(object):
 
         output_data_frame = pd.DataFrame(output_data)
 
-        if self.output_pair_file_name is not None:
+        if self.output_pairs is not None:
             self.hdf5_writer.close()
             self.hdf5_writer.join()
 
@@ -274,7 +187,7 @@ class PairMaker(object):
                 mask = output_data_frame["region"] == region
                 sub_df = output_data_frame[mask]
                 sub_df.to_parquet("%s/region=%i/reference_data.parquet" %
-                                  (self.output_pair_file_name, region),
+                                  (self.output_pairs, region),
                                   compression='gzip',
                                   index=False)
 
@@ -354,7 +267,7 @@ class PairMaker(object):
             Distances in Mpc from the reference to the unknown objects between
             r_min and r_max.
         unkn_weights : `numpy.ndarray`, (N,)
-            Weights 
+            Weights for each object with unknown redshift.
 
 
         Returns
@@ -362,7 +275,7 @@ class PairMaker(object):
         output_row : `dict`
             Dictionary containing the values:
 
-            ``"id"``
+            ``"ref_id"``
                 Unique reference id (`int`)
             ``"redshift"``
                 Reference redshift (`float`)
@@ -375,11 +288,11 @@ class PairMaker(object):
                 Weighted number  unknown objects with the annulus around the
                 reference for annulus [scale_name]. (`float`)
         """
-        output_row = dict([("id", ref_id),
+        output_row = dict([("ref_id", ref_id),
                            ("redshift", redshift),
                            ("region", region)])
 
-        if self.output_pair_file_name is not None and len(unkn_ids) > 0:
+        if self.output_pairs is not None and len(unkn_ids) > 0:
             z_bin = np.searchsorted(self.z_bin_edges, redshift, side="right")
             self._subproc_write(ref_id, region, z_bin, unkn_ids, unkn_dists)
 
@@ -394,30 +307,9 @@ class PairMaker(object):
             output_row["%s_counts" % scale_name] = len(bin_unkn_ids)
             output_row["%s_weights" % scale_name] = (
                 bin_unkn_weights *
-                self._compute_weight(bin_unkn_dists)).sum()
+                distance_weight(bin_unkn_dists, self.weight_power)).sum()
 
         return output_row
-
-    def _compute_weight(self, dists):
-        """Convert raw distances into a signal matched weight for the
-        correlation.
-
-        All weights with distances below 0.001 Mpc will be set to a value of
-        0.001 ** ``weight_power``.
-
-        Parameters
-        ----------
-        dists : `numpy.ndarray`, (N,)
-            Distances in Mpc.
-
-        Returns
-        -------
-        weights : `numpy.ndarray`, (N,)
-            Output weights.
-        """
-        return np.where(dists > 0.01,
-                        dists ** self.weight_power,
-                        0.01 ** self.weight_power)
 
     def _subproc_write(self, ref_id, region, z_bin, unkn_ids, unkn_dists):
         """Construct a dataformate of values to be written to disk via a
@@ -438,13 +330,13 @@ class PairMaker(object):
         """
         scale_name = "Mpc%.2ft%.2f" % (self.r_min, self.r_max)
         output_dict = dict(
-            [("id", ref_id),
+            [("ref_id", ref_id),
              ("region", region),
              ("z_bin", z_bin),
-             ("file_name", self.output_pair_file_name),
+             ("file_name", self.output_pairs),
              ("scale_name", scale_name),
-             ("%s_ids" % scale_name, unkn_ids),
-             ("%s_dists" % scale_name, unkn_dists)])
+             ("unkn_ids" % scale_name, unkn_ids),
+             ("dists" % scale_name, unkn_dists)])
 
         if len(self.subprocs) >= self.n_write_clean_up:
             for subproc in self.subprocs:
@@ -454,3 +346,136 @@ class PairMaker(object):
             write_pairs,
             (output_dict,),
             error_callback=error_callback))
+
+
+def distance_weight(dists, power=-0.8):
+    """Convert raw distances into a signal matched weight for the
+    correlation.
+
+    All weights with distances below 0.001 Mpc will be set to a value of
+    0.001 ** ``weight_power``.
+
+    Parameters
+    ----------
+    dists : `numpy.ndarray`, (N,)
+        Distances in Mpc.
+    power : `float`
+        Exponent to raise distance to the power of.
+
+    Returns
+    -------
+    weights : `numpy.ndarray`, (N,)
+        Output weights.
+    """
+    return np.where(dists > 0.01, dists ** power, 0.01 ** power)
+
+
+def pool_init(locks):
+    """Initializer for enabling locking for multiprocessing.Pool.
+
+    Copies a dict of locks into a global to prevent multiple writes to the
+    same output file.
+
+    Parameters
+    ----------
+    locks : `dict`
+        A dictionary with integer keys mapping to `multiprocessing.Lock`
+        objects.
+    """
+    global lock_dict
+    lock_dict = locks
+
+
+def write_pairs(data):
+    """Write raw pairs produced by pair maker to disk.
+
+    Ids are loss-lessly compressed distances are stored as log, keeping 3
+    decimal digits.
+
+    Parameters
+    ----------
+    data : `dict`
+        Dictionary of data produced by the PairMaker class.
+        Dictionary has should have following keys:
+
+        ``"file_name"``
+            File name of the file to write to. (`str`)
+        ``"ref_id"``
+            Id of the reference object. (`int`)
+        ``"scale_names"``
+            Names of the scales run in pair_maker. Formated e.g.
+            'Mpc1.00t10.00' (`list`)
+        ``"'scale_name'_ids"``
+            Unique ids of unknown objects within annulus 'scale_name' around
+            the reference object (`numpy.ndarray`, (N,))
+        ``"'scale_name'_dists"``
+            Distance to unknown object with id in 'scale_name'_ids
+            (`numpy.ndarray`, (N,))
+    """
+    ids = data["unkn_ids"]
+    comp_log_dists = compress_distances(data["dists"])
+
+    n_pairs = len(ids)
+    ref_ids = np.full(n_pairs, data["ref_id"], dtype=np.uint64)
+    regions = np.full(n_pairs, data["region"], dtype=np.uint32)
+    z_bins = np.full(n_pairs, data["z_bin"], dtype=np.uint32)
+
+    id_sort_args = ids.argsort()
+    out_df = pd.DataFrame(data={"ref_id": ref_ids,
+                                "region": regions,
+                                "z_bin": z_bins,
+                                "unkn_ids": ids[id_sort_args],
+                                "comp_log_dist": comp_log_dists[id_sort_args]})
+    lock_dict[data["z_bin"]].acquire()
+    out_df.to_parquet(data["file_name"],
+                      compression='gzip',
+                      index=False,
+                      partition_cols=["region", "z_bin"])
+    lock_dict[data["z_bin"]].release()
+
+
+def error_callback(exception):
+    """Simple function to propagate errors from multiprocessing.Process
+    objects.
+
+    Parameters
+    ----------
+    exception : `Exception`
+    """
+    raise exception
+
+
+def compress_distances(dists):
+    """Log and convert distances to int type.
+
+    Compression is lossy, keeping only 4 decimals in the log.
+
+    Parameters
+    ----------
+    dists : `numpy.ndarray`
+        Distances in Mpc to convert to int for compression.
+
+    Returns
+    -------
+    comp_dists : `numpy.ndarray`
+        Integer array representing Mpc distances. Can be converted back to
+        distance by using `decompress_distances`.
+    """
+    return (np.log(dists) * 10 ** 4).astype(np.int32)
+
+
+def decompress_distances(comp_dists):
+    """Convert dists from int to float and unlog them.
+
+    Parameters
+    ----------
+    comp_dists : `numpy.ndarray`
+        Integer representations of log distances produced by the function
+        `compres_distances`.
+
+    Returns
+    -------
+    dists : `numpy.ndarray`
+        Float uncompressed data.
+    """
+    return np.exp(comp_dists * 10 ** -4)
