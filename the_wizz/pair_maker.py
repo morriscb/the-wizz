@@ -14,7 +14,7 @@ def pool_init(locks):
     """
     """
     global lock_dict
-    lock_dict = lock
+    lock_dict = locks
 
 
 def write_pairs(data):
@@ -49,7 +49,7 @@ def write_pairs(data):
 
     ids = data[id_name]
 
-    comp_log_dists = compress(data[dist_name])
+    comp_log_dists = compress_distances(data[dist_name])
 
     n_pairs = len(ids)
     ref_ids = np.full(n_pairs, data["id"], dtype=np.uint64)
