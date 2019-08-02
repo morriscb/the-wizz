@@ -231,10 +231,11 @@ class PairMaker(object):
                                     initializer=pool_init,
                                     initargs=(locks,))
             redshift_args = redshifts.argsort()
-            inv_dist_cumsum = np.cumsum(1 / dists[redshift_args])
-            inv_dist_cumsum /= inv_dist_cumsum[-1]
+            area_cumsum = np.cumsum(
+                1 - np.cos(self.r_max / dists[redshift_args]))
+            area_cumsum /= area_cumsum[-1]
             percent = np.arange(self.n_z_bins) / self.n_z_bins
-            bin_edge_idxs = np.searchsorted(inv_dist_cumsum, percent)
+            bin_edge_idxs = np.searchsorted(area_cumsum, percent)
             self.z_bin_edges = redshifts[redshift_args][bin_edge_idxs]
 
         for ref_vect, redshift, dist, ref_id, ref_region in zip(ref_vects,
