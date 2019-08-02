@@ -93,7 +93,7 @@ class TestPairMaker(unittest.TestCase):
                                   self.z_min,
                                   self.z_max,
                                   n_write_proc=2,
-                                  output_pair_file_name=self.output_path,
+                                  output_pairs=self.output_path,
                                   n_z_bins=4)
         output = pm.run(self.catalog, self.catalog)
         output.set_index("ref_id", inplace=True)
@@ -118,7 +118,7 @@ class TestPairMaker(unittest.TestCase):
                 sub_dists = dists[np.logical_and(dists > r_min,
                                                  dists < r_max)]
                 n_pairs = len(sub_dists)
-                dist_weight = pm._compute_weight(sub_dists).sum()
+                dist_weight = pair_maker.distance_weight(sub_dists).sum()
 
                 pair_diff = 1 - n_pairs / data_row["%s_counts" % scale_name]
                 dist_diff = 1 - dist_weight / data_row["%s_weights" %
@@ -161,7 +161,7 @@ class TestPairMaker(unittest.TestCase):
         output = pm.run(catalog, catalog)
 
         rs = Planck15.comoving_distance(2.0).value * np.radians(ras)
-        weights = pm._compute_weight(rs)
+        weights = pair_maker.distance_weight(rs)
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
             scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
 

@@ -335,8 +335,8 @@ class PairMaker(object):
              ("z_bin", z_bin),
              ("file_name", self.output_pairs),
              ("scale_name", scale_name),
-             ("unkn_ids" % scale_name, unkn_ids),
-             ("dists" % scale_name, unkn_dists)])
+             ("unkn_ids", unkn_ids),
+             ("dists", unkn_dists)])
 
         if len(self.subprocs) >= self.n_write_clean_up:
             for subproc in self.subprocs:
