@@ -144,8 +144,7 @@ class PairMaker(object):
                                     initializer=pool_init,
                                     initargs=(locks,))
             redshift_args = redshifts.argsort()
-            area_cumsum = np.cumsum(
-                1 - np.cos(self.r_max / dists[redshift_args]))
+            area_cumsum = np.cumsum(self.r_max / dists[redshift_args])
             area_cumsum /= area_cumsum[-1]
             percent = np.arange(self.n_z_bins) / self.n_z_bins
             bin_edge_idxs = np.searchsorted(area_cumsum, percent, side="right")
