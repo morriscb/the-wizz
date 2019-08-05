@@ -4,7 +4,7 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
-from .pair_maker import decompress, distance_weight
+from .pair_maker import decompress_distances, distance_weight
 
 
 class PairCollapser:
@@ -39,7 +39,7 @@ class PairCollapser:
         try:
             unkn_weights = unknown_catalog["weights"]
         except KeyError:
-            unkn_weights = unknown_catalog["weights"]
+            unkn_weights = np.ones(len(unkn_ids))
 
         unique_regions = np.unique(unkn_regions)
 
@@ -54,6 +54,7 @@ class PairCollapser:
             process_data = [
                 {"unkn_ids": region_ids,
                  "unkn_weights": region_weights,
+                 "tot_sample": len(region_ids),
                  "r_mins": self.r_mins,
                  "r_maxes": self.r_maxes,
                  "file_name": self.parquet_pairs,
@@ -95,6 +96,7 @@ def collapse_pairs(data):
                                            unkn_weights,
                                            r_mins,
                                            r_maxes)
+        ouput_row["tot_sample"] = data["tot_sample"]
         output.append(output_row)
 
     return pd.DataFrame(output)
