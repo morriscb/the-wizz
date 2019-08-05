@@ -140,9 +140,9 @@ class PairMaker(object):
             locks = dict()
             for idx in range(1, self.n_z_bins + 1):
                 locks[idx] = Lock()
-            self.hdf5_writer = Pool(self.n_write_proc,
-                                    initializer=pool_init,
-                                    initargs=(locks,))
+            self.write_pool = Pool(self.n_write_proc,
+                                   initializer=pool_init,
+                                   initargs=(locks,))
             redshift_args = redshifts.argsort()
             area_cumsum = np.cumsum(self.r_max / dists[redshift_args])
             area_cumsum /= area_cumsum[-1]
@@ -179,8 +179,8 @@ class PairMaker(object):
         output_data_frame = pd.DataFrame(output_data)
 
         if self.output_pairs is not None:
-            self.hdf5_writer.close()
-            self.hdf5_writer.join()
+            self.write_pool.close()
+            self.write_pool.join()
 
             for region in np.unique(output_data_frame["region"]):
                 mask = output_data_frame["region"] == region
@@ -334,14 +334,14 @@ class PairMaker(object):
              ("z_bin", z_bin),
              ("file_name", self.output_pairs),
              ("scale_name", scale_name),
-             ("unkn_ids", unkn_ids),
+             ("unkn_id", unkn_ids),
              ("dists", unkn_dists)])
 
         if len(self.subprocs) >= self.n_write_clean_up:
             for subproc in self.subprocs:
                 subproc.get()
             self.subprocs = []
-        self.subprocs.append(self.hdf5_writer.apply_async(
+        self.subprocs.append(self.write_pool.apply_async(
             write_pairs,
             (output_dict,),
             error_callback=error_callback))
@@ -411,7 +411,7 @@ def write_pairs(data):
             Distance to unknown object with id in 'scale_name'_ids
             (`numpy.ndarray`, (N,))
     """
-    ids = data["unkn_ids"]
+    ids = data["unkn_id"]
     comp_log_dists = compress_distances(data["dists"])
 
     n_pairs = len(ids)
@@ -423,7 +423,7 @@ def write_pairs(data):
     out_df = pd.DataFrame(data={"ref_id": ref_ids,
                                 "region": regions,
                                 "z_bin": z_bins,
-                                "unkn_ids": ids[id_sort_args],
+                                "unkn_id": ids[id_sort_args],
                                 "comp_log_dist": comp_log_dists[id_sort_args]})
     lock_dict[data["z_bin"]].acquire()
     out_df.to_parquet(data["file_name"],

@@ -68,7 +68,9 @@ class PairCollapser:
                 pool = Pool(self.n_proc)
                 region_output = pool.imap_unordered(
                     collapse_pairs,
-                    process_data)
+                    process_data,
+                    chunksize=int(np.ceil(
+                        0.5 * len(z_bin_paths) / self.n_proc)))
                 pool.close()
                 pool.join()
                 output.extend(region_output)
