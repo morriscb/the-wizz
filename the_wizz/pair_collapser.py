@@ -45,11 +45,14 @@ class PairCollapser:
 
         output = []
         for region in unique_regions:
+            print("Starting region %i..." % region)
             z_bin_paths = glob("%s/region=%i/z_bin=*" %
                                (self.parquet_pairs, region))
             region_mask = unkn_regions == region
             region_ids = unkn_ids[region_mask]
-            region_weights = unkn_weights[region_mask]
+            region_sort = region_ids.argsort()
+            region_weights = unkn_weights[region_mask][region_sort]
+            region_ids = region_ids[region_sort]
 
             process_data = [
                 {"unkn_ids": region_ids,
@@ -96,7 +99,8 @@ def collapse_pairs(data):
                                            unkn_weights,
                                            r_mins,
                                            r_maxes)
-        ouput_row["tot_sample"] = data["tot_sample"]
+        output_row["ref_id"] = ref_id
+        output_row["tot_sample"] = data["tot_sample"]
         output.append(output_row)
 
     return pd.DataFrame(output)
@@ -111,7 +115,6 @@ def collapse_pairs_ref_id(ref_row,
     """
     """
     output = dict()
-    output["ref_id"] = ref_row["ref_id"]
     output["redshift"] = ref_row["redshift"]
     output["region"] = ref_row["region"]
     for r_min, r_max in zip(r_mins, r_maxes):
@@ -119,8 +122,8 @@ def collapse_pairs_ref_id(ref_row,
         output["%s_counts" % scale_name] = 0
         output["%s_weights" % scale_name] = 0.0
 
-    pair_dists = decompress(pair_data["comp_log_dists"])
-    pair_ids = pair_data["unkn_ids"]
+    pair_dists = decompress_distances(pair_data["comp_log_dist"].to_numpy())
+    pair_ids = pair_data["unkn_ids"].to_numpy()
 
     (start_idx, end_idx) = find_trim_indexes(pair_ids, unkn_ids)
     if start_idx == end_idx:
