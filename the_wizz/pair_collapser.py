@@ -65,9 +65,12 @@ class PairCollapser:
                  "z_bin": z_bin}
                 for z_bin in z_bin_paths]
             if self.n_proc > 0:
-                with Pool(self.n_proc) as pool:
-                    region_output = pool.imap_unordered(collapse_pairs,
-                                                        process_data)
+                pool = Pool(self.n_proc)
+                region_output = pool.imap_unordered(
+                    collapse_pairs,
+                    process_data)
+                pool.close()
+                pool.join()
                 output.extend(region_output)
             else:
                 for data in process_data:
