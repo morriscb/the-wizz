@@ -128,7 +128,7 @@ def collapse_pairs_ref_id(ref_row,
         output["%s_weights" % scale_name] = 0.0
 
     pair_dists = decompress_distances(pair_data["comp_log_dist"].to_numpy())
-    pair_ids = pair_data["unkn_ids"].to_numpy()
+    pair_ids = pair_data["unkn_id"].to_numpy()
 
     (start_idx, end_idx) = find_trim_indexes(pair_ids, unkn_ids)
     if start_idx == end_idx:
