@@ -8,33 +8,75 @@ from .pair_maker import decompress_distances, distance_weight
 
 
 class PairCollapser:
-    """
+    """Collapse raw ids and distances of unknown objects into an over-density
+    estimate around each reference contained in the pair file.
+
+    Parameters
+    ----------
+    parquet_pairs : `str`
+        Location of the parquet pair file output by PairMaker
+    r_mins : `list`
+        Minimum radius for pair binning. Must be paired with a r_max
+    r_mins : `list`
+        Maximum radius for pair binning. Must be paired with a r_min
+    weight_power : `float`
+        Power law slope to weight distances in weighted pairs by. Defaults to
+        -0.8
+    n_proc : `int`
+        Number of sub processes to use when computing the over-densities.
+        Parallelization is over the redshift bins stored per region in the pair
+        file.
     """
 
     def __init__(self,
                  parquet_pairs,
                  r_mins,
                  r_maxes,
-                 z_min=0.01,
-                 z_max=5.00,
                  weight_power=-0.8,
                  n_proc=0):
         self.parquet_pairs = parquet_pairs
         self.r_mins = r_mins
         self.r_maxes = r_maxes
-        self.z_min = z_min
-        self.z_max = z_max
         self.weight_power = weight_power
         self.n_proc = n_proc
 
     def run(self,
             unknown_catalog):
-        """
+        """Compute the over-density around reference objects stored in the
+        pair file given the ids and weights in the input unknown_catalog.
+
+        Parameters
+        ----------
+        unknown_catalog : `dict`
+            Catalog of objects with unknown redshift to cross-correlate against
+            the set of reference objects stored in the pair file. Input catalog
+            should cover the same area as that covered by the references and
+            be regionated similarly.
+            Dictionary should contain contains:
+
+            ``"id"``
+                Unique identifier in the catalog (`numpy.ndarray`, (N,))
+            ``"region"``
+                Spatial region the unknown objects belong to. Optional only
+                if the pair file contains one region.
+                (`numpy.ndarray`, (N,))
+            ``"weight"``
+                OPTIONAL: If setting use_unkn_weights flag, weight to apply
+                to each unknown object. (`numpy.ndarray`, (N,))
+
+        Returns
+        -------
+        output : `pandas.DataFrame`
+            Summary data produced from the pair finding, cross-correlation.
+            Contains a summary of the N_pairs and requested distance weights
+            per reference object.
         """
         unkn_ids = unknown_catalog["id"]
         try:
             unkn_regions = unknown_catalog["region"]
         except KeyError:
+            print("WARNING: not taking advantage of the spatial regionation "
+                  "in the pair file may lead to long run times.")
             unkn_regions = np.zeros(len(unkn_ids), dtype=np.uint32)
         try:
             unkn_weights = unknown_catalog["weights"]
@@ -62,7 +104,8 @@ class PairCollapser:
                  "r_maxes": self.r_maxes,
                  "file_name": self.parquet_pairs,
                  "region": "region=%i" % region,
-                 "z_bin": z_bin}
+                 "z_bin": z_bin,
+                 "weight_power": self.weight_power}
                 for z_bin in z_bin_paths]
             if self.n_proc > 0:
                 pool = Pool(self.n_proc)
@@ -82,7 +125,39 @@ class PairCollapser:
 
 
 def collapse_pairs(data):
-    """
+    """Collapse unknown pairs into a single estimate for each reference in
+    a redshift bin in in the pair file.
+
+    Parameters
+    ----------
+    data : `dict`
+        Dictionary of data to process.
+        Dictionary contains:
+
+        ``"unkn_ids"``
+            Integer ids of objects with unknown redshift.
+            (`numpy.ndarray`, (N,))
+        ``"unkn_weights"``
+            Weights for each individual object with unknown redshift.
+            (`numpy.ndarray`, (N,))
+        ``"tot_sample"``
+            Number of unknown objects in this region. (`int`)
+        ``"r_mins"``
+            Minimum distance in Mpc of the annuli. (`list` of `float`)
+        ``"r_maxes"``
+            Maximum distance in Mpc of the annuli. (`list` of `float`)
+        ``"file_name"``
+            Location of the parquet directory. (`str`)
+        ``"z_bin"``
+            Full path name to the parquet file, redshift bin to be run. (`str`)
+        ``"weight_power"``
+            Power law exponent to weight galaxies by distance. (`float`)
+
+    Returns
+    -------
+    output : `pandas.DataFrame`
+        Over-densities around each of the reference objects in this redshift
+        file.
     """
     output = []
     r_mins = data["r_mins"]
@@ -103,7 +178,8 @@ def collapse_pairs(data):
                                            unkn_ids,
                                            unkn_weights,
                                            r_mins,
-                                           r_maxes)
+                                           r_maxes,
+                                           data["weight_power"])
         output_row["ref_id"] = ref_id
         output_row["tot_sample"] = data["tot_sample"]
         output.append(output_row)
@@ -116,8 +192,44 @@ def collapse_pairs_ref_id(ref_row,
                           unkn_ids,
                           unkn_weights,
                           r_mins,
-                          r_maxes):
-    """
+                          r_maxes,
+                          weight_power):
+    """Collapse pairs around one reference object by masking in the ids of the
+    input objects with unknown redshift.
+
+    Parameters
+    ----------
+    ref_row : `pandas.DataFrame`
+        DataFrame representing one reference object.
+    pair_data : `pandas.DataFrame`
+        Ids and distances for all the unknown objects around this reference.
+    unkn_ids : `numpy.ndarray`
+        Integer ids of unknown objects to mask into pair data.
+    unkn_weights : `numpy.ndarray`
+        Weights of unknown objects.
+    r_mins : `list` of `float`
+        Minimum distance for bin annuli
+    r_maxes : `list` of `float`
+        Maximum distance for bin annuli
+    weight_power : `float`
+        Power law slope to weight pair distances by.
+
+    Returns
+    -------
+    output : `dict`
+        Output values for a individual reference object.
+        Dictionary containing:
+
+        ``"redshift"``
+            Redshift of the reference object. (`float`)
+        ``"region"``
+            Region this reference object belongs to. (`int`)
+        ``"[scale_name]_counts"``
+            Number of pairs around the reference within the annulus
+            ``scale_name`` (`int`)
+        ``"[scale_name]_weights"``
+            Sum of weights of pairs around the reference within the annulus
+            ``scale_name`` (`float`)
     """
     output = dict()
     output["redshift"] = ref_row["redshift"]
@@ -149,7 +261,8 @@ def collapse_pairs_ref_id(ref_row,
         matched_weights, matched_dists = find_pairs(
             sub_unkn_ids, sub_pair_ids, sub_unkn_weights, sub_pair_dists)
 
-    matched_dist_weights = matched_weights * distance_weight(matched_dists)
+    matched_dist_weights = matched_weights * distance_weight(matched_dists,
+                                                             weight_power)
     for r_min, r_max in zip(r_mins, r_maxes):
         scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
         dist_mask = np.logical_and(matched_dists >= r_min,
@@ -161,7 +274,21 @@ def collapse_pairs_ref_id(ref_row,
 
 
 def find_trim_indexes(trim_to, trim_from):
-    """
+    """Find indices of trim_to where it is fully contained in trim_from.
+
+    Parameters
+    ----------
+    trim_to : `numpy.ndarray`
+        Sorted integer array to find locations of the min and max value in
+        ``trim_from``
+    trim_from : `numpy.ndarray`
+        Sorted integer array to trim to the min and max value of ``trim_to``.
+
+    Returns
+    -------
+    output : `tuple`, (`int`, `int`)
+        Min and max index where the values of trim_to will be fully contained
+        within trim_from.
     """
     start_idx = np.searchsorted(trim_from, trim_to[0], side="left")
     end_idx = np.searchsorted(trim_from, trim_to[-1], side="right")
@@ -173,7 +300,20 @@ def find_trim_indexes(trim_to, trim_from):
 
 
 def find_pairs(input_ids, match_ids, input_weights, match_weights):
-    """
+    """Find the values in input_ids within match_ids and mask the weight
+    array's.
+
+    Parameters
+    ----------
+    input_ids : `numpy.ndarray`
+        Sorted integer array of ids to find in ``match_ids``
+    match_ids : `numpy.ndarray`
+        Stored integer array of ids.
+    input_weights : `numpy.ndarray`
+        Weights of each of the input ids.
+    match_weights : `numpy.ndarray`
+        Weights of each of the match ids.
+    
     """
     sort_idxs = np.searchsorted(match_ids, input_ids)
     sort_mask = np.logical_and(sort_idxs < len(match_ids), sort_idxs >= 0)
