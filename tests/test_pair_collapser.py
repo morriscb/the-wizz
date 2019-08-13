@@ -35,10 +35,12 @@ class TestPairCollapser(unittest.TestCase):
         self.z_min = 0.05
         self.z_max = 3.0
 
-        self.r_mins = [0.1, 1]
-        self.r_maxes = [1, 10]
+        self.r_mins = [1,]
+        self.r_maxes = [10,]
         self.r_min = np.min(self.r_mins)
         self.r_max = np.max(self.r_maxes)
+
+        self.weight_power = -0.8
 
         self.expected_columns = ["ref_id",
                                  "redshift"]
@@ -54,7 +56,36 @@ class TestPairCollapser(unittest.TestCase):
         pass
 
     def test_collapse_pairs_ref_id(self):
-        pass
+        """Test that masking of pairs is working.
+        """
+        ref_row = {"redshift": 0.5,
+                   "region": 0}
+        comp_dists = pair_maker.compress_distances(np.linspace(0.1, 10, 20))
+        pair_data = pd.DataFrame(
+            data={"unkn_id": np.arange(20),
+                  "comp_log_dist": comp_dists})
+        unkn_ids = np.array([3, 5, 7, 9, 21])
+        unkn_weights = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+
+        output = pair_collapser.collapse_pairs_ref_id(ref_row,
+                                                      pair_data,
+                                                      unkn_ids,
+                                                      unkn_weights,
+                                                      self.r_mins,
+                                                      self.r_maxes,
+                                                      self.weight_power)
+        matched_dists, matched_weights = pair_collapser.find_pairs(
+            pair_data["unkn_id"].to_numpy(),
+            unkn_ids,
+            pair_maker.distance_weight(
+                pair_maker.decompress_distances(
+                    pair_data["comp_log_dist"].to_numpy()),
+                self.weight_power),
+            unkn_weights)
+        
+        self.assertEqual(output["Mpc1.0t10.0_counts"], len(matched_dists))
+        self.assertEqual(output["Mpc1.0t10.0_weights"],
+                         (matched_dists * matched_weights).sum())
 
     def test_find_trim_indexes(self):
         """Test that arrays are trimmed correctly. 
