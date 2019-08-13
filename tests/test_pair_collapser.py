@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import unittest
 
-from the_wizz import pair_maker
+from the_wizz import pair_maker, pair_collapser
 
 
 class TestPairCollapser(unittest.TestCase):
@@ -48,3 +48,72 @@ class TestPairCollapser(unittest.TestCase):
                                          (r_min, r_max))
         self.output_path = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
+
+    def test_collapse_pairs(self):
+        pass
+
+    def test_collapse_pairs_ref_id(self):
+        pass
+
+    def test_find_trim_indexes(self):
+        """Test that arrays are trimmed correctly. 
+        """
+        # Test a fully contained array
+        test_ids = np.arange(10, 20, dtype=np.int)
+        input_ids = np.arange(15, 18, dtype=np.int)
+        (start_idx, end_idx) = pair_collapser.find_trim_indexes(input_ids,
+                                                                test_ids)
+        self.assertEqual(start_idx, 5)
+        self.assertEqual(end_idx, 8)
+
+        (start_idx, end_idx) = pair_collapser.find_trim_indexes(test_ids,
+                                                                input_ids)
+        self.assertEqual(start_idx, 0)
+        self.assertEqual(end_idx, 3)
+
+        # Test overlapping arrays.
+        input_ids = np.arange(15, dtype=np.int)
+        (start_idx, end_idx) = pair_collapser.find_trim_indexes(input_ids,
+                                                                test_ids)
+        self.assertEqual(start_idx, 0)
+        self.assertEqual(end_idx, 5)
+
+        (start_idx, end_idx) = pair_collapser.find_trim_indexes(test_ids,
+                                                                input_ids)
+        self.assertEqual(start_idx, 10)
+        self.assertEqual(end_idx, 15)
+
+        # Test distinct arrays
+        input_ids = np.arange(8, dtype=np.int)
+        (start_idx, end_idx) = pair_collapser.find_trim_indexes(input_ids,
+                                                                test_ids)
+        self.assertEqual(start_idx, end_idx)
+
+        (start_idx, end_idx) = pair_collapser.find_trim_indexes(test_ids,
+                                                                input_ids)
+        self.assertEqual(start_idx, end_idx)
+
+    def test_find_pairs(self):
+        """Test that finding pairs and weights works.
+        """
+        test_ids = np.arange(10, dtype=np.int)
+        test_weights = np.arange(10, dtype=np.float)
+
+        input_ids = np.array([2, 3, 5, 11])
+        input_weights = np.array([4, 6, 10, 22])
+
+        input_weights, matched_weights = pair_collapser.find_pairs(
+            input_ids,
+            test_ids,
+            input_ids,
+            input_weights)
+
+        ans_input_weights = np.array([4, 6, 10])
+        ans_test_weights = np.array([2, 3, 5])
+
+        for in_w, m_w, a_in_w, a_m_w in zip(input_weights,
+                                            matched_weights,
+                                            ans_input_weights,
+                                            ans_test_weights):
+            self.assertEqual(in_w, a_in_w)
+            self.assertEqual(m_w, a_m_w)
