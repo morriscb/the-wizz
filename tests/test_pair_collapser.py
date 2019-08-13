@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+import subprocess
 import tempfile
 import unittest
 
@@ -133,15 +134,15 @@ class TestPairCollapser(unittest.TestCase):
         pm_output = self._run_pair_maker()
 
         mask = self.catalog["region"] == 0
-        data = {"unkn_ids": self.catalog["region"][mask],
-                 "unkn_weights": region_weights,
-                 "tot_sample": 100,
-                 "r_mins": self.r_mins,
-                 "r_maxes": self.r_maxes,
-                 "file_name": self.output_path,
-                 "region": "region=%i" % 0,
-                 "z_bin": 25,
-                 "weight_power": self.weight_power}
+        data = {"unkn_ids": self.catalog["id"][mask],
+                "unkn_weights": np.ones(mask.sum()),
+                "tot_sample": mask.sum(),
+                "r_mins": self.r_mins,
+                "r_maxes": self.r_maxes,
+                "file_name": self.output_path,
+                "region": "region=%i" % 0,
+                "z_bin": self.output_path + "/region=0/z_bin=25",
+                "weight_power": self.weight_power}
         pc_output = pair_collapser.collapse_pairs(data)
         pc_output.set_index("ref_id", inplace=True)
 
