@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+import tempfile
 import unittest
 
 from the_wizz import pair_maker, pair_collapser
@@ -105,8 +106,8 @@ class TestPairCollapser(unittest.TestCase):
         input_weights, matched_weights = pair_collapser.find_pairs(
             input_ids,
             test_ids,
-            input_ids,
-            input_weights)
+            input_weights,
+            test_weights)
 
         ans_input_weights = np.array([4, 6, 10])
         ans_test_weights = np.array([2, 3, 5])
@@ -117,3 +118,8 @@ class TestPairCollapser(unittest.TestCase):
                                             ans_test_weights):
             self.assertEqual(in_w, a_in_w)
             self.assertEqual(m_w, a_m_w)
+
+
+if __name__ == "__main__":
+
+    unittest.main()
