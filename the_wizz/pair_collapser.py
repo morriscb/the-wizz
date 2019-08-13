@@ -79,7 +79,7 @@ class PairCollapser:
                   "in the pair file may lead to long run times.")
             unkn_regions = np.zeros(len(unkn_ids), dtype=np.uint32)
         try:
-            unkn_weights = unknown_catalog["weights"]
+            unkn_weights = unknown_catalog["weight"]
         except KeyError:
             unkn_weights = np.ones(len(unkn_ids))
 

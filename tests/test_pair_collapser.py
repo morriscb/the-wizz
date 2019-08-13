@@ -55,7 +55,29 @@ class TestPairCollapser(unittest.TestCase):
         self.output_path = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
 
+    def tearDown(self):
+        job = subprocess.Popen("rm -rf " + self.output_path,
+                               shell=True)
+        job.wait()
+        del job
+
     def test_run(self):
+        """Test the full run method and that it outputs values similar to
+        the straight correlation.
+        """
+        pm_output = self._run_pair_maker()
+
+        self._test_run_different_n_proc(0, pm_output)
+        self._test_run_different_n_proc(4, pm_output)
+
+    def _run_pair_maker(self):
+        """Run pair maker and create output
+
+        Returns
+        -------
+        pm_output : `pandas.DataFrame`
+            Return the output of PairMaker.
+        """
         pm = pair_maker.PairMaker(self.r_mins,
                                   self.r_maxes,
                                   self.z_min,
@@ -72,15 +94,26 @@ class TestPairCollapser(unittest.TestCase):
                           "region": self.catalog["region"][mask]}
             pm_output.append(pm.run(region_cat, region_cat))
         pm_output = pd.concat(pm_output)
+        pm_output.set_index("ref_id", inplace=True)
 
+        return pm_output
+
+    def _test_run_different_n_proc(self, n_proc, pm_output):
+        """Test different n_proc levels.
+
+        Parameters
+        ----------
+        n_proc : `int`
+            Number of sub processes to use.
+        pm_output : `pandas.DataFrame`
+            Output from `PairMaker.run`
+        """
         pc = pair_collapser.PairCollapser(self.output_path,
                                           self.r_mins,
                                           self.r_maxes,
                                           self.weight_power,
-                                          n_proc=0)
+                                          n_proc=n_proc)
         pc_output = pc.run(self.catalog)
-
-        pm_output.set_index("ref_id", inplace=True)
         pc_output.set_index("ref_id", inplace=True)
 
         self.assertEqual(len(pm_output), len(pc_output))
@@ -97,15 +130,10 @@ class TestPairCollapser(unittest.TestCase):
     def test_collapse_pairs(self):
         """Test reading from parquet and computing correlations.
         """
-        pm = pair_maker.PairMaker(self.r_mins,
-                                  self.r_maxes,
-                                  self.z_min,
-                                  self.z_max,
-                                  self.weight_power,
-                                  output_pairs=self.output_path)
-        pm_output = pm.run(self.catalog, self.catalog)
+        pm_output = self._run_pair_maker()
 
-        data = {"unkn_ids": region_ids,
+        mask = self.catalog["region"] == 0
+        data = {"unkn_ids": self.catalog["region"][mask],
                  "unkn_weights": region_weights,
                  "tot_sample": 100,
                  "r_mins": self.r_mins,
@@ -115,6 +143,16 @@ class TestPairCollapser(unittest.TestCase):
                  "z_bin": 25,
                  "weight_power": self.weight_power}
         pc_output = pair_collapser.collapse_pairs(data)
+        pc_output.set_index("ref_id", inplace=True)
+
+        for ref_id, pc_row in pc_output.iterrows():
+            ref_row = pm_output.loc[ref_id]
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_counts"],
+                                   pc_row["Mpc1.00t10.00_counts"])
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weights"] / 
+                                   pc_row["Mpc1.00t10.00_weights"] - 1,
+                                   0,
+                                   places=3)
 
     def test_collapse_pairs_ref_id(self):
         """Test that masking of pairs is working.
