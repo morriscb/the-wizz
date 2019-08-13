@@ -26,11 +26,14 @@ class TestPairCollapser(unittest.TestCase):
         redshifts = np.random.lognormal(mean=-1,
                                         sigma=0.5,
                                         size=self.n_objects)
-        ids = np.arange(self.n_objects)
+        ids = np.arange(self.n_objects, dtype=np.uint64)
+        regions = np.zeros(self.n_objects, dtype=np.uint32)
+        regions[int(self.n_objects / 2):] = 1
         self.catalog = {"id": ids,
                         "ra": ras,
                         "dec": decs,
-                        "redshift": redshifts}
+                        "redshift": redshifts,
+                        "region": regions}
 
         self.z_min = 0.05
         self.z_max = 3.0
@@ -52,8 +55,51 @@ class TestPairCollapser(unittest.TestCase):
         self.output_path = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
 
+    def test_run(self):
+        pm = pair_maker.PairMaker(self.r_mins,
+                                  self.r_maxes,
+                                  self.z_min,
+                                  self.z_max,
+                                  self.weight_power,
+                                  output_pairs=self.output_path)
+        pm_output = pm.run(self.catalog, self.catalog)
+
+        pc = pair_collapser.PairCollapser(self.output_path,
+                                          self.r_mins,
+                                          self.r_maxes,
+                                          self.weight_power,
+                                          n_proc=0)
+        pc_output = pc.run(self.catalog)
+
+        pm_output.set_index("ref_id", inplace=True)
+        pc_output.set_index("ref_id", inplace=True)
+
+        for ref_id, ref_row in pm_output.iterrows():
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weights"],
+                                   pc_output.loc[ref_id,
+                                                 "Mpc1.00t10.00_weights"])
+
     def test_collapse_pairs(self):
-        pass
+        """Test reading from parquet and computing correlations.
+        """
+        pm = pair_maker.PairMaker(self.r_mins,
+                                  self.r_maxes,
+                                  self.z_min,
+                                  self.z_max,
+                                  self.weight_power,
+                                  output_pairs=self.output_path)
+        pm_output = pm.run(self.catalog, self.catalog)
+
+        data = {"unkn_ids": region_ids,
+                 "unkn_weights": region_weights,
+                 "tot_sample": 100,
+                 "r_mins": self.r_mins,
+                 "r_maxes": self.r_maxes,
+                 "file_name": self.output_path,
+                 "region": "region=%i" % 0,
+                 "z_bin": 25,
+                 "weight_power": self.weight_power}
+        pc_output = pair_collapser.collapse_pairs(data)
 
     def test_collapse_pairs_ref_id(self):
         """Test that masking of pairs is working.
