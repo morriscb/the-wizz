@@ -22,13 +22,13 @@ class TestPairCollapser(unittest.TestCase):
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
                                                     size=self.n_objects)))
+        median_dec = np.median(decs)
         ras = np.random.uniform(0, 360, size=self.n_objects)
         redshifts = np.random.lognormal(mean=-1,
                                         sigma=0.5,
                                         size=self.n_objects)
         ids = np.arange(self.n_objects, dtype=np.uint64)
-        regions = np.zeros(self.n_objects, dtype=np.uint32)
-        regions[int(self.n_objects / 2):] = 1
+        regions = np.where(decs > median_dec, 1, 0)
         self.catalog = {"id": ids,
                         "ra": ras,
                         "dec": decs,
@@ -62,7 +62,16 @@ class TestPairCollapser(unittest.TestCase):
                                   self.z_max,
                                   self.weight_power,
                                   output_pairs=self.output_path)
-        pm_output = pm.run(self.catalog, self.catalog)
+        pm_output = []
+        for region in [0, 1]:
+            mask = self.catalog["region"] == region
+            region_cat = {"id": self.catalog["id"][mask],
+                          "ra": self.catalog["ra"][mask],
+                          "dec": self.catalog["dec"][mask],
+                          "redshift": self.catalog["redshift"][mask],
+                          "region": self.catalog["region"][mask]}
+            pm_output.append(pm.run(region_cat, region_cat))
+        pm_output = pd.concat(pm_output)
 
         pc = pair_collapser.PairCollapser(self.output_path,
                                           self.r_mins,
@@ -74,10 +83,16 @@ class TestPairCollapser(unittest.TestCase):
         pm_output.set_index("ref_id", inplace=True)
         pc_output.set_index("ref_id", inplace=True)
 
+        self.assertEqual(len(pm_output), len(pc_output))
+
         for ref_id, ref_row in pm_output.iterrows():
-            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weights"],
-                                   pc_output.loc[ref_id,
-                                                 "Mpc1.00t10.00_weights"])
+            pc_row = pc_output.loc[ref_id]
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_counts"],
+                                   pc_row["Mpc1.00t10.00_counts"])
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weights"] / 
+                                   pc_row["Mpc1.00t10.00_weights"] - 1,
+                                   0,
+                                   places=3)
 
     def test_collapse_pairs(self):
         """Test reading from parquet and computing correlations.
