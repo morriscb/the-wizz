@@ -83,8 +83,8 @@ class TestPairCollapser(unittest.TestCase):
                 self.weight_power),
             unkn_weights)
         
-        self.assertEqual(output["Mpc1.0t10.0_counts"], len(matched_dists))
-        self.assertEqual(output["Mpc1.0t10.0_weights"],
+        self.assertEqual(output["Mpc1.00t10.00_counts"], len(matched_dists))
+        self.assertEqual(output["Mpc1.00t10.00_weights"],
                          (matched_dists * matched_weights).sum())
 
     def test_find_trim_indexes(self):
