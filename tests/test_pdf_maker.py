@@ -140,17 +140,27 @@ class TestPDFMaker(unittest.TestCase):
         count = np.random.randint(100)
         weight = np.random.uniform(0, 100)
         data = pd.DataFrame([
-            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000},
-            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000},
-            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000},
-            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000},
-            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000}])
+            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000,
+             "n_ref": 100},
+            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000,
+             "n_ref": 100},
+            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000,
+             "n_ref": 100},
+            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000,
+             "n_ref": 100},
+            {"counts": 2 * count, "weights": 4 * weight, "tot_sample": 1000,
+             "n_ref": 100}])
         randoms = pd.DataFrame([
-            {"counts": count, "weights": weight, "tot_sample": 2000},
-            {"counts": count, "weights": weight, "tot_sample": 2000},
-            {"counts": count, "weights": weight, "tot_sample": 2000},
-            {"counts": count, "weights": weight, "tot_sample": 2000},
-            {"counts": count, "weights": weight, "tot_sample": 2000}])
+            {"counts": count, "weights": weight, "tot_sample": 2000,
+             "n_ref": 100},
+            {"counts": count, "weights": weight, "tot_sample": 2000,
+             "n_ref": 100},
+            {"counts": count, "weights": weight, "tot_sample": 2000,
+             "n_ref": 100},
+            {"counts": count, "weights": weight, "tot_sample": 2000,
+             "n_ref": 100},
+            {"counts": count, "weights": weight, "tot_sample": 2000,
+             "n_ref": 100}])
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
         count_corr, weight_corr = pdf.compute_correlation(data, randoms, False)
@@ -159,15 +169,6 @@ class TestPDFMaker(unittest.TestCase):
             weight = weight_corr[idx]
             self.assertEqual(count, 4 - 1)
             self.assertEqual(weight, 8 - 1)
-
-        count_corr, weight_corr = pdf.compute_correlation_natrual(data,
-                                                                  randoms,
-                                                                  False)
-        for idx in range(5):
-            count = count_corr[idx]
-            weight = weight_corr[idx]
-            self.assertEqual(count, 8 - 1)
-            self.assertEqual(weight, 16 - 1)
 
     def test_create_bin_edges(self):
         """Test that all binning types produce predictable results.

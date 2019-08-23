@@ -172,7 +172,7 @@ class PDFMaker:
             ref_ref_binned = self.bin_data(ref_ref, ref_weights)
             ref_ref_rand_binned = self.bin_data(ref_ref_rand, ref_weights)
             ref_ref_count_corr, ref_ref_w_corr = \
-                self.compute_correlation_natrual(
+                self.compute_correlation(
                     ref_ref_binned, ref_ref_rand_binned, weight_rand)
 
             n_z_r = ref_unkn_binned["n_ref"] / ref_unkn_binned["dz"]
@@ -433,37 +433,8 @@ class PDFMaker:
             Simple correlation estimators (DD / DR - 1) for pure counts and
             weighted counts.
         """
-        rand_ratio = random["tot_sample"] / data["tot_sample"]
-        count_corr = (
-            data["counts"] * rand_ratio / random["counts"] - 1)
-        if weight_rand:
-            rand_ratio /= data["ave_unkn_weight"]
-        weight_corr = (
-            data["weights"] * rand_ratio / random["weights"] - 1)
-        return count_corr, weight_corr
-
-    def compute_correlation_natrual(self, data, random, weight_rand):
-        """Compute the correlation function with the "natrual" estimator.
-
-        Used for auto-correlations.
-
-        Parameters
-        ----------
-        data : `pandas.DataFrame`
-            Data binned in reference redshifts to create correlation functions.
-        random : `pandas.DataFrame`
-            Randoms binned in reference redshifts to create correlation
-            functions.
-        weight_rand : `bool`
-            Use average weight on randoms.
-
-        Returns
-        -------
-        count_corr, weight_corr : (`pandas.Series`, 'pandas.Series')
-            Simple correlation estimators (DD / DR - 1) for pure counts and
-            weighted counts.
-        """
-        rand_ratio = (random["tot_sample"] / data["tot_sample"]) ** 2
+        rand_ratio = ((random["n_ref"] * random["tot_sample"]) /
+                      (data["n_ref"] * data["tot_sample"]))
         count_corr = (
             data["counts"] * rand_ratio / random["counts"] - 1)
         if weight_rand:
