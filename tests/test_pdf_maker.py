@@ -40,17 +40,17 @@ class TestPDFMaker(unittest.TestCase):
         self.pair_counts = pm.run(catalog, catalog)
 
         self.pairs = pd.DataFrame([
-            {"redshift": 0.2, "tot_sample": 10,
+            {"redshift": 0.2, "tot_sample": 10, "ave_unkn_weight": 1.0,
              "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
-            {"redshift": 0.4, "tot_sample": 10,
+            {"redshift": 0.4, "tot_sample": 10, "ave_unkn_weight": 1.0,
              "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
-            {"redshift": 0.6, "tot_sample": 10,
+            {"redshift": 0.6, "tot_sample": 10, "ave_unkn_weight": 1.0,
              "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
-            {"redshift": 0.8, "tot_sample": 10,
+            {"redshift": 0.8, "tot_sample": 10, "ave_unkn_weight": 1.0,
              "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
-            {"redshift": 1.0, "tot_sample": 10,
+            {"redshift": 1.0, "tot_sample": 10, "ave_unkn_weight": 1.0,
              "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
-            {"redshift": 1.2, "tot_sample": 10,
+            {"redshift": 1.2, "tot_sample": 10, "ave_unkn_weight": 1.0,
              "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5}])
         self.ref_weights = np.array([1., 0.5, 1., 0.5, 1, 0.5])
 
@@ -82,6 +82,7 @@ class TestPDFMaker(unittest.TestCase):
         ref_unkn = self.pair_counts.copy()
         ref_rand = self.pair_counts.copy()
         ref_ref = self.pair_counts.copy()
+        ref_ref_rand = self.pair_counts.copy()
 
         ref_unkn.loc[:, "Mpc1.00t10.00_counts"] *= 2
         ref_unkn.loc[:, "Mpc1.00t10.00_weights"] *= 2
@@ -99,7 +100,7 @@ class TestPDFMaker(unittest.TestCase):
         for (out_idx, row), n_z in zip(output.iterrows(), n_z_s):
             self.assertAlmostEqual(row["corr"], 1.)
             self.assertAlmostEqual(row["weighted_corr"], 1.)
-            self.assertAlmostEqual(row["n_z_bu_bs"], n_z)
+            self.assertAlmostEqual(row["n_z_bu_br"], n_z)
 
     def test_bin_data(self):
         """Test that binning the data and weighting a reference weight works.
@@ -108,15 +109,17 @@ class TestPDFMaker(unittest.TestCase):
         binned_data = pdf.bin_data(self.pairs)
         test_data = pd.DataFrame([
             {"mean_redshift": 0.3, "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
-             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10},
+             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10,
+             "ave_unkn_weight": 1.0},
             {"mean_redshift": 0.7, "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
-             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10}])
+             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10,
+             "ave_unkn_weight": 1.0}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
             for val, test_val in zip(row, test_row):
                 self.assertAlmostEqual(val, test_val)
 
-        binned_data = pdf.bin_data(self.pairs, self.ref_weights, False)
+        binned_data = pdf.bin_data(self.pairs, self.ref_weights)
         test_data = pd.DataFrame([
             {"mean_redshift": (0.2 * 1 + 0.4 * 0.5) / 1.5,
              "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
@@ -157,7 +160,7 @@ class TestPDFMaker(unittest.TestCase):
             self.assertEqual(count, 4 - 1)
             self.assertEqual(weight, 8 - 1)
 
-        count_corr, weight_corr = pdf.compute_correlation_natural(data,
+        count_corr, weight_corr = pdf.compute_correlation_natrual(data,
                                                                   randoms,
                                                                   False)
         for idx in range(5):
