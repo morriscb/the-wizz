@@ -36,7 +36,7 @@ class TestPDFMaker(unittest.TestCase):
         self.z_min = 0.1
         self.z_max = 1.1
 
-        pm = pair_maker.PairMaker([1], [10], self.z_min, self.z_max)
+        pm = pair_maker.PairMaker([1,], [10,], self.z_min, self.z_max)
         self.pair_counts = pm.run(catalog, catalog)
 
         self.pairs = pd.DataFrame([
@@ -69,7 +69,8 @@ class TestPDFMaker(unittest.TestCase):
         ref_unkn.loc[:, "Mpc1.00t10.00_weights"] *= 2
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
-        output = pdf.run(ref_unkn, ref_rand)
+        output = pdf.run(ref_unkn=ref_unkn,
+                         ref_rand=ref_rand)
 
         for out_idx, row in output.iterrows():
             self.assertAlmostEqual(row["corr"], 1.)
@@ -88,7 +89,10 @@ class TestPDFMaker(unittest.TestCase):
         ref_ref.loc[:, "Mpc1.00t10.00_weights"] *= 2
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
-        output = pdf.run(ref_unkn, ref_rand, ref_ref)
+        output = pdf.run(ref_unkn=ref_unkn,
+                         ref_rand=ref_rand,
+                         ref_ref=ref_ref,
+                         ref_ref_rand=ref_ref_rand)
 
         n_z_s = (output["n_ref"] / output["tot_sample"]) / output["dz"]
 
@@ -112,14 +116,16 @@ class TestPDFMaker(unittest.TestCase):
             for val, test_val in zip(row, test_row):
                 self.assertAlmostEqual(val, test_val)
 
-        binned_data = pdf.bin_data(self.pairs, self.ref_weights)
+        binned_data = pdf.bin_data(self.pairs, self.ref_weights, False)
         test_data = pd.DataFrame([
             {"mean_redshift": (0.2 * 1 + 0.4 * 0.5) / 1.5,
              "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
-             "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10},
+             "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10,
+             "ave_unkn_weight": 1},
             {"mean_redshift": (0.6 * 1 + 0.8 * 0.5) / 1.5,
              "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
-             "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10}])
+             "counts": 10, "weights": 3.75, "n_ref": 2, "tot_sample": 10,
+             "ave_unkn_weight": 1}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
             for val, test_val in zip(row, test_row):
@@ -144,13 +150,21 @@ class TestPDFMaker(unittest.TestCase):
             {"counts": count, "weights": weight, "tot_sample": 2000}])
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
-        count_corr, weight_corr = pdf.compute_correlation(data, randoms)
-
+        count_corr, weight_corr = pdf.compute_correlation(data, randoms, False)
         for idx in range(5):
             count = count_corr[idx]
             weight = weight_corr[idx]
             self.assertEqual(count, 4 - 1)
             self.assertEqual(weight, 8 - 1)
+
+        count_corr, weight_corr = pdf.compute_correlation_natural(data,
+                                                                  randoms,
+                                                                  False)
+        for idx in range(5):
+            count = count_corr[idx]
+            weight = weight_corr[idx]
+            self.assertEqual(count, 8 - 1)
+            self.assertEqual(weight, 16 - 1)
 
     def test_create_bin_edges(self):
         """Test that all binning types produce predictable results.

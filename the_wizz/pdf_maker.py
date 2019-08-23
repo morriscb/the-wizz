@@ -3,6 +3,7 @@ from astropy.cosmology import Planck15, z_at_value
 import astropy.units as u
 import numpy as np
 import pandas as pd
+import pickle
 
 
 def linear_bins(z_min, z_max, n_bins):
@@ -99,7 +100,9 @@ class PDFMaker:
     def run(self,
             ref_unkn,
             ref_rand,
+            weight_rand=False,
             ref_ref=None,
+            ref_ref_rand=None,
             ref_weights=None):
         """Combine pairs of reference against unknown with reference against
         random to create the output over-densities.
@@ -120,11 +123,21 @@ class PDFMaker:
             DataFrame output from pair_maker or pair_collapser run methods
             containing the counts of randoms around reference objects with
             known redshifts.
+        weight_rand : `bool`
+            If randoms correlated against the the reference objects did not
+            already have weights, this flag uses the average weight of the
+            unknown sample times the random counts to compute a weight.
         ref_ref : `pandas.DataFrame`
             DataFrame output from pair_maker or pair_collapser run methods
             counting the number of reference objects around themselves.
             Optional for producing outputs with the dark-matter clustering
             mitigated.
+        ref_ref_rand : `pandas.DataFrame`
+            DataFrame output from pair_maker or pair_collapser run methods
+            counting the number of reference objects around randoms. This can
+            be the same data as ref_rand or a specific set of randoms sampling
+            the reference objects. Optional for producing outputs with the
+            dark-matter clustering mitigated.
         ref_weights : `numpy.ndarray` or `None`
             Optional weights to apply to each reference object in the
             calculated correlations.
@@ -140,7 +153,7 @@ class PDFMaker:
         ref_rand_binned = self.bin_data(ref_rand, ref_weights)
 
         ref_unkn_count_corr, ref_unkn_weight_corr = self.compute_correlation(
-            ref_unkn_binned, ref_rand_binned)
+            ref_unkn_binned, ref_rand_binned, weight_rand)
 
         ref_unkn_binned["corr"] = ref_unkn_count_corr
         ref_unkn_binned["weighted_corr"] = ref_unkn_weight_corr
@@ -150,28 +163,203 @@ class PDFMaker:
 
         ref_unkn_binned["rand_counts"] = ref_rand_binned["counts"]
         ref_unkn_binned["rand_weights"] = ref_rand_binned["weights"]
+        if weight_rand:
+            ref_unkn_binned["rand_weights"] *= ref_unkn_binned[
+                "ave_unkn_weight"]
         ref_unkn_binned["tot_sample_rand"] = ref_rand_binned["tot_sample"]
 
-        if ref_ref is not None:
+        if ref_ref is not None and ref_ref_rand is not None:
             ref_ref_binned = self.bin_data(ref_ref, ref_weights)
-            ref_ref_count_corr, ref_ref_w_corr = self.compute_correlation(
-                ref_ref_binned, ref_rand_binned)
+            ref_ref_rand_binned = self.bin_data(ref_ref_rand, ref_weights)
+            ref_ref_count_corr, ref_ref_w_corr = \
+                self.compute_correlation_natrual(
+                    ref_ref_binned, ref_ref_rand_binned, weight_rand)
 
-            n_z_s = ref_unkn_binned["n_ref"] / ref_unkn_binned["dz"]
-            n_z_s /= ref_ref_binned["tot_sample"]
-            ref_unkn_binned["n_z_bu_bs"] = (
-                n_z_s * ref_unkn_weight_corr / ref_ref_w_corr)
-            ref_unkn_binned["n_z_bu_bs_err"] = n_z_s * np.sqrt(
+            n_z_r = ref_unkn_binned["n_ref"] / ref_unkn_binned["dz"]
+            n_z_r /= ref_ref_binned["tot_sample"]
+            ref_unkn_binned["n_z_bu_br"] = (
+                n_z_r * ref_unkn_weight_corr / ref_ref_w_corr)
+            ref_unkn_binned["n_z_bu_br_err"] = n_z_r * np.sqrt(
                 (ref_unkn_binned["weighted_corr_err"] / ref_ref_w_corr) ** 2 +
                 (ref_unkn_weight_corr /
                  (np.sqrt(ref_ref_binned["weights"]) *
                   ref_ref_w_corr ** 2)) ** 2)
 
             ref_unkn_binned["ref_counts"] = ref_ref_binned["counts"]
+            ref_unkn_binned["ref_rand_counts"] = ref_ref_rand_binned["counts"]
             ref_unkn_binned["ref_weights"] = ref_ref_binned["weights"]
-            ref_unkn_binned["tot_sample_ref"] = ref_ref_binned["tot_sample"]
+            ref_unkn_binned["ref_rand_weights"] = ref_ref_rand_binned[
+                "weights"]
+            if weight_rand:
+                ref_unkn_binned["ref_rand_weights"] *= ref_ref_binned[
+                    "ave_unkn_weight"]
+            ref_unkn_binned["tot_sample_ref"] = ref_ref_binned[
+                "tot_sample"]
+            ref_unkn_binned["tot_sample_ref_rand"] = ref_ref_rand_binned[
+                "tot_sample"]
 
         return ref_unkn_binned
+
+    def run_region_bootstraped(self,
+                               ref_unkn,
+                               ref_rand,
+                               weight_rand=False,
+                               ref_ref=None,
+                               ref_ref_rand=None,
+                               ref_weights=None,
+                               bootstraps=1000,
+                               output_bootstraps=None):
+        """Combine pairs of reference against unknown as in the run method and
+        additionally bootstrap over spatial regions to estimate errors.
+
+        Parameters
+        ----------
+        ref_unkn : `pandas.DataFrame`
+            DataFrame output from pair_maker or pair_collapser run methods
+            containing the counts of objects with unknown redshifts around
+            reference objects with known redshifts.
+        ref_rand : `pandas.DataFrame`
+            DataFrame output from pair_maker or pair_collapser run methods
+            containing the counts of randoms around reference objects with
+            known redshifts.
+        weight_rand : `bool`
+            If randoms correlated against the the reference objects did not
+            already have weights, this flag uses the average weight of the
+            unknown sample times the random counts to compute a weight.
+        ref_ref : `pandas.DataFrame`
+            DataFrame output from pair_maker or pair_collapser run methods
+            counting the number of reference objects around themselves.
+            Optional for producing outputs with the dark-matter clustering
+            mitigated.
+        ref_ref_rand : `pandas.DataFrame`
+            DataFrame output from pair_maker or pair_collapser run methods
+            counting the number of reference objects around randoms. This can
+            be the same data as ref_rand or a specific set of randoms sampling
+            the reference objects. Optional for producing outputs with the
+            dark-matter clustering mitigated.
+        ref_weights : `pandas.DataFrame` or `None`
+            Optional weights to apply to each reference object in the
+            calculated correlations.
+        bootstraps : `int` or `numpy.ndarray`
+            Number of bootstrap realizations to create or 
+        output_bootstraps : `str`
+            Name output pickle file to write raw bootstraps to.
+
+        Returns
+        -------
+        output_dataframe : `pandas.DataFrame`
+            Output clustering redshift calculations as a function of redshift
+            with errorbars derived from spatial bootstrapping.
+        """
+        ref_unkn.set_index(["region"], inplace=True)
+        ref_rand.set_index(["region"], inplace=True)
+        n_regions = len(ref_unkn.index.unique())
+        if ref_ref is not None and ref_ref_rand is not None:
+            ref_ref.set_index(["region"], inplace=True)
+            ref_ref_rand.set_index(["region"], inplace=True)
+
+        if isinstance(bootstraps, int):
+            bootstraps = np.random.randint(n_regions,
+                                           size=(bootstraps, n_regions))
+
+        ref_unkn_regions = np.empty((n_regions, self.n_bins))
+        ref_rand_regions = np.empty((n_regions, self.n_bins))
+        ref_ref_rand_regions = np.empty((n_regions, self.n_bins))
+
+        n_ref_regions = np.empty((n_regions, self.n_bins))
+
+        tot_ref_regions = np.empty((n_regions, self.n_bins))
+        tot_unkn_regions = np.empty((n_regions, self.n_bins))
+        tot_rand_regions = np.empty((n_regions, self.n_bins))
+        tot_ref_rand_regions = np.empty((n_regions, self.n_bins))
+
+        mean_redshifts = np.zeros(self.n_bins)
+        delta_z = np.empty(self.n_bins)
+
+        for region in ref_unkn.index.unique():
+            region_ref_unkn = ref_unkn.loc[region]
+            region_ref_rand = ref_rand.loc[region]
+            if ref_ref is None:
+                region_ref_ref = None
+            else:
+                region_ref_ref = ref_ref.loc[region]
+            if ref_ref_rand is None:
+                region_ref_ref_rand = None
+            else:
+                region_ref_ref_rand = ref_ref_rand.loc[region]
+            if reference_weights is None:
+                region_ref_weights = None
+            else:
+                region_ref_weights = reference_weights.loc[region]
+            data = self.run(region_ref_unkn,
+                            region_ref_rand,
+                            weight_rand,
+                            region_ref_ref,
+                            region_ref_ref_rand,
+                            region_ref_weights)
+            
+            ref_unkn_regions[region, :] = data["weights"].to_numpy()
+            ref_rand_regions[region, :] = data["rand_weights"].to_numpy()
+
+            n_ref_regions[region, :] = data["n_ref"].to_numpy()
+            tot_ref_regions[region, :] = data["tot_sample_ref"].to_numpy()
+            tot_unkn_regions[region, :] = data["tot_sample"].to_numpy()
+            tot_rand_regions[region, :] = data["tot_sample_rand"].to_numpy()
+
+            if ref_ref is not None and ref_ref_rand is not None:
+                ref_ref_regions[region, :] = data["ref_weights"].to_numpy()
+                ref_ref_rand_regions[region, :] = data[
+                    "ref_rand_weights"].to_numpy()
+                tot_ref_rand_regions[region, :] = data[
+                    "tot_sample_ref_rand"].to_numpy()
+
+            mean_redshifts += (data["mean_redshift"].to_numpy() /
+                               data["n_ref"].to_numpy())
+            delta_z = data["dz"].to_numpy()
+
+        mean_redshifts /= n_ref_regions.sum(axis=0)
+
+        boot_ref_unkn = ref_unkn_regions[bootstraps, :].sum(axis=1)
+        boot_ref_rand = ref_rand_regions[bootstraps, :].sum(axis=1)
+
+        boot_n_ref = n_ref_regions[bootstraps, :].sum(axis=1)
+        boot_tot_ref = tot_ref_regions[bootstraps, :].sum(axis=1)
+        boot_tot_unkn = tot_unkn_regions[bootstraps, :].sum(axis=1)
+        boot_tot_rand = tot_rand_regions[bootstraps, :].sum(axis=1)
+
+        boot_ref_ref = ref_ref_regions[bootstraps, :].sum(axis=1)
+        boot_ref_rand = ref_ref_rand_regions[bootstraps, :].sum(axis=1)
+        boot_tot_ref_rand = tot_ref_rand_regions[bootstraps, :].sum(axis=1)
+
+        boot_corr = ((boot_ref_unkn / boot_ref_rand) *
+                     (boot_tot_rand / boot_tot_unkn)) - 1
+        boot_ref_corr = ((boot_ref_ref / boot_ref_rand) *
+                         (boot_tot_rand / boot_tot_ref)) - 1
+        boot_ratio = ((boot_ref_unkn - boot_ref_rand *
+                       (boot_tot_unkn / boot_tot_rand)) /
+                      (boot_ref_ref - boot_ref_rand *
+                       (boot_tot_ref / boot_tot_rand)))
+        boot_ratio *= boot_tot_ref / boot_tot_unkn
+        boot_n_z_r  = (boot_n_ref / boot_tot_ref) / delta_z
+        boot_n_z_bu_br = boot_ratio * boot_n_z_r
+
+        if output_bootstraps is not None:
+            with open(output_bootstraps, 'wb') as pkl_file:
+                pickle.dump({}, pkl_file)
+
+        low_corr, median_corr, hi_corr = np.percentile(
+            boot_corr, [50 - 34.1, 50, 50 + 34.1], axis=0)
+        low_ref_corr, median_ref_corr, hi_ref_corr = np.percentile(
+            boot_ref_corr, [50 - 34.1, 50, 50 + 34.1], axis=0)
+        low_nz_bu_br, median_n_z_bu_br, hi_nz_bu_br = np.percentile(
+            boot_n_z_bu_br, [50 - 34.1, 50, 50 + 34.1], axis=0)
+
+        return pd.DataFrame(
+            data={"mean_redshift": mean_redshifts,
+                  "weighted_corr": np.nanmean(boot_corr, axis=0),
+                  "weighted_corr_err": np.nanstd(boot_corr, ddof=1, axis=0),
+                  "n_z_bu_br": np.nanmean(boot_n_z_bu_br, axis=0),
+                  "n_z_bu_br_err": np.nanstd(boot_n_z_bu_br, ddof=1, axis=0)})
 
     def bin_data(self, data, ref_weights=None):
         """Bin the reference data in the requested redshift bins.
@@ -200,6 +388,7 @@ class PDFMaker:
         bin_number = np.digitize(tmp_data["redshift"], self.bin_edges)
 
         total_sample = data.iloc[0]["tot_sample"]
+        ave_weight = data.iloc[0]["ave_unkn_weight"]
 
         output_data = []
         for z_bin in range(self.bins):
@@ -219,11 +408,12 @@ class PDFMaker:
                                                    self.scale_name] *
                                           bin_weights),
                         "n_ref": len(bin_data),
-                        "tot_sample": total_sample}
+                        "tot_sample": total_sample,
+                        "ave_unkn_weight": ave_weight}
             output_data.append(row_dict)
         return pd.DataFrame(output_data)
 
-    def compute_correlation(self, data, random):
+    def compute_correlation(self, data, random, weight_rand):
         """Compute the correlation function for the input data pairs using
         the w_2 estimator from Landy & Szalay 93.
 
@@ -234,6 +424,8 @@ class PDFMaker:
         random : `pandas.DataFrame`
             Randoms binned in reference redshifts to create correlation
             functions.
+        weight_rand : `bool`
+            Use average weight on randoms.
 
         Returns
         -------
@@ -244,6 +436,38 @@ class PDFMaker:
         rand_ratio = random["tot_sample"] / data["tot_sample"]
         count_corr = (
             data["counts"] * rand_ratio / random["counts"] - 1)
+        if weight_rand:
+            rand_ratio /= data["ave_unkn_weight"]
+        weight_corr = (
+            data["weights"] * rand_ratio / random["weights"] - 1)
+        return count_corr, weight_corr
+
+    def compute_correlation_natrual(self, data, random, weight_rand):
+        """Compute the correlation function with the "natrual" estimator.
+
+        Used for auto-correlations.
+
+        Parameters
+        ----------
+        data : `pandas.DataFrame`
+            Data binned in reference redshifts to create correlation functions.
+        random : `pandas.DataFrame`
+            Randoms binned in reference redshifts to create correlation
+            functions.
+        weight_rand : `bool`
+            Use average weight on randoms.
+
+        Returns
+        -------
+        count_corr, weight_corr : (`pandas.Series`, 'pandas.Series')
+            Simple correlation estimators (DD / DR - 1) for pure counts and
+            weighted counts.
+        """
+        rand_ratio = (random["tot_sample"] / data["tot_sample"]) ** 2
+        count_corr = (
+            data["counts"] * rand_ratio / random["counts"] - 1)
+        if weight_rand:
+            rand_ratio /= data["ave_unkn_weight"]
         weight_corr = (
             data["weights"] * rand_ratio / random["weights"] - 1)
         return count_corr, weight_corr

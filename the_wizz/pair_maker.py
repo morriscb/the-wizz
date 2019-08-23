@@ -118,6 +118,7 @@ class PairMaker(object):
             unkn_weights = unknown_catalog["weight"]
         except KeyError:
             unkn_weights = np.ones(total_unknown, dtype=np.float32)
+        ave_weight = np.mean(unkn_weights)
 
         redshifts = reference_catalog["redshift"]
         z_mask = np.logical_and(redshifts >= self.z_min,
@@ -174,6 +175,7 @@ class PairMaker(object):
                 matched_unkn_dists[dist_mask],
                 unkn_weights[unkn_idxs][dist_mask])
             output_row["tot_sample"] = total_unknown
+            output_row["ave_unkn_weight"] = ave_weight
             output_data.append(output_row)
 
         output_data_frame = pd.DataFrame(output_data)

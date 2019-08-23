@@ -95,11 +95,13 @@ class PairCollapser:
             region_sort = region_ids.argsort()
             region_weights = unkn_weights[region_mask][region_sort]
             region_ids = region_ids[region_sort]
+            region_ave_weight = np.mean(region_weights)
 
             process_data = [
                 {"unkn_ids": region_ids,
                  "unkn_weights": region_weights,
                  "tot_sample": len(region_ids),
+                 "ave_unkn_weight": region_ave_weight,
                  "r_mins": self.r_mins,
                  "r_maxes": self.r_maxes,
                  "file_name": self.parquet_pairs,
@@ -182,6 +184,7 @@ def collapse_pairs(data):
                                            data["weight_power"])
         output_row["ref_id"] = ref_id
         output_row["tot_sample"] = data["tot_sample"]
+        output_row["ave_unkn_weight"] = data["ave_unkn_weight"]
         output.append(output_row)
 
     return pd.DataFrame(output)
