@@ -100,10 +100,11 @@ class PDFMaker:
     def run(self,
             ref_unkn,
             ref_rand,
+            ref_weights=None,
             weight_rand=False,
             ref_ref=None,
             ref_ref_rand=None,
-            ref_weights=None):
+            ref_ref_rand_weights=None):
         """Combine pairs of reference against unknown with reference against
         random to create the output over-densities.
 
@@ -241,7 +242,7 @@ class PDFMaker:
             Optional weights to apply to each reference object in the
             calculated correlations.
         bootstraps : `int` or `numpy.ndarray`
-            Number of bootstrap realizations to create or 
+            Number of bootstrap realizations to create or
         output_bootstraps : `str`
             Name output pickle file to write raw bootstraps to.
 
@@ -264,6 +265,7 @@ class PDFMaker:
 
         ref_unkn_regions = np.empty((n_regions, self.n_bins))
         ref_rand_regions = np.empty((n_regions, self.n_bins))
+        ref_ref_regions = np.empty((n_regions, self.n_bins))
         ref_ref_rand_regions = np.empty((n_regions, self.n_bins))
 
         n_ref_regions = np.empty((n_regions, self.n_bins))
@@ -287,17 +289,17 @@ class PDFMaker:
                 region_ref_ref_rand = None
             else:
                 region_ref_ref_rand = ref_ref_rand.loc[region]
-            if reference_weights is None:
+            if ref_weights is None:
                 region_ref_weights = None
             else:
-                region_ref_weights = reference_weights.loc[region]
+                region_ref_weights = ref_weights.loc[region]
             data = self.run(region_ref_unkn,
                             region_ref_rand,
                             weight_rand,
                             region_ref_ref,
                             region_ref_ref_rand,
                             region_ref_weights)
-            
+
             ref_unkn_regions[region, :] = data["weights"].to_numpy()
             ref_rand_regions[region, :] = data["rand_weights"].to_numpy()
 
@@ -340,7 +342,7 @@ class PDFMaker:
                       (boot_ref_ref - boot_ref_rand *
                        (boot_tot_ref / boot_tot_rand)))
         boot_ratio *= boot_tot_ref / boot_tot_unkn
-        boot_n_z_r  = (boot_n_ref / boot_tot_ref) / delta_z
+        boot_n_z_r = (boot_n_ref / boot_tot_ref) / delta_z
         boot_n_z_bu_br = boot_ratio * boot_n_z_r
 
         if output_bootstraps is not None:
@@ -408,6 +410,7 @@ class PDFMaker:
                                                    self.scale_name] *
                                           bin_weights),
                         "n_ref": len(bin_data),
+                        "ref_weights": ref_weights[bin_mask].sum(),
                         "tot_sample": total_sample,
                         "ave_unkn_weight": ave_weight}
             output_data.append(row_dict)
