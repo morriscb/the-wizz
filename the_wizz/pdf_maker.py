@@ -128,6 +128,9 @@ class PDFMaker:
             If randoms correlated against the the reference objects did not
             already have weights, this flag uses the average weight of the
             unknown sample times the random counts to compute a weight.
+        ref_weights : `numpy.ndarray` or `None`
+            Optional weights to apply to each reference object in the
+            calculated correlations.
         ref_ref : `pandas.DataFrame`
             DataFrame output from pair_maker or pair_collapser run methods
             counting the number of reference objects around themselves.
@@ -141,7 +144,9 @@ class PDFMaker:
             dark-matter clustering mitigated.
         ref_weights : `numpy.ndarray` or `None`
             Optional weights to apply to each reference object in the
-            calculated correlations.
+            calculated correlations. This can be the same as ref_weights when
+            using a DD / DR estimator or, if using randoms sampling the
+            reference objects, a set of weights for those randoms.
 
         Returns
         -------
@@ -171,7 +176,8 @@ class PDFMaker:
 
         if ref_ref is not None and ref_ref_rand is not None:
             ref_ref_binned = self.bin_data(ref_ref, ref_weights)
-            ref_ref_rand_binned = self.bin_data(ref_ref_rand, ref_weights)
+            ref_ref_rand_binned = self.bin_data(ref_ref_rand,
+                                                ref_ref_rand_weights)
             ref_ref_count_corr, ref_ref_w_corr = \
                 self.compute_correlation(
                     ref_ref_binned, ref_ref_rand_binned, weight_rand)
