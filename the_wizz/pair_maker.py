@@ -282,10 +282,10 @@ class PairMaker(object):
                 Reference redshift (`float`)
             ``"region"``
                 Spatial region the reference belongs to (`int`)
-            ``"[scale_name]_counts"``
+            ``"[scale_name]_count"``
                 Number of unknown objects with the annulus around the
                 reference for annulus [scale_name]. (`int`)
-            ``"[scale_name]_weights"``
+            ``"[scale_name]_weight"``
                 Weighted number  unknown objects with the annulus around the
                 reference for annulus [scale_name]. (`float`)
         """
@@ -305,8 +305,8 @@ class PairMaker(object):
             bin_unkn_dists = unkn_dists[r_mask]
             bin_unkn_weights = unkn_weights[r_mask]
 
-            output_row["%s_counts" % scale_name] = len(bin_unkn_ids)
-            output_row["%s_weights" % scale_name] = (
+            output_row["%s_count" % scale_name] = len(bin_unkn_ids)
+            output_row["%s_weight" % scale_name] = (
                 bin_unkn_weights *
                 distance_weight(bin_unkn_dists, self.weight_power)).sum()
 

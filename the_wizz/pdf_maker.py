@@ -416,7 +416,7 @@ class PDFMaker:
                                                    self.scale_name] *
                                           bin_weights),
                         "n_ref": len(bin_data),
-                        "ref_weights": ref_weights[bin_mask].sum(),
+                        "ref_weights": tmp_weights[bin_mask].sum(),
                         "tot_sample": total_sample,
                         "ave_unkn_weight": ave_weight}
             output_data.append(row_dict)

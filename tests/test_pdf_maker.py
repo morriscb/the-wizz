@@ -109,11 +109,11 @@ class TestPDFMaker(unittest.TestCase):
         binned_data = pdf.bin_data(self.pairs)
         test_data = pd.DataFrame([
             {"mean_redshift": 0.3, "z_min": 0.0, "z_max": 0.5, "dz": 0.5,
-             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10,
-             "ave_unkn_weight": 1.0},
+             "counts": 10, "weights": 5., "n_ref": 2, "ref_weights": 2,
+             "tot_sample": 10, "ave_unkn_weight": 1.0},
             {"mean_redshift": 0.7, "z_min": 0.5, "z_max": 1.0, "dz": 0.5,
-             "counts": 10, "weights": 5., "n_ref": 2, "tot_sample": 10,
-             "ave_unkn_weight": 1.0}])
+             "counts": 10, "weights": 5., "n_ref": 2, "ref_weights": 2,
+             "tot_sample": 10, "ave_unkn_weight": 1.0}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
             for val, test_val in zip(row, test_row):
@@ -131,8 +131,8 @@ class TestPDFMaker(unittest.TestCase):
              "ave_unkn_weight": 1}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
-            for val, test_val in zip(row, test_row):
-                self.assertAlmostEqual(val, test_val)
+            for col in zip(test_data.columns):
+                self.assertAlmostEqual(row[col], test_row[col])
 
     def test_compute_correlation(self):
         """Test computing correlations.

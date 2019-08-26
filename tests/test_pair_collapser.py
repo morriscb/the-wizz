@@ -49,9 +49,9 @@ class TestPairCollapser(unittest.TestCase):
         self.expected_columns = ["ref_id",
                                  "redshift"]
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
-            self.expected_columns.append("Mpc%.2ft%.2f_counts" %
+            self.expected_columns.append("Mpc%.2ft%.2f_count" %
                                          (r_min, r_max))
-            self.expected_columns.append("Mpc%.2ft%.2f_weights" %
+            self.expected_columns.append("Mpc%.2ft%.2f_weight" %
                                          (r_min, r_max))
         self.output_path = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
@@ -121,10 +121,10 @@ class TestPairCollapser(unittest.TestCase):
 
         for ref_id, ref_row in pm_output.iterrows():
             pc_row = pc_output.loc[ref_id]
-            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_counts"],
-                                   pc_row["Mpc1.00t10.00_counts"])
-            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weights"] / 
-                                   pc_row["Mpc1.00t10.00_weights"] - 1,
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_count"],
+                                   pc_row["Mpc1.00t10.00_count"])
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weight"] / 
+                                   pc_row["Mpc1.00t10.00_weight"] - 1,
                                    0,
                                    places=3)
 
@@ -142,16 +142,17 @@ class TestPairCollapser(unittest.TestCase):
                 "file_name": self.output_path,
                 "region": "region=%i" % 0,
                 "z_bin": self.output_path + "/region=0/z_bin=25",
-                "weight_power": self.weight_power}
+                "weight_power": self.weight_power,
+                "ave_unkn_weight": 1.0}
         pc_output = pair_collapser.collapse_pairs(data)
         pc_output.set_index("ref_id", inplace=True)
 
         for ref_id, pc_row in pc_output.iterrows():
             ref_row = pm_output.loc[ref_id]
-            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_counts"],
-                                   pc_row["Mpc1.00t10.00_counts"])
-            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weights"] / 
-                                   pc_row["Mpc1.00t10.00_weights"] - 1,
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_count"],
+                                   pc_row["Mpc1.00t10.00_count"])
+            self.assertAlmostEqual(ref_row["Mpc1.00t10.00_weight"] / 
+                                   pc_row["Mpc1.00t10.00_weight"] - 1,
                                    0,
                                    places=3)
 
@@ -183,8 +184,8 @@ class TestPairCollapser(unittest.TestCase):
                 self.weight_power),
             unkn_weights)
         
-        self.assertEqual(output["Mpc1.00t10.00_counts"], len(matched_dists))
-        self.assertEqual(output["Mpc1.00t10.00_weights"],
+        self.assertEqual(output["Mpc1.00t10.00_count"], len(matched_dists))
+        self.assertEqual(output["Mpc1.00t10.00_weight"],
                          (matched_dists * matched_weights).sum())
 
     def test_find_trim_indexes(self):

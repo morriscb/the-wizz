@@ -46,9 +46,9 @@ class TestPairMaker(unittest.TestCase):
         self.expected_columns = ["ref_id",
                                  "redshift"]
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
-            self.expected_columns.append("Mpc%.2ft%.2f_counts" %
+            self.expected_columns.append("Mpc%.2ft%.2f_count" %
                                          (r_min, r_max))
-            self.expected_columns.append("Mpc%.2ft%.2f_weights" %
+            self.expected_columns.append("Mpc%.2ft%.2f_weight" %
                                          (r_min, r_max))
         self.output_path = tempfile.mkdtemp(
             dir=os.path.dirname(__file__))
@@ -120,22 +120,22 @@ class TestPairMaker(unittest.TestCase):
                 n_pairs = len(sub_dists)
                 dist_weight = pair_maker.distance_weight(sub_dists).sum()
 
-                pair_diff = 1 - n_pairs / data_row["%s_counts" % scale_name]
-                dist_diff = 1 - dist_weight / data_row["%s_weights" %
+                pair_diff = 1 - n_pairs / data_row["%s_count" % scale_name]
+                dist_diff = 1 - dist_weight / data_row["%s_weight" %
                                                        scale_name]
                 if n_pairs == 0:
                     self.assertEqual(n_pairs,
-                                     data_row["%s_counts" % scale_name])
+                                     data_row["%s_count" % scale_name])
                 else:
                     self.assertLess(np.fabs(pair_diff),
-                                    2 / data_row["%s_counts" % scale_name])
+                                    2 / data_row["%s_count" % scale_name])
                 if dist_weight == 0:
                     self.assertEqual(dist_weight,
-                                     data_row["%s_weights" % scale_name])
+                                     data_row["%s_weight" % scale_name])
                 else:
                     self.assertLess(np.fabs(dist_diff),
-                                    1 / data_row["%s_counts" % scale_name] *
-                                    data_row["%s_weights" % scale_name])
+                                    1 / data_row["%s_count" % scale_name] *
+                                    data_row["%s_weight" % scale_name])
                 if np.isfinite(pair_diff):
                     tot_pair_diff += pair_diff
                 if np.isfinite(dist_diff):
@@ -170,9 +170,9 @@ class TestPairMaker(unittest.TestCase):
 
             tmp_weights = weights[np.logical_and(rs > r_min,
                                                  rs < r_max)]
-            self.assertEqual(output.iloc[0]["%s_counts" % scale_name],
+            self.assertEqual(output.iloc[0]["%s_count" % scale_name],
                              len(tmp_weights))
-            self.assertAlmostEqual(output.iloc[0]["%s_weights" % scale_name],
+            self.assertAlmostEqual(output.iloc[0]["%s_weight" % scale_name],
                                    tmp_weights.sum())
 
     def test_query_tree(self):

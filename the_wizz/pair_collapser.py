@@ -227,10 +227,10 @@ def collapse_pairs_ref_id(ref_row,
             Redshift of the reference object. (`float`)
         ``"region"``
             Region this reference object belongs to. (`int`)
-        ``"[scale_name]_counts"``
+        ``"[scale_name]_count"``
             Number of pairs around the reference within the annulus
             ``scale_name`` (`int`)
-        ``"[scale_name]_weights"``
+        ``"[scale_name]_weight"``
             Sum of weights of pairs around the reference within the annulus
             ``scale_name`` (`float`)
     """
@@ -239,8 +239,8 @@ def collapse_pairs_ref_id(ref_row,
     output["region"] = ref_row["region"]
     for r_min, r_max in zip(r_mins, r_maxes):
         scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
-        output["%s_counts" % scale_name] = 0
-        output["%s_weights" % scale_name] = 0.0
+        output["%s_count" % scale_name] = 0
+        output["%s_weight" % scale_name] = 0.0
 
     pair_dists = decompress_distances(pair_data["comp_log_dist"].to_numpy())
     pair_ids = pair_data["unkn_id"].to_numpy()
@@ -270,8 +270,8 @@ def collapse_pairs_ref_id(ref_row,
         scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
         dist_mask = np.logical_and(matched_dists >= r_min,
                                    matched_dists < r_max)
-        output["%s_counts" % scale_name] = dist_mask.sum()
-        output["%s_weights" % scale_name] = \
+        output["%s_count" % scale_name] = dist_mask.sum()
+        output["%s_weight" % scale_name] = \
             matched_dist_weights[dist_mask].sum()
     return output
 
