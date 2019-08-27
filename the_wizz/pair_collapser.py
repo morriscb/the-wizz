@@ -84,7 +84,6 @@ class PairCollapser:
             unkn_weights = np.ones(len(unkn_ids))
 
         unique_regions = np.unique(unkn_regions)
-        n_z_bins = len(self._retrieve_z_bin_paths(unique_regions[0]))
 
         output = []
         generator = self._data_generator(unique_regions,
@@ -93,12 +92,8 @@ class PairCollapser:
                                          unkn_weights)
         if self.n_proc > 0:
             pool = Pool(self.n_proc)
-            region_output = pool.imap_unordered(
-                collapse_pairs,
-                generator,
-                chunksize=int(np.ceil(
-                    0.5 * n_z_bins * len(unique_regions) / self.n_proc))
-            )
+            region_output = pool.imap_unordered(collapse_pairs,
+                                                generator)
             pool.close()
             pool.join()
             output.extend(region_output)
@@ -116,8 +111,12 @@ class PairCollapser:
         """
         """
         for region in unique_regions:
-            print("Starting region %i..." % region)
             z_bin_paths = self._retrieve_z_bin_paths(region)
+            n_z_bin = len(z_bin_paths)
+            if self.n_proc > 0:
+                n_per_proc = int(np.ceil(n_z_bin / self.n_proc))
+            else:
+                n_per_proc = 1
             region_mask = unkn_regions == region
             region_ids = unkn_ids[region_mask]
             region_sort = region_ids.argsort()
@@ -125,7 +124,13 @@ class PairCollapser:
             region_ids = region_ids[region_sort]
             region_ave_weight = np.mean(region_weights)
 
-            for z_bin in z_bin_paths:
+            for start_idx in np.arange(0,
+                                       len(z_bin_paths),
+                                       n_per_proc,
+                                       dtype=int):
+                end_idx = start_idx + n_per_proc
+                if end_idx > n_z_bin:
+                    end_idx = n_z_bin
                 yield {"unkn_ids": region_ids,
                        "unkn_weights": region_weights,
                        "tot_sample": len(region_ids),
@@ -134,7 +139,8 @@ class PairCollapser:
                        "r_maxes": self.r_maxes,
                        "file_name": self.parquet_pairs,
                        "region": "region=%i" % region,
-                       "z_bin": z_bin,
+                       "z_bins": [z_bin_paths[idx]
+                                  for idx in range(start_idx, end_idx)],
                        "weight_power": self.weight_power}
 
     def _retrieve_z_bin_paths(self, region):
@@ -182,28 +188,29 @@ def collapse_pairs(data):
     output = []
     r_mins = data["r_mins"]
     r_maxes = data["r_maxes"]
+    unkn_ids = data["unkn_ids"]
+    unkn_weights = data["unkn_weights"]
     reference_data = pd.read_parquet("%s/%s/reference_data.parquet" %
                                      (data["file_name"],
                                       data["region"]))
     reference_data.set_index("ref_id", inplace=True)
 
-    pair_data = pd.read_parquet("%s" % data["z_bin"])
-    pair_data.set_index("ref_id", inplace=True)
-    unkn_ids = data["unkn_ids"]
-    unkn_weights = data["unkn_weights"]
+    for z_bin in data["z_bins"]:
+        pair_data = pd.read_parquet("%s" % z_bin)
+        pair_data.set_index("ref_id", inplace=True)
 
-    for ref_id in pair_data.index.unique():
-        output_row = collapse_pairs_ref_id(reference_data.loc[ref_id],
-                                           pair_data.loc[ref_id],
-                                           unkn_ids,
-                                           unkn_weights,
-                                           r_mins,
-                                           r_maxes,
-                                           data["weight_power"])
-        output_row["ref_id"] = ref_id
-        output_row["tot_sample"] = data["tot_sample"]
-        output_row["ave_unkn_weight"] = data["ave_unkn_weight"]
-        output.append(output_row)
+        for ref_id in pair_data.index.unique():
+            output_row = collapse_pairs_ref_id(reference_data.loc[ref_id],
+                                               pair_data.loc[ref_id],
+                                               unkn_ids,
+                                               unkn_weights,
+                                               r_mins,
+                                               r_maxes,
+                                               data["weight_power"])
+            output_row["ref_id"] = ref_id
+            output_row["tot_sample"] = data["tot_sample"]
+            output_row["ave_unkn_weight"] = data["ave_unkn_weight"]
+            output.append(output_row)
 
     return pd.DataFrame(output)
 

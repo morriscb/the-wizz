@@ -141,7 +141,7 @@ class TestPairCollapser(unittest.TestCase):
                 "r_maxes": self.r_maxes,
                 "file_name": self.output_path,
                 "region": "region=%i" % 0,
-                "z_bin": self.output_path + "/region=0/z_bin=25",
+                "z_bin": [self.output_path + "/region=0/z_bin=25",],
                 "weight_power": self.weight_power,
                 "ave_unkn_weight": 1.0}
         pc_output = pair_collapser.collapse_pairs(data)
