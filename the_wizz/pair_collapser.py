@@ -84,12 +84,40 @@ class PairCollapser:
             unkn_weights = np.ones(len(unkn_ids))
 
         unique_regions = np.unique(unkn_regions)
+        n_z_bins = len(self._retrieve_z_bin_paths(unique_regions[0]))
 
         output = []
+        generator = self._data_generator(unique_regions,
+                                         unkn_regions,
+                                         unkn_ids,
+                                         unkn_weights)
+        if self.n_proc > 0:
+            pool = Pool(self.n_proc)
+            region_output = pool.imap_unordered(
+                collapse_pairs,
+                generator,
+                chunksize=int(np.ceil(
+                    0.5 * n_z_bins * len(unique_regions) / self.n_proc))
+            )
+            pool.close()
+            pool.join()
+            output.extend(region_output)
+        else:
+            for data in generator:
+                output.append(collapse_pairs(data))
+
+        return pd.concat(output)
+
+    def _data_generator(self,
+                        unique_regions,
+                        unkn_regions,
+                        unkn_ids,
+                        unkn_weights):
+        """
+        """
         for region in unique_regions:
             print("Starting region %i..." % region)
-            z_bin_paths = glob("%s/region=%i/z_bin=*" %
-                               (self.parquet_pairs, region))
+            z_bin_paths = self._retrieve_z_bin_paths(region)
             region_mask = unkn_regions == region
             region_ids = unkn_ids[region_mask]
             region_sort = region_ids.argsort()
@@ -97,33 +125,23 @@ class PairCollapser:
             region_ids = region_ids[region_sort]
             region_ave_weight = np.mean(region_weights)
 
-            process_data = [
-                {"unkn_ids": region_ids,
-                 "unkn_weights": region_weights,
-                 "tot_sample": len(region_ids),
-                 "ave_unkn_weight": region_ave_weight,
-                 "r_mins": self.r_mins,
-                 "r_maxes": self.r_maxes,
-                 "file_name": self.parquet_pairs,
-                 "region": "region=%i" % region,
-                 "z_bin": z_bin,
-                 "weight_power": self.weight_power}
-                for z_bin in z_bin_paths]
-            if self.n_proc > 0:
-                pool = Pool(self.n_proc)
-                region_output = pool.imap_unordered(
-                    collapse_pairs,
-                    process_data,
-                    chunksize=int(np.ceil(
-                        0.5 * len(z_bin_paths) / self.n_proc)))
-                pool.close()
-                pool.join()
-                output.extend(region_output)
-            else:
-                for data in process_data:
-                    output.append(collapse_pairs(data))
+            for z_bin in z_bin_paths:
+                yield {"unkn_ids": region_ids,
+                       "unkn_weights": region_weights,
+                       "tot_sample": len(region_ids),
+                       "ave_unkn_weight": region_ave_weight,
+                       "r_mins": self.r_mins,
+                       "r_maxes": self.r_maxes,
+                       "file_name": self.parquet_pairs,
+                       "region": "region=%i" % region,
+                       "z_bin": z_bin,
+                       "weight_power": self.weight_power}
 
-        return pd.concat(output)
+    def _retrieve_z_bin_paths(self, region):
+        """
+        """
+        return glob("%s/region=%i/z_bin=*" % (self.parquet_pairs,
+                                              region))
 
 
 def collapse_pairs(data):
