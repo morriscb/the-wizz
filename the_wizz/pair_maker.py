@@ -3,6 +3,8 @@ from astropy.cosmology import Planck15
 from multiprocessing import Lock, Pool
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from scipy.spatial import cKDTree
 
 
@@ -47,7 +49,7 @@ class PairMaker(object):
                  distance_metric=None,
                  output_pairs=None,
                  n_write_proc=2,
-                 n_write_clean_up=100,
+                 n_write_clean_up=10000,
                  n_z_bins=100):
         self.r_mins = r_mins
         self.r_maxes = r_maxes
@@ -56,9 +58,8 @@ class PairMaker(object):
         self.z_min = z_min
         self.z_max = z_max
         self.n_z_bins = n_z_bins
-
-        self.n_write_proc = n_write_proc
         self.n_write_clean_up = n_write_clean_up
+        self.n_write_proc = n_write_proc
 
         if distance_metric is None:
             distance_metric = Planck15.comoving_distance
@@ -181,6 +182,7 @@ class PairMaker(object):
         output_data_frame = pd.DataFrame(output_data)
 
         if self.output_pairs is not None:
+            self._clean_up()
             self.write_pool.close()
             self.write_pool.join()
 
@@ -340,13 +342,19 @@ class PairMaker(object):
              ("dists", unkn_dists)])
 
         if len(self.subprocs) >= self.n_write_clean_up:
-            for subproc in self.subprocs:
-                subproc.get()
-            self.subprocs = []
+            self._clean_up()
         self.subprocs.append(self.write_pool.apply_async(
             write_pairs,
             (output_dict,),
             error_callback=error_callback))
+
+    def _clean_up(self):
+        """Cleanup subprocesses.
+        """
+        for subproc in self.subprocs:
+            subproc.get()
+        del self.subprocs
+        self.subprocs = []
 
 
 def distance_weight(dists, power=-0.8):
@@ -422,16 +430,18 @@ def write_pairs(data):
     z_bins = np.full(n_pairs, data["z_bin"], dtype=np.uint32)
 
     id_sort_args = ids.argsort()
-    out_df = pd.DataFrame(data={"ref_id": ref_ids,
-                                "region": regions,
-                                "z_bin": z_bins,
-                                "unkn_id": ids[id_sort_args],
-                                "comp_log_dist": comp_log_dists[id_sort_args]})
+    output_table = pa.Table.from_batches([pa.RecordBatch.from_arrays(
+        [pa.array(ref_ids),
+         pa.array(regions),
+         pa.array(z_bins),
+         pa.array(ids[id_sort_args]),
+         pa.array(comp_log_dists[id_sort_args])],
+        ["ref_id", "region", "z_bin", "unkn_id", "comp_log_dist"])])
     lock_dict[data["z_bin"]].acquire()
-    out_df.to_parquet(data["file_name"],
-                      compression='gzip',
-                      index=False,
-                      partition_cols=["region", "z_bin"])
+    pq.write_to_dataset(output_table,
+                        root_path=data["file_name"],
+                        compression="gzip",
+                        partition_cols=["region", "z_bin"])
     lock_dict[data["z_bin"]].release()
 
 
