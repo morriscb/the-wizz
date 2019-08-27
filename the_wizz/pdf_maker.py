@@ -142,7 +142,7 @@ class PDFMaker:
             be the same data as ref_rand or a specific set of randoms sampling
             the reference objects. Optional for producing outputs with the
             dark-matter clustering mitigated.
-        ref_weights : `numpy.ndarray` or `None`
+        ref_ref_rand_weights : `numpy.ndarray` or `None`
             Optional weights to apply to each reference object in the
             calculated correlations. This can be the same as ref_weights when
             using a DD / DR estimator or, if using randoms sampling the
@@ -193,6 +193,7 @@ class PDFMaker:
                   ref_ref_w_corr ** 2)) ** 2)
 
             ref_unkn_binned["ref_counts"] = ref_ref_binned["counts"]
+            ref_unkn_binned["n_ref_rand"] = ref_ref_rand_binned["n_ref"]
             ref_unkn_binned["ref_rand_counts"] = ref_ref_rand_binned["counts"]
             ref_unkn_binned["ref_weights"] = ref_ref_binned["weights"]
             ref_unkn_binned["ref_rand_weights"] = ref_ref_rand_binned[
@@ -210,10 +211,11 @@ class PDFMaker:
     def run_region_bootstraped(self,
                                ref_unkn,
                                ref_rand,
+                               ref_weights=None,
                                weight_rand=False,
                                ref_ref=None,
                                ref_ref_rand=None,
-                               ref_weights=None,
+                               ref_ref_rand_weights=None,
                                bootstraps=1000,
                                output_bootstraps=None):
         """Combine pairs of reference against unknown as in the run method and
@@ -233,6 +235,9 @@ class PDFMaker:
             If randoms correlated against the the reference objects did not
             already have weights, this flag uses the average weight of the
             unknown sample times the random counts to compute a weight.
+        ref_weights : `numpy.ndarray` or `None`
+            Optional weights to apply to each reference object in the
+            calculated correlations.
         ref_ref : `pandas.DataFrame`
             DataFrame output from pair_maker or pair_collapser run methods
             counting the number of reference objects around themselves.
@@ -244,9 +249,11 @@ class PDFMaker:
             be the same data as ref_rand or a specific set of randoms sampling
             the reference objects. Optional for producing outputs with the
             dark-matter clustering mitigated.
-        ref_weights : `pandas.DataFrame` or `None`
+        ref_ref_rand_weights : `numpy.ndarray` or `None`
             Optional weights to apply to each reference object in the
-            calculated correlations.
+            calculated correlations. This can be the same as ref_weights when
+            using a DD / DR estimator or, if using randoms sampling the
+            reference objects, a set of weights for those randoms.
         bootstraps : `int` or `numpy.ndarray`
             Number of bootstrap realizations to create or
         output_bootstraps : `str`
@@ -275,6 +282,7 @@ class PDFMaker:
         ref_ref_rand_regions = np.empty((n_regions, self.n_bins))
 
         n_ref_regions = np.empty((n_regions, self.n_bins))
+        n_ref_rand_regions = np.empty((n_regions, self.n_bins))
 
         tot_ref_regions = np.empty((n_regions, self.n_bins))
         tot_unkn_regions = np.empty((n_regions, self.n_bins))
@@ -295,16 +303,19 @@ class PDFMaker:
                 region_ref_ref_rand = None
             else:
                 region_ref_ref_rand = ref_ref_rand.loc[region]
-            if ref_weights is None:
+            if ref_weights is None or ref_ref_rand_weights is None:
                 region_ref_weights = None
+                region_ref_ref_rand_weights = None
             else:
                 region_ref_weights = ref_weights.loc[region]
+                region_ref_ref_rand_weights = ref_ref_rand_weights.loc[region]
             data = self.run(region_ref_unkn,
                             region_ref_rand,
+                            region_ref_weights,
                             weight_rand,
                             region_ref_ref,
                             region_ref_ref_rand,
-                            region_ref_weights)
+                            region_ref_ref_rand_weights)
 
             ref_unkn_regions[region, :] = data["weights"].to_numpy()
             ref_rand_regions[region, :] = data["rand_weights"].to_numpy()
@@ -315,6 +326,7 @@ class PDFMaker:
             tot_rand_regions[region, :] = data["tot_sample_rand"].to_numpy()
 
             if ref_ref is not None and ref_ref_rand is not None:
+                n_ref_rand_regions[region, :] = data["n_ref_rand"].to_numpy()
                 ref_ref_regions[region, :] = data["ref_weights"].to_numpy()
                 ref_ref_rand_regions[region, :] = data[
                     "ref_rand_weights"].to_numpy()
@@ -335,25 +347,29 @@ class PDFMaker:
         boot_tot_unkn = tot_unkn_regions[bootstraps, :].sum(axis=1)
         boot_tot_rand = tot_rand_regions[bootstraps, :].sum(axis=1)
 
+        boot_n_ref_rand = n_ref_rand_regions[bootstraps, :].sum(axis=1)
         boot_ref_ref = ref_ref_regions[bootstraps, :].sum(axis=1)
         boot_ref_rand = ref_ref_rand_regions[bootstraps, :].sum(axis=1)
         boot_tot_ref_rand = tot_ref_rand_regions[bootstraps, :].sum(axis=1)
 
         boot_corr = ((boot_ref_unkn / boot_ref_rand) *
                      (boot_tot_rand / boot_tot_unkn)) - 1
-        boot_ref_corr = ((boot_ref_ref / boot_ref_rand) *
-                         (boot_tot_rand / boot_tot_ref)) - 1
-        boot_ratio = ((boot_ref_unkn - boot_ref_rand *
-                       (boot_tot_unkn / boot_tot_rand)) /
-                      (boot_ref_ref - boot_ref_rand *
-                       (boot_tot_ref / boot_tot_rand)))
-        boot_ratio *= boot_tot_ref / boot_tot_unkn
+        boot_ref_corr = (
+            (boot_ref_ref / boot_ref_rand) *
+            ((boot_tot_ref_rand * boot_n_ref_rand) /
+             (boot_tot_ref * boot_n_ref))) - 1
+
+        boot_ratio = boot_corr / boot_ref_corr
         boot_n_z_r = (boot_n_ref / boot_tot_ref) / delta_z
         boot_n_z_bu_br = boot_ratio * boot_n_z_r
 
         if output_bootstraps is not None:
             with open(output_bootstraps, 'wb') as pkl_file:
-                pickle.dump({}, pkl_file)
+                pickle.dump({"mean_redshift": mean_redshifts,
+                             "unkn_corr": boot_corr,
+                             "ref_corr": boot_ref_corr,
+                             "n_z_bu_br": boot_n_z_bu_br},
+                            pkl_file)
 
         low_corr, median_corr, hi_corr = np.percentile(
             boot_corr, [50 - 34.1, 50, 50 + 34.1], axis=0)
@@ -366,8 +382,16 @@ class PDFMaker:
             data={"mean_redshift": mean_redshifts,
                   "weighted_corr": np.nanmean(boot_corr, axis=0),
                   "weighted_corr_err": np.nanstd(boot_corr, ddof=1, axis=0),
+                  "weighted_corr_low": low_corr,
+                  "weighted_corr_hi": hi_corr,
+                  "ref_corr": np.nanmean(boot_ref_corr, axis=0),
+                  "ref_corr_err": np.nanstd(boot_ref_corr, ddof=1, axis=0),
+                  "ref_corr_low": low_ref_corr,
+                  "ref_corr_hi": hi_ref_corr,
                   "n_z_bu_br": np.nanmean(boot_n_z_bu_br, axis=0),
-                  "n_z_bu_br_err": np.nanstd(boot_n_z_bu_br, ddof=1, axis=0)})
+                  "n_z_bu_br_err": np.nanstd(boot_n_z_bu_br, ddof=1, axis=0),
+                  "n_z_bu_br_low": low_nz_bu_br,
+                  "n_z_bu_br_hi": hi_nz_bu_br})
 
     def bin_data(self, data, ref_weights=None):
         """Bin the reference data in the requested redshift bins.
