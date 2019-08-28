@@ -434,9 +434,9 @@ class PDFMaker:
                         "z_min": self.bin_edges[z_bin],
                         "z_max": self.bin_edges[z_bin + 1],
                         "dz": dz,
-                        "counts": np.sum(bin_data["%s_counts" %
+                        "counts": np.sum(bin_data["%s_count" %
                                                   self.scale_name]),
-                        "weights": np.sum(bin_data["%s_weights" %
+                        "weights": np.sum(bin_data["%s_weight" %
                                                    self.scale_name] *
                                           bin_weights),
                         "n_ref": len(bin_data),

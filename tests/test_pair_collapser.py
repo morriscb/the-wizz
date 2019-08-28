@@ -18,7 +18,7 @@ class TestPairCollapser(unittest.TestCase):
 
         # Create a random catalog centered at the pole with a redshift
         # distribution that looks kind of like a mag limited sample.
-        self.n_objects = 10000
+        self.n_objects = 1000
         decs = np.degrees(
             np.pi / 2 - np.arccos(np.random.uniform(np.cos(np.radians(1.0)),
                                                     np.cos(0),
@@ -69,7 +69,7 @@ class TestPairCollapser(unittest.TestCase):
         pm_output = self._run_pair_maker()
 
         self._test_run_different_n_proc(0, pm_output)
-        self._test_run_different_n_proc(2, pm_output)
+        self._test_run_different_n_proc(3, pm_output)
 
     def _run_pair_maker(self):
         """Run pair maker and create output
@@ -141,7 +141,7 @@ class TestPairCollapser(unittest.TestCase):
                 "r_maxes": self.r_maxes,
                 "file_name": self.output_path,
                 "region": "region=%i" % 0,
-                "z_bin": [self.output_path + "/region=0/z_bin=25",],
+                "z_bins": [self.output_path + "/region=0/z_bin=25",],
                 "weight_power": self.weight_power,
                 "ave_unkn_weight": 1.0}
         pc_output = pair_collapser.collapse_pairs(data)
@@ -183,7 +183,7 @@ class TestPairCollapser(unittest.TestCase):
                     pair_data["comp_log_dist"].to_numpy()),
                 self.weight_power),
             unkn_weights)
-        
+
         self.assertEqual(output["Mpc1.00t10.00_count"], len(matched_dists))
         self.assertEqual(output["Mpc1.00t10.00_weight"],
                          (matched_dists * matched_weights).sum())

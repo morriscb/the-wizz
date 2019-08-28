@@ -41,17 +41,17 @@ class TestPDFMaker(unittest.TestCase):
 
         self.pairs = pd.DataFrame([
             {"redshift": 0.2, "tot_sample": 10, "ave_unkn_weight": 1.0,
-             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+             "Mpc1.00t10.00_count": 5, "Mpc1.00t10.00_weight": 2.5},
             {"redshift": 0.4, "tot_sample": 10, "ave_unkn_weight": 1.0,
-             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+             "Mpc1.00t10.00_count": 5, "Mpc1.00t10.00_weight": 2.5},
             {"redshift": 0.6, "tot_sample": 10, "ave_unkn_weight": 1.0,
-             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+             "Mpc1.00t10.00_count": 5, "Mpc1.00t10.00_weight": 2.5},
             {"redshift": 0.8, "tot_sample": 10, "ave_unkn_weight": 1.0,
-             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+             "Mpc1.00t10.00_count": 5, "Mpc1.00t10.00_weight": 2.5},
             {"redshift": 1.0, "tot_sample": 10, "ave_unkn_weight": 1.0,
-             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5},
+             "Mpc1.00t10.00_count": 5, "Mpc1.00t10.00_weight": 2.5},
             {"redshift": 1.2, "tot_sample": 10, "ave_unkn_weight": 1.0,
-             "Mpc1.00t10.00_counts": 5, "Mpc1.00t10.00_weights": 2.5}])
+             "Mpc1.00t10.00_count": 5, "Mpc1.00t10.00_weight": 2.5}])
         self.ref_weights = np.array([1., 0.5, 1., 0.5, 1, 0.5])
 
     def tearDown(self):
@@ -65,8 +65,8 @@ class TestPDFMaker(unittest.TestCase):
         ref_unkn = self.pair_counts.copy()
         ref_rand = self.pair_counts.copy()
 
-        ref_unkn.loc[:, "Mpc1.00t10.00_counts"] *= 2
-        ref_unkn.loc[:, "Mpc1.00t10.00_weights"] *= 2
+        ref_unkn.loc[:, "Mpc1.00t10.00_count"] *= 2
+        ref_unkn.loc[:, "Mpc1.00t10.00_weight"] *= 2
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
         output = pdf.run(ref_unkn=ref_unkn,
@@ -84,10 +84,10 @@ class TestPDFMaker(unittest.TestCase):
         ref_ref = self.pair_counts.copy()
         ref_ref_rand = self.pair_counts.copy()
 
-        ref_unkn.loc[:, "Mpc1.00t10.00_counts"] *= 2
-        ref_unkn.loc[:, "Mpc1.00t10.00_weights"] *= 2
-        ref_ref.loc[:, "Mpc1.00t10.00_counts"] *= 2
-        ref_ref.loc[:, "Mpc1.00t10.00_weights"] *= 2
+        ref_unkn.loc[:, "Mpc1.00t10.00_count"] *= 2
+        ref_unkn.loc[:, "Mpc1.00t10.00_weight"] *= 2
+        ref_ref.loc[:, "Mpc1.00t10.00_count"] *= 2
+        ref_ref.loc[:, "Mpc1.00t10.00_weight"] *= 2
 
         pdf = pdf_maker.PDFMaker(self.z_min, self.z_max, 10)
         output = pdf.run(ref_unkn=ref_unkn,
@@ -131,7 +131,7 @@ class TestPDFMaker(unittest.TestCase):
              "ave_unkn_weight": 1}])
         for (pd_idx, row), (test_idx, test_row) in zip(binned_data.iterrows(),
                                                        test_data.iterrows()):
-            for col in zip(test_data.columns):
+            for (col,) in zip(test_data.columns):
                 self.assertAlmostEqual(row[col], test_row[col])
 
     def test_compute_correlation(self):

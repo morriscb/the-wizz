@@ -110,13 +110,23 @@ class PairCollapser:
                         unkn_weights):
         """
         """
+        if self.n_proc > 0:
+            n_z_bin = len(self._retrieve_z_bin_paths(unique_regions[0]))
+            total_bins = n_z_bin * len(unique_regions)
+            total_per_proc = total_bins / (2 * self.n_proc)
+            if total_per_proc > n_z_bin:
+                n_per_proc = n_z_bin
+            elif total_per_proc > 1:
+                int_ratio = int(np.ceil(n_z_bin / total_per_proc))
+                n_per_proc = int(np.ceil(n_z_bin / int_ratio))
+            else:
+                n_per_proc = 1
+        else:
+            n_per_proc = 1
+        print("Number of bins per process:", n_per_proc)
         for region in unique_regions:
             z_bin_paths = self._retrieve_z_bin_paths(region)
             n_z_bin = len(z_bin_paths)
-            if self.n_proc > 0:
-                n_per_proc = int(np.ceil(n_z_bin / self.n_proc))
-            else:
-                n_per_proc = 1
             region_mask = unkn_regions == region
             region_ids = unkn_ids[region_mask]
             region_sort = region_ids.argsort()
@@ -124,10 +134,7 @@ class PairCollapser:
             region_ids = region_ids[region_sort]
             region_ave_weight = np.mean(region_weights)
 
-            for start_idx in np.arange(0,
-                                       len(z_bin_paths),
-                                       n_per_proc,
-                                       dtype=int):
+            for start_idx in np.arange(0, n_z_bin, n_per_proc, dtype=int):
                 end_idx = start_idx + n_per_proc
                 if end_idx > n_z_bin:
                     end_idx = n_z_bin
