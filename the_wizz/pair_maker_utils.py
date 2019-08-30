@@ -5,7 +5,7 @@ object with known redshifts and objects with unknown redshifts.
 import h5py
 from multiprocessing import Pool
 import numpy as np
-
+import stomp
 from the_wizz.core_utils import create_hdf5_file
 
 
