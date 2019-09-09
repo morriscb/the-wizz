@@ -147,10 +147,13 @@ class PairMaker(object):
                                    initargs=(locks,))
             redshift_args = redshifts.argsort()
             area_cumsum = np.cumsum(self.r_max / dists[redshift_args])
-            area_cumsum /= area_cumsum[-1]
-            percent = np.arange(self.n_z_bins) / self.n_z_bins
-            bin_edge_idxs = np.searchsorted(area_cumsum, percent, side="right")
+            area_bin_edges = np.linspace(area_cumsum[0], area_cumsum[-1], self.n_z_bins + 1)
+            bin_edge_idxs = np.searchsorted(
+                    area_cumsum,
+                    area_bin_edges)
             self.z_bin_edges = redshifts[redshift_args][bin_edge_idxs]
+            self.z_bin_edges[0] = self.z_min
+            self.z_bin_edges[-1] = self.z_max
 
         for ref_vect, redshift, dist, ref_id, ref_region in zip(ref_vects,
                                                                 redshifts,
@@ -162,19 +165,18 @@ class PairMaker(object):
 
             # Compute angles and convert them to cosmo distances.
             matched_unkn_vects = unkn_vects[unkn_idxs]
-            matched_unkn_dists = np.arccos(
-                np.dot(matched_unkn_vects, ref_vect)) * dist
-            dist_mask = np.logical_and(matched_unkn_dists >= self.r_min,
-                                       matched_unkn_dists < self.r_max)
+            dots = np.dot(matched_unkn_vects, ref_vect)
+            dot_mask = dots < np.cos(self.r_min / dist)
+            matched_unkn_dists = np.arccos(dots[dot_mask]) * dist
 
             # Bin data and return counts/sum of weights in bins.
             output_row = self._compute_bin_values(
                 ref_id,
                 ref_region,
                 redshift,
-                unkn_ids[unkn_idxs][dist_mask],
-                matched_unkn_dists[dist_mask],
-                unkn_weights[unkn_idxs][dist_mask])
+                unkn_ids[unkn_idxs][dot_mask],
+                matched_unkn_dists,
+                unkn_weights[unkn_idxs][dot_mask])
             output_row["tot_sample"] = total_unknown
             output_row["ave_unkn_weight"] = ave_weight
             output_data.append(output_row)
@@ -296,7 +298,7 @@ class PairMaker(object):
                            ("region", region)])
 
         if self.output_pairs is not None and len(unkn_ids) > 0:
-            z_bin = np.searchsorted(self.z_bin_edges, redshift, side="right")
+            z_bin = np.digitize(redshift, self.z_bin_edges)
             self._subproc_write(ref_id, region, z_bin, unkn_ids, unkn_dists)
 
         for r_min, r_max in zip(self.r_mins, self.r_maxes):
