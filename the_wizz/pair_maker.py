@@ -147,11 +147,13 @@ class PairMaker(object):
                                    initargs=(locks,))
             redshift_args = redshifts.argsort()
             area_cumsum = np.cumsum(self.r_max / dists[redshift_args])
-            area_bin_edges = np.linspace(area_cumsum[0], area_cumsum[-1], self.n_z_bins + 1)
+            area_bin_edges = np.linspace(area_cumsum[0],
+                                         area_cumsum[-1],
+                                         self.n_z_bins + 1)
             bin_edge_idxs = np.searchsorted(
                     area_cumsum,
                     area_bin_edges)
-            self.z_bin_edges = redshifts[redshift_args][bin_edge_idxs]
+            self.z_bin_edges = redshifts[redshift_args[bin_edge_idxs]]
             self.z_bin_edges[0] = self.z_min
             self.z_bin_edges[-1] = self.z_max
 
@@ -174,9 +176,9 @@ class PairMaker(object):
                 ref_id,
                 ref_region,
                 redshift,
-                unkn_ids[unkn_idxs][dot_mask],
+                unkn_ids[unkn_idxs[dot_mask]],
                 matched_unkn_dists,
-                unkn_weights[unkn_idxs][dot_mask])
+                unkn_weights[unkn_idxs[dot_mask]])
             output_row["tot_sample"] = total_unknown
             output_row["ave_unkn_weight"] = ave_weight
             output_data.append(output_row)
