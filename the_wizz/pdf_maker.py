@@ -276,21 +276,21 @@ class PDFMaker:
             bootstraps = np.random.randint(n_regions,
                                            size=(bootstraps, n_regions))
 
-        ref_unkn_regions = np.empty((n_regions, self.n_bins))
-        ref_rand_regions = np.empty((n_regions, self.n_bins))
-        ref_ref_regions = np.empty((n_regions, self.n_bins))
-        ref_ref_rand_regions = np.empty((n_regions, self.n_bins))
+        ref_unkn_regions = np.empty((n_regions, self.bins))
+        ref_rand_regions = np.empty((n_regions, self.bins))
+        ref_ref_regions = np.empty((n_regions, self.bins))
+        ref_ref_rand_regions = np.empty((n_regions, self.bins))
 
-        n_ref_regions = np.empty((n_regions, self.n_bins))
-        n_ref_rand_regions = np.empty((n_regions, self.n_bins))
+        n_ref_regions = np.empty((n_regions, self.bins))
+        n_ref_rand_regions = np.empty((n_regions, self.bins))
 
-        tot_ref_regions = np.empty((n_regions, self.n_bins))
-        tot_unkn_regions = np.empty((n_regions, self.n_bins))
-        tot_rand_regions = np.empty((n_regions, self.n_bins))
-        tot_ref_rand_regions = np.empty((n_regions, self.n_bins))
+        tot_ref_regions = np.empty((n_regions, self.bins))
+        tot_unkn_regions = np.empty((n_regions, self.bins))
+        tot_rand_regions = np.empty((n_regions, self.bins))
+        tot_ref_rand_regions = np.empty((n_regions, self.bins))
 
-        mean_redshifts = np.zeros(self.n_bins)
-        delta_z = np.empty(self.n_bins)
+        mean_redshifts = np.zeros(self.bins)
+        delta_z = np.empty(self.bins)
 
         for region in ref_unkn.index.unique():
             region_ref_unkn = ref_unkn.loc[region]
@@ -321,11 +321,11 @@ class PDFMaker:
             ref_rand_regions[region, :] = data["rand_weights"].to_numpy()
 
             n_ref_regions[region, :] = data["n_ref"].to_numpy()
-            tot_ref_regions[region, :] = data["tot_sample_ref"].to_numpy()
             tot_unkn_regions[region, :] = data["tot_sample"].to_numpy()
             tot_rand_regions[region, :] = data["tot_sample_rand"].to_numpy()
 
             if ref_ref is not None and ref_ref_rand is not None:
+                tot_ref_regions[region, :] = data["tot_sample_ref"].to_numpy()
                 n_ref_rand_regions[region, :] = data["n_ref_rand"].to_numpy()
                 ref_ref_regions[region, :] = data["ref_weights"].to_numpy()
                 ref_ref_rand_regions[region, :] = data[
@@ -333,7 +333,7 @@ class PDFMaker:
                 tot_ref_rand_regions[region, :] = data[
                     "tot_sample_ref_rand"].to_numpy()
 
-            mean_redshifts += (data["mean_redshift"].to_numpy() /
+            mean_redshifts += (data["mean_redshift"].to_numpy() *
                                data["n_ref"].to_numpy())
             delta_z = data["dz"].to_numpy()
 
@@ -349,19 +349,24 @@ class PDFMaker:
 
         boot_n_ref_rand = n_ref_rand_regions[bootstraps, :].sum(axis=1)
         boot_ref_ref = ref_ref_regions[bootstraps, :].sum(axis=1)
-        boot_ref_rand = ref_ref_rand_regions[bootstraps, :].sum(axis=1)
+        boot_ref_ref_rand = ref_ref_rand_regions[bootstraps, :].sum(axis=1)
         boot_tot_ref_rand = tot_ref_rand_regions[bootstraps, :].sum(axis=1)
 
         boot_corr = ((boot_ref_unkn / boot_ref_rand) *
                      (boot_tot_rand / boot_tot_unkn)) - 1
         boot_ref_corr = (
-            (boot_ref_ref / boot_ref_rand) *
-            ((boot_tot_ref_rand * boot_n_ref_rand) /
-             (boot_tot_ref * boot_n_ref))) - 1
+            (boot_ref_ref / boot_ref_ref_rand) *
+            (boot_tot_ref_rand / boot_tot_ref)) - 1
 
         boot_ratio = boot_corr / boot_ref_corr
         boot_n_z_r = (boot_n_ref / boot_tot_ref) / delta_z
         boot_n_z_bu_br = boot_ratio * boot_n_z_r
+        boot_normed_n_z = np.empty_like(boot_n_z_bu_br)
+        for boot_idx in range(boot_normed_n_z.shape[0]):
+            boot_sum = np.sum(boot_n_z_bu_br[boot_idx, :] *
+                              delta_z)
+            boot_normed_n_z[boot_idx, :] = boot_n_z_bu_br[boot_idx, :] / boot_sum
+
 
         if output_bootstraps is not None:
             with open(output_bootstraps, 'wb') as pkl_file:
@@ -376,7 +381,7 @@ class PDFMaker:
         low_ref_corr, median_ref_corr, hi_ref_corr = np.percentile(
             boot_ref_corr, [50 - 34.1, 50, 50 + 34.1], axis=0)
         low_nz_bu_br, median_n_z_bu_br, hi_nz_bu_br = np.percentile(
-            boot_n_z_bu_br, [50 - 34.1, 50, 50 + 34.1], axis=0)
+            boot_normed_n_z, [50 - 34.1, 50, 50 + 34.1], axis=0)
 
         return pd.DataFrame(
             data={"mean_redshift": mean_redshifts,
@@ -388,10 +393,12 @@ class PDFMaker:
                   "ref_corr_err": np.nanstd(boot_ref_corr, ddof=1, axis=0),
                   "ref_corr_low": low_ref_corr,
                   "ref_corr_hi": hi_ref_corr,
-                  "n_z_bu_br": np.nanmean(boot_n_z_bu_br, axis=0),
-                  "n_z_bu_br_err": np.nanstd(boot_n_z_bu_br, ddof=1, axis=0),
+                  "n_z_bu_br": median_n_z_bu_br,
+                  "n_z_bu_br_err": np.nanstd(boot_normed_n_z, ddof=1, axis=0),
                   "n_z_bu_br_low": low_nz_bu_br,
-                  "n_z_bu_br_hi": hi_nz_bu_br})
+                  "n_z_bu_br_hi": hi_nz_bu_br,
+                  "n_z_r": np.nanmean(boot_n_z_r, axis=0),
+                  "dz": delta_z})
 
     def bin_data(self, data, ref_weights=None):
         """Bin the reference data in the requested redshift bins.
