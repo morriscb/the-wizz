@@ -173,6 +173,7 @@ class PDFMaker:
             ref_unkn_binned["rand_weights"] *= ref_unkn_binned[
                 "ave_unkn_weight"]
         ref_unkn_binned["tot_sample_rand"] = ref_rand_binned["tot_sample"]
+        ref_unkn_binned["n_ref_unkn_rand"] = ref_rand_binned["n_ref"]
 
         if ref_ref is not None and ref_ref_rand is not None:
             ref_ref_binned = self.bin_data(ref_ref, ref_weights)
@@ -193,7 +194,7 @@ class PDFMaker:
                   ref_ref_w_corr ** 2)) ** 2)
 
             ref_unkn_binned["ref_counts"] = ref_ref_binned["counts"]
-            ref_unkn_binned["n_ref_rand"] = ref_ref_rand_binned["n_ref"]
+            ref_unkn_binned["n_ref_ref_rand"] = ref_ref_rand_binned["n_ref"]
             ref_unkn_binned["ref_rand_counts"] = ref_ref_rand_binned["counts"]
             ref_unkn_binned["ref_weights"] = ref_ref_binned["weights"]
             ref_unkn_binned["ref_rand_weights"] = ref_ref_rand_binned[
@@ -265,12 +266,16 @@ class PDFMaker:
             Output clustering redshift calculations as a function of redshift
             with errorbars derived from spatial bootstrapping.
         """
-        ref_unkn.set_index(["region"], inplace=True)
-        ref_rand.set_index(["region"], inplace=True)
+        if ref_unkn.index.name != "region":
+            ref_unkn = ref_unkn.set_index(["region"])
+        if ref_rand.index.name != "region":
+            ref_rand = ref_rand.set_index(["region"])
         n_regions = len(ref_unkn.index.unique())
         if ref_ref is not None and ref_ref_rand is not None:
-            ref_ref.set_index(["region"], inplace=True)
-            ref_ref_rand.set_index(["region"], inplace=True)
+            if ref_ref.index.name != "region":
+                ref_ref = ref_ref.set_index(["region"])
+            if ref_ref_rand.index.name != "region":
+                ref_ref_rand = ref_ref_rand.set_index(["region"])
 
         if isinstance(bootstraps, int):
             bootstraps = np.random.randint(n_regions,
@@ -356,17 +361,13 @@ class PDFMaker:
                      (boot_tot_rand / boot_tot_unkn)) - 1
         boot_ref_corr = (
             (boot_ref_ref / boot_ref_ref_rand) *
-            (boot_tot_ref_rand / boot_tot_ref)) - 1
+            ((boot_n_ref_rand * boot_tot_ref_rand) /
+             (boot_n_ref * boot_tot_ref))) - 1
 
         boot_ratio = boot_corr / boot_ref_corr
         boot_n_z_r = (boot_n_ref / boot_tot_ref) / delta_z
         boot_n_z_bu_br = boot_ratio * boot_n_z_r
-        boot_normed_n_z = np.empty_like(boot_n_z_bu_br)
-        for boot_idx in range(boot_normed_n_z.shape[0]):
-            boot_sum = np.sum(boot_n_z_bu_br[boot_idx, :] *
-                              delta_z)
-            boot_normed_n_z[boot_idx, :] = boot_n_z_bu_br[boot_idx, :] / boot_sum
-
+        boot_normed_n_z = boot_n_z_bu_br / np.dot(boot_n_z_r, delta_z)
 
         if output_bootstraps is not None:
             with open(output_bootstraps, 'wb') as pkl_file:
@@ -381,10 +382,13 @@ class PDFMaker:
         low_ref_corr, median_ref_corr, hi_ref_corr = np.percentile(
             boot_ref_corr, [50 - 34.1, 50, 50 + 34.1], axis=0)
         low_nz_bu_br, median_n_z_bu_br, hi_nz_bu_br = np.percentile(
+            boot_n_z_bu_br, [50 - 34.1, 50, 50 + 34.1], axis=0)
+        ln_norm_nz, median_norm_nz, hi_norm_nz, = np.percentile(
             boot_normed_n_z, [50 - 34.1, 50, 50 + 34.1], axis=0)
 
         return pd.DataFrame(
             data={"mean_redshift": mean_redshifts,
+                  "dz": delta_z,
                   "weighted_corr": np.nanmean(boot_corr, axis=0),
                   "weighted_corr_err": np.nanstd(boot_corr, ddof=1, axis=0),
                   "weighted_corr_low": low_corr,
@@ -393,12 +397,17 @@ class PDFMaker:
                   "ref_corr_err": np.nanstd(boot_ref_corr, ddof=1, axis=0),
                   "ref_corr_low": low_ref_corr,
                   "ref_corr_hi": hi_ref_corr,
-                  "n_z_bu_br": median_n_z_bu_br,
-                  "n_z_bu_br_err": np.nanstd(boot_normed_n_z, ddof=1, axis=0),
+                  "n_z_bu_br": np.mean(boot_n_z_bu_br),
+                  "n_z_bu_br_err": np.nanstd(boot_n_z_bu_br, ddof=1, axis=0),
+                  "n_z_bu_br_med": median_n_z_bu_br,
                   "n_z_bu_br_low": low_nz_bu_br,
                   "n_z_bu_br_hi": hi_nz_bu_br,
-                  "n_z_r": np.nanmean(boot_n_z_r, axis=0),
-                  "dz": delta_z})
+                  "n_z_normed": np.mean(boot_normed_n_z),
+                  "n_z_normed_err": np.nanstd(boot_normed_n_z, ddof=1, axis=0),
+                  "n_z_normed_med": median_norm_nz,
+                  "n_z_normed_low": ln_norm_nz,
+                  "n_z_normed_hi": hi_norm_nz,
+                  "n_z_r": np.nanmean(boot_n_z_r, axis=0)})
 
     def bin_data(self, data, ref_weights=None):
         """Bin the reference data in the requested redshift bins.
