@@ -95,7 +95,7 @@ class TestPDFMaker(unittest.TestCase):
                          ref_ref=ref_ref,
                          ref_ref_rand=ref_ref_rand)
 
-        n_z_s = (output["n_ref"] / output["tot_sample"]) / output["dz"]
+        n_z_s = (output["n_ref"] / np.sum(output["n_ref"])) / output["dz"]
 
         for (out_idx, row), n_z in zip(output.iterrows(), n_z_s):
             self.assertAlmostEqual(row["corr"], 1.)
