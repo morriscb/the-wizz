@@ -381,15 +381,21 @@ class PDFMaker:
         boot_ratio = boot_corr / boot_ref_corr
         boot_n_z_r = (boot_n_ref / boot_tot_ref) / delta_z
         boot_n_z_bu_br = boot_ratio * boot_n_z_r
-        boot_normed_n_z = boot_n_z_bu_br / np.dot(boot_n_z_r, delta_z)
-        boot_z_mean = np.dot(boot_normed_n_z, delta_z * mean_redshifts)
-        boot_z_std = np.sqrt(
-            np.dot(boot_normed_n_z, delta_z * mean_redshifts ** 2) -
-            boot_z_mean ** 2)
+        boot_normed_n_z = np.empty_like(boot_n_z_bu_br)
+        boot_z_mean = np.empty(len(bootstraps))
+        boot_z_var = np.empty(len(bootstraps))
+        for idx in range(len(bootstraps)):
+            norm = np.sum(boot_n_z_bu_br[idx, :] * delta_z)
+            boot_normed_n_z[idx, :] = boot_n_z_bu_br[idx, :] / norm
+            boot_z_mean[idx] = np.sum(boot_normed_n_z[idx, :] * delta_z * mean_redshifts)
+            boot_z_var[idx] = np.sum(boot_normed_n_z[idx, :] *
+                                     delta_z *
+                                     (mean_redshifts - boot_z_mean[idx]) ** 2)
 
         if output_bootstraps is not None:
             with open(output_bootstraps, 'wb') as pkl_file:
                 pickle.dump({"mean_redshift": mean_redshifts,
+                             "dz": delta_z,
                              "unkn_corr": boot_corr,
                              "ref_corr": boot_ref_corr,
                              "n_z_bu_br": boot_n_z_bu_br},
@@ -406,7 +412,7 @@ class PDFMaker:
         z_mean_low, z_mean_med, z_mean_hi = np.percentile(
             boot_z_mean, [50 - 34.1, 50, 50 + 34.1])
         z_var_low, z_var_med, z_var_hi = np.percentile(
-            boot_z_std, [50 - 34.1, 50, 50 + 34.1])
+            boot_z_var, [50 - 34.1, 50, 50 + 34.1])
 
         return pd.DataFrame(
             data={"mean_redshift": mean_redshifts,
@@ -419,7 +425,7 @@ class PDFMaker:
                   "ref_corr_err": np.nanstd(boot_ref_corr, ddof=1, axis=0),
                   "ref_corr_low": low_ref_corr,
                   "ref_corr_hi": hi_ref_corr,
-                  "n_z_bu_br": np.mean(boot_n_z_bu_br),
+                  "n_z_bu_br": np.mean(boot_n_z_bu_br, axis=0),
                   "n_z_bu_br_err": np.nanstd(boot_n_z_bu_br, ddof=1, axis=0),
                   "n_z_bu_br_med": median_n_z_bu_br,
                   "n_z_bu_br_low": low_nz_bu_br,
@@ -430,20 +436,20 @@ class PDFMaker:
                   "n_z_normed_low": low_norm_nz,
                   "n_z_normed_hi": hi_norm_nz,
                   "n_z_r": np.nanmean(boot_n_z_r, axis=0),
-                  "z_mean": np.full(self.n_bins, np.nanmean(boot_z_mean)),
-                  "z_mean_err": np.full(self.n_bins,
+                  "z_mean": np.full(self.bins, np.nanmean(boot_z_mean)),
+                  "z_mean_err": np.full(self.bins,
                                         np.nanstd(boot_z_mean,
                                                   ddof=1)),
-                  "z_mean_med": np.full(self.n_bins, z_mean_med),
-                  "z_mean_low": np.full(self.n_bins, z_mean_low),
-                  "z_mean_hi": np.full(self.n_bins, z_mean_hi),
-                  "z_std": np.full(self.n_bins, np.nanmean(boot_z_std)),
-                  "z_std_err": np.full(self.n_bins,
-                                       np.nanstd(boot_z_std,
+                  "z_mean_med": np.full(self.bins, z_mean_med),
+                  "z_mean_low": np.full(self.bins, z_mean_low),
+                  "z_mean_hi": np.full(self.bins, z_mean_hi),
+                  "z_var": np.full(self.bins, np.nanmean(boot_z_var)),
+                  "z_var_err": np.full(self.bins,
+                                       np.nanstd(boot_z_var,
                                                  ddof=1)),
-                  "z_std_med": np.full(self.n_bins, z_var_med),
-                  "z_std_low": np.full(self.n_bins, z_var_low),
-                  "z_std_hi": np.full(self.n_bins, z_var_hi)})
+                  "z_var_med": np.full(self.bins, z_var_med),
+                  "z_var_low": np.full(self.bins, z_var_low),
+                  "z_var_hi": np.full(self.bins, z_var_hi)})
 
     def bin_data(self, data, ref_weights=None):
         """Bin the reference data in the requested redshift bins.
