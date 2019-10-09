@@ -40,8 +40,7 @@ class PairCollapser:
         self.weight_power = weight_power
         self.n_proc = n_proc
 
-    def run(self,
-            unknown_catalog):
+    def run(self, unknown_catalog):
         """Compute the over-density around reference objects stored in the
         pair file given the ids and weights in the input unknown_catalog.
 
@@ -108,7 +107,46 @@ class PairCollapser:
                         unkn_regions,
                         unkn_ids,
                         unkn_weights):
-        """
+        """Generate packages of work for subprocesses.
+
+        Parameters
+        ----------
+        unique_regions : `numpy.ndarray`, (M,)
+            Number of unique regions in the input dataset.
+        unkn_regions : `numpy.ndarray`, (N,)
+            Unique ID of the region an unkn object belongs to.
+        unkn_ids : `nunpy.ndarray`, (N,)
+            Unique identifier for each unknown object.
+        unkn_weights `numpy.ndarray`, (N,)
+            Weight to apply to pair counts.
+
+        Yields
+        ------
+        work_packet : `dict`
+            Dictionary containing the following data:
+
+            ``"region"``
+                Unique ID of the region the data in the dict belong to (`int`)
+            ``"unkn_ids"``
+                Unique ids of the objects withing this single region.
+                (`numpy.ndarray`, (N,))
+            ``"tot_sample"``
+                Total number of unknown objects within the region (`int`)
+            ``"ave_unkn_weight"``
+                Average value of the weights of the unknown objects in the
+                regions.
+            ``"r_mins"``
+                Minimum radii to compute raw counts in. (`list` of `int`)
+            ``"r_maxes"``
+                Maximum radii to compute raw counts in. (`list` of `int`)
+            ``"file_name"``
+                Location of complete pair file. (`str`)
+            ``"z_bins"``
+                List of redshift binned data to load in this work packet.
+                (`list` of `str`)
+            ``"weight_power"``
+                Weight function to apply in distance weighted correlation.
+                (`float`)
         """
         if self.n_proc > 0:
             n_z_bin = len(self._retrieve_z_bin_paths(unique_regions[0]))
@@ -138,20 +176,30 @@ class PairCollapser:
                 end_idx = start_idx + n_per_proc
                 if end_idx > n_z_bin:
                     end_idx = n_z_bin
-                yield {"unkn_ids": region_ids,
+                yield {"region": "region=%i" % region,
+                       "unkn_ids": region_ids,
                        "unkn_weights": region_weights,
                        "tot_sample": len(region_ids),
                        "ave_unkn_weight": region_ave_weight,
                        "r_mins": self.r_mins,
                        "r_maxes": self.r_maxes,
                        "file_name": self.parquet_pairs,
-                       "region": "region=%i" % region,
                        "z_bins": [z_bin_paths[idx]
                                   for idx in range(start_idx, end_idx)],
                        "weight_power": self.weight_power}
 
     def _retrieve_z_bin_paths(self, region):
-        """
+        """Retrieve paths of all parquet files stored in a region.
+
+        Parameters
+        ----------
+        region : `int`
+            ID of spatial region to retrieve.
+
+        Returns
+        -------
+        files : `list` of `str`
+            Names of parquet files in region ``region``.
         """
         return glob("%s/region=%i/z_bin=*" % (self.parquet_pairs,
                                               region))
