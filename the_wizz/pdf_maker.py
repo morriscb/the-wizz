@@ -7,13 +7,41 @@ import pickle
 
 
 def linear_bins(z_min, z_max, n_bins):
-    """
+    """Create bins linear or redshift.
+
+    Parameters
+    ----------
+    z_min : `float`
+        Minimum redshift.
+    z_max : `float`
+        Maximum redshift
+    n_bins : `int`
+        Number of redshift bins to create
+
+    Returns
+    -------
+    bin_edges : `numpy.ndarray`, (n_bins + 1,)
+        Redshift bin edges.
     """
     return np.linspace(z_min, z_max, n_bins + 1)
 
 
 def log_bins(z_min, z_max, n_bins):
-    """
+    """Create bins equally spaced in log(1 + z).
+
+    Parameters
+    ----------
+    z_min : `float`
+        Minimum redshift.
+    z_max : `float`
+        Maximum redshift
+    n_bins : `int`
+        Number of redshift bins to create
+
+    Returns
+    -------
+    bin_edges : `numpy.ndarray`, (n_bins + 1,)
+        Redshift bin edges.
     """
     log_min = np.log(1 + z_min)
     log_max = np.log(1 + z_max)
@@ -22,7 +50,23 @@ def log_bins(z_min, z_max, n_bins):
 
 
 def comoving_bins(z_min, z_max, n_bins):
-    """
+    """Create bins equally spaced in comoving distance.
+
+    Assumes a Planck2015 cosmology.
+
+    Parameters
+    ----------
+    z_min : `float`
+        Minimum redshift.
+    z_max : `float`
+        Maximum redshift
+    n_bins : `int`
+        Number of redshift bins to create
+
+    Returns
+    -------
+    bin_edges : `numpy.ndarray`, (n_bins + 1,)
+        Redshift bin edges.
     """
     cov_min = Planck15.comoving_distance(z_min).value
     cov_max = Planck15.comoving_distance(z_max).value
