@@ -8,15 +8,16 @@ the-wizz is a clustering redshift estimating tool designed with ease of use for
 end users in mind. Simply put, the-wizz allows for clustering redshift estimates
 for any photometric, unknown sample in a survey by storing all close pairs
 between the unknown sample and a target, reference sample into a data file.
-Users then query this data file with their specific selection and produce a
-clusting redshift. For further details on the method see Schmidt et al. 2013,
-Menard et al 2013, Rahman et al. 2015(ab), and Morrison et al 2016.
+Users then query this data file with their specific selection and correlation
+scales to produce a clusting redshift. For further details on the method see
+Schmidt et al. 2013, Menard et al 2013, Rahman et al. 2015(ab), and
+Morrison et al 2017.
 
-The software is composed of two main parts: a pair finder and a pdf maker.
-pair_finder.py does the initial heavy lifting of spatial pair finding and stores
-the indices of all closer pairs around the reference objects in an output HDF5
-data file. Users then query this data file using pdf_maker.py and the indices of
-their unknown sample, producing an output clustering-z.
+The software is composed of three main parts: a pair_finder, pair_collapser and
+pdf_maker. pair_finder.py does the initial heavy lifting of spatial pair
+finding and stores the indices of all closer pairs around the reference objects
+in an output HDF5 data file. Users then query this data file using pdf_maker.py
+and the indices of their unknown sample, producing an output clustering-z.
 
 CITING the-wizz
 ---------------
@@ -30,24 +31,22 @@ citations as well.
 REQUIREMENTS
 ------------
 
-The library is designed with as little reliance on nonstandard  libraries
-as possible. It is recommended if using the-wizz that you utilize the Anaconda
-(https://www.continuum.io/downloads) distribution of .
-
-pdf_maker.py requirements:
+The library is designed with as little reliance on nonstandard libraries
+as possible.
 
     astropy (http://www.astropy.org/)
-    h5py (http://www.h5py.org/)
     numpy (http://www.numpy.org/)
+    pandas (https://pandas.pydata.org/)
+    pyarrow (https://arrow.apache.org/docs/python/install.html)
     scipy (http://www.scipy.org/)
-
-pair_maker.py requirements:
-
-    (as above)
-    astro-stomp (https://github.com/ryanscranton/astro-stomp)
 
 INSTALLATION
 ------------
+
+
+
+DOCKER
+======
 
 the-wizz is available as a [docker](https://www.docker.com/) image for easy
 deployment. [This image](https://hub.docker.com/r/morriscb/the-wizz/) can be
