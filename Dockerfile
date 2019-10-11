@@ -14,3 +14,4 @@ RUN git checkout u/morriscb/python-only && \
     python setup.py install
 
 USER $NB_UID
+WORKDIR $HOME
