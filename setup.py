@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='the_wizz',
-      version=0.1.0,
+      version="0.1.0",
       author="Christopher B. Morrison",
       author_email="morriscb@uw.edu",
       url="https://github.com/morriscb/the-wizz",
@@ -21,4 +21,5 @@ setup(name='the_wizz',
                    "License :: OSI Approved :: Apache Software License",
                    "Intended Audience :: Science/Research",
                    "Operating System :: OS Independent",
-                   "Programming Language :: Python"],)
+                   "Programming Language :: Python"],
+      python_requires='>=3.6')
