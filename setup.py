@@ -10,7 +10,7 @@ setup(name='the_wizz',
       description="",
       long_description=open("README.md").read(),
       package_data={"": ["README.md", "LICENSE"],
-                    "notebooks": ["notebooks/*"]
+                    "notebooks": ["notebooks/*"],
                     "the_wizz": ["data/*"]},
       include_package_data=True,
       install_requires=["astropy",
