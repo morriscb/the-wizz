@@ -26,7 +26,7 @@ CITING the-wizz
 
 Papers utilizing the-wizz should provide a link back to this repository. It is
 also requested that users cite
-[Morrison et al. 2017](http://adsabs.harvard.edu/abs/2016arXiv160909085M). The
+[Morrison et al. 2017](https://ui.adsabs.harvard.edu/abs/2017MNRAS.467.3576M/abstract). The
 other cites mentioned at the start of this README are highly recommended as
 citations as well.
 
@@ -69,7 +69,6 @@ deployed with the following docker command
     docker pull morriscb/the-wizz
 
 Tutorials using the docker image of the-wizz will be available soon.
-
 
 DEMOS
 -----
