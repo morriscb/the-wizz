@@ -474,7 +474,7 @@ class PDFMaker:
                   "n_z_bu_br_med": median_n_z_bu_br,
                   "n_z_bu_br_low": low_nz_bu_br,
                   "n_z_bu_br_hi": hi_nz_bu_br,
-                  "n_z_normed": np.mean(boot_normed_n_z),
+                  "n_z_normed": np.nanmean(boot_normed_n_z, axis=0),
                   "n_z_normed_err": np.nanstd(boot_normed_n_z, ddof=1, axis=0),
                   "n_z_normed_med": median_norm_nz,
                   "n_z_normed_low": low_norm_nz,
