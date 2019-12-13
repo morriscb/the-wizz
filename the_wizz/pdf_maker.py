@@ -528,7 +528,7 @@ class PDFMaker:
 
         output_data = []
         for z_bin in range(self.bins):
-            dz = self.bin_edges[z_bin + 1] - self.bin_edges[z_bin]
+            dz = np.diff(self.bin_edges)
             bin_mask = bin_number == z_bin + 1
             bin_data = tmp_data[bin_mask]
             bin_weights = tmp_weights[bin_mask]
