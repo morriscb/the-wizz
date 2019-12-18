@@ -396,7 +396,12 @@ def find_pairs(input_ids, match_ids, input_weights, match_weights):
         Weights of each of the input ids.
     match_weights : `numpy.ndarray`
         Weights of each of the match ids.
-    
+
+    Returns
+    -------
+    matched_pairs : `tuple`, (`numpy.ndarray`, `numpy.ndarray`)
+        Views into ``input_weights`` and ``matched_weights`` where id values in
+        ``input_ids`` and ``match_ids`` are present.
     """
     sort_idxs = np.searchsorted(match_ids, input_ids)
     sort_mask = np.logical_and(sort_idxs < len(match_ids), sort_idxs >= 0)

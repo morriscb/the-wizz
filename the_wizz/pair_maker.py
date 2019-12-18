@@ -151,8 +151,8 @@ class PairMaker(object):
                                          area_cumsum[-1],
                                          self.n_z_bins + 1)
             bin_edge_idxs = np.searchsorted(
-                    area_cumsum,
-                    area_bin_edges)
+                area_cumsum,
+                area_bin_edges)
             self.z_bin_edges = redshifts[redshift_args[bin_edge_idxs]]
             self.z_bin_edges[0] = self.z_min
             self.z_bin_edges[-1] = self.z_max
