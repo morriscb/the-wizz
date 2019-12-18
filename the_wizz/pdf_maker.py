@@ -421,7 +421,7 @@ class PDFMaker:
             (boot_ref_ref / boot_ref_ref_rand) *
             ((boot_n_ref_ref_rand * boot_tot_ref_ref_rand) /
              (boot_n_ref * boot_tot_ref))) - 1
-
+        
         boot_ratio = boot_corr / boot_ref_corr
         boot_n_z_r = (boot_n_ref / boot_tot_ref) / delta_z
         boot_n_z_bu_br = boot_ratio * boot_n_z_r
@@ -446,7 +446,7 @@ class PDFMaker:
                              "ref_corr": boot_ref_corr,
                              "n_z_bu_br": boot_n_z_bu_br},
                             pkl_file)
-
+        
         low_corr, median_corr, hi_corr = np.nanpercentile(
             boot_corr, [50 - 34.1, 50, 50 + 34.1], axis=0)
         low_ref_corr, median_ref_corr, hi_ref_corr = np.nanpercentile(
@@ -528,7 +528,7 @@ class PDFMaker:
 
         output_data = []
         for z_bin in range(self.bins):
-            dz = np.diff(self.bin_edges)
+            dz = self.bin_edges[z_bin + 1] - self.bin_edges[z_bin]
             bin_mask = bin_number == z_bin + 1
             bin_data = tmp_data[bin_mask]
             bin_weights = tmp_weights[bin_mask]
