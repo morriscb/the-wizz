@@ -7,11 +7,12 @@ RUN pip install pyarrow && \
 
 USER root
 
-WORKDIR /home
-RUN git clone https://github.com/morriscb/the-wizz.git
-WORKDIR /home/the-wizz
-RUN git checkout u/morriscb/python-only && \
-    python setup.py install
-
 USER $NB_UID
-WORKDIR $HOME
+WORKDIR $HOME/work
+
+RUN git clone https://github.com/morriscb/the-wizz.git
+WORKDIR $HOME/work/the-wizz
+RUN git checkout u/morriscb/python-only && \
+    python setup.py install --user
+
+WORKDIR $HOME/work
