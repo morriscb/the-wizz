@@ -50,7 +50,7 @@ class PairMaker(object):
                  output_pairs=None,
                  n_write_proc=2,
                  n_write_clean_up=10000,
-                 n_z_bins=128):
+                 n_z_bins=64):
         self.r_mins = r_mins
         self.r_maxes = r_maxes
         self.r_min = np.min(r_mins)
