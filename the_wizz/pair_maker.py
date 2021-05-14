@@ -51,8 +51,16 @@ class PairMaker(object):
                  n_write_proc=2,
                  n_write_clean_up=10000,
                  n_z_bins=64):
-        self.r_mins = r_mins
-        self.r_maxes = r_maxes
+
+        if not isinstance(r_mins, list):
+            self.r_mins = [r_mins]
+        else:
+            self.r_mins = r_mins
+
+        if not isinstance(r_maxes, list):
+            self.r_maxes = [r_maxes]
+        else:
+            self.r_maxes = r_maxes
         self.r_min = np.min(r_mins)
         self.r_max = np.max(r_maxes)
         self.z_min = z_min
@@ -164,21 +172,32 @@ class PairMaker(object):
                                                                 ref_regions):
             # Query the unknown tree.
             unkn_idxs = np.array(self._query_tree(ref_vect, unkn_tree, dist))
+            if len(unkn_idxs) == 0:
+                #Didn't find any pairs
+                output_row = dict([("ref_id", ref_id),
+                           ("redshift", redshift),
+                           ("region", ref_region)])
 
-            # Compute angles and convert them to cosmo distances.
-            matched_unkn_vects = unkn_vects[unkn_idxs]
-            dots = np.dot(matched_unkn_vects, ref_vect)
-            dot_mask = dots < np.cos(self.r_min / dist)
-            matched_unkn_dists = np.arccos(dots[dot_mask]) * dist
+                for r_min, r_max in zip(self.r_mins, self.r_maxes):
+                    scale_name = "Mpc%.2ft%.2f" % (r_min, r_max)
+                    output_row["%s_count" % scale_name] = 0
+                    output_row["%s_weight" % scale_name] = 0.
 
-            # Bin data and return counts/sum of weights in bins.
-            output_row = self._compute_bin_values(
-                ref_id,
-                ref_region,
-                redshift,
-                unkn_ids[unkn_idxs[dot_mask]],
-                matched_unkn_dists,
-                unkn_weights[unkn_idxs[dot_mask]])
+            else:
+                # Compute angles and convert them to cosmo distances.
+                matched_unkn_vects = unkn_vects[unkn_idxs]
+                dots = np.dot(matched_unkn_vects, ref_vect)
+                dot_mask = dots < np.cos(self.r_min / dist)
+                matched_unkn_dists = np.arccos(dots[dot_mask]) * dist
+
+                # Bin data and return counts/sum of weights in bins.
+                output_row = self._compute_bin_values(
+                    ref_id,
+                    ref_region,
+                    redshift,
+                    unkn_ids[unkn_idxs[dot_mask]],
+                    matched_unkn_dists,
+                    unkn_weights[unkn_idxs[dot_mask]])
             output_row["tot_sample"] = total_unknown
             output_row["ave_unkn_weight"] = ave_weight
             output_data.append(output_row)
